@@ -1,0 +1,44 @@
+model EyeType {
+  id          String  @id @default(uuid())
+  key         String  @unique @db.VarChar(50)
+  name        String  @db.VarChar(100)
+  description String? @db.Text
+  isActive    Boolean @default(true) @map("is_active")
+
+  // Relations
+  providers        EyeProvider[]
+  organizationEyes OrganizationEye[]
+
+  @@map("eye_types")
+}
+
+model Provider {
+  id             String   @id @default(uuid())
+  key            String   @unique @db.VarChar(50)
+  name           String   @db.VarChar(100)
+  oauthSupported Boolean  @map("oauth_supported")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  eyeTypes         EyeProvider[]
+  organizationEyes OrganizationEye[]
+  integrations     Integration[]
+
+  @@map("providers")
+}
+
+model EyeProvider {
+  eyeTypeId       String  @map("eye_type_id")
+  providerId      String  @map("provider_id")
+  isAvailableInV1 Boolean @map("is_available_in_v1")
+  isEnabled       Boolean @default(true) @map("is_enabled")
+
+  // Relations
+  eyeType  EyeType  @relation(fields: [eyeTypeId], references: [id])
+  provider Provider @relation(fields: [providerId], references: [id])
+
+  @@id([eyeTypeId, providerId])
+  @@map("eye_providers")
+}

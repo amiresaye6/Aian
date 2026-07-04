@@ -1,0 +1,93 @@
+enum UserStatus {
+  pending_verification
+  active
+  suspended
+
+  @@map("user_status")
+}
+
+enum OrganizationStatus {
+  pending_connections
+  active
+  suspended
+
+  @@map("organization_status")
+}
+
+enum MembershipStatus {
+  invited
+  active
+  deactivated
+
+  @@map("membership_status")
+}
+
+enum BillingCycle {
+  monthly
+  yearly
+
+  @@map("billing_cycle")
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  cancelled
+  trialing
+
+  @@map("subscription_status")
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+
+  @@map("payment_status")
+}
+
+enum EyeStatus {
+  disconnected
+  connecting
+  connected
+  error
+  paused
+
+  @@map("eye_status")
+}
+
+enum IntegrationStatus {
+  pending
+  connected
+  disconnected
+  error
+
+  @@map("integration_status")
+}
+
+enum KnowledgeFileStatus {
+  pending
+  processing
+  processed
+  failed
+
+  @@map("knowledge_file_status")
+}
+
+enum SyncTriggerType {
+  initial
+  scheduled
+  manual
+
+  @@map("sync_trigger_type")
+}
+
+enum SyncJobStatus {
+  queued
+  running
+  completed
+  failed
+
+  @@map("sync_job_status")
+}

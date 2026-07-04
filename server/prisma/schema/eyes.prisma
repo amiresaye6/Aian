@@ -1,0 +1,72 @@
+model OrganizationEye {
+  id                   String    @id @default(uuid())
+  organizationId       String    @map("organization_id")
+  eyeTypeId            String    @map("eye_type_id")
+  selectedProviderId   String?   @map("selected_provider_id")
+  status               EyeStatus @default(disconnected)
+  isEnabled            Boolean   @default(true) @map("is_enabled")
+  syncSchedule         String    @map("sync_schedule") @db.VarChar(50)
+  lastSuccessfulSyncAt DateTime? @map("last_successful_sync_at") @db.Timestamptz
+  nextScheduledSyncAt  DateTime? @map("next_scheduled_sync_at") @db.Timestamptz
+  settings             Json
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  organization     Organization  @relation(fields: [organizationId], references: [id])
+  eyeType          EyeType       @relation(fields: [eyeTypeId], references: [id])
+  selectedProvider Provider?     @relation(fields: [selectedProviderId], references: [id])
+  integration      Integration?
+  syncJobs         EyeSyncJob[]
+
+  @@unique([organizationId, eyeTypeId])
+  @@map("organization_eyes")
+}
+
+model Integration {
+  id                    String            @id @default(uuid())
+  organizationEyeId     String            @unique @map("organization_eye_id")
+  providerId            String            @map("provider_id")
+  status                IntegrationStatus @default(pending)
+  externalAccountId     String?           @map("external_account_id") @db.VarChar(255)
+  externalAccountName   String?           @map("external_account_name") @db.VarChar(255)
+  accessTokenEncrypted  String            @map("access_token_encrypted") @db.Text
+  refreshTokenEncrypted String?           @map("refresh_token_encrypted") @db.Text
+  tokenExpiresAt        DateTime?         @map("token_expires_at") @db.Timestamptz
+  scopes                Json
+  connectedByUserId     String?           @map("connected_by_user_id")
+  connectedAt           DateTime          @map("connected_at") @db.Timestamptz
+  lastSyncAt            DateTime?         @map("last_sync_at") @db.Timestamptz
+  lastErrorMessage      String?           @map("last_error_message") @db.Text
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  organizationEye OrganizationEye       @relation(fields: [organizationEyeId], references: [id])
+  provider        Provider              @relation(fields: [providerId], references: [id])
+  connectedByUser User?                 @relation(fields: [connectedByUserId], references: [id])
+  resources       IntegrationResource[]
+  syncJobs        EyeSyncJob[]
+
+  @@map("integrations")
+}
+
+model IntegrationResource {
+  id                 String    @id @default(uuid())
+  integrationId      String    @map("integration_id")
+  externalResourceId String    @map("external_resource_id") @db.VarChar(255)
+  resourceType       String    @map("resource_type") @db.VarChar(50)
+  name               String    @db.VarChar(255)
+  metadata           Json
+  isSelected         Boolean   @map("is_selected")
+  isActive           Boolean   @map("is_active")
+  lastSyncedAt       DateTime? @map("last_synced_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  integration Integration @relation(fields: [integrationId], references: [id])
+
+  @@unique([integrationId, externalResourceId])
+  @@map("integration_resources")
+}

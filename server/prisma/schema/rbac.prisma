@@ -1,0 +1,59 @@
+model Role {
+  id           String   @id @default(uuid())
+  key          String   @unique @db.VarChar(50)
+  name         String   @db.VarChar(100)
+  description  String?  @db.Text
+  isSystemRole Boolean  @default(true) @map("is_system_role")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  members     OrganizationMember[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(150)
+  description String?  @db.Text
+
+  // Relations
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model OrganizationMember {
+  id               String           @id @default(uuid())
+  organizationId   String           @map("organization_id")
+  userId           String           @map("user_id")
+  roleId           String           @map("role_id")
+  memberStatus     MembershipStatus @default(invited) @map("member_status")
+  invitedByUserId  String?          @map("invited_by_user_id")
+  joinedAt         DateTime?        @map("joined_at") @db.Timestamptz
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  user          User         @relation("UserMemberships", fields: [userId], references: [id])
+  role          Role         @relation(fields: [roleId], references: [id])
+  invitedByUser User?        @relation("InvitedMemberships", fields: [invitedByUserId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
