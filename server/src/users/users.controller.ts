@@ -7,11 +7,11 @@ import { AuthGaurd } from '../auth/auth.gaurd';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { User } from '@prisma/client';
 import { RequiredPermissions } from '../decorators/required-permissions.decorator';
-import { RolesGaurds } from '../roles_permissions/roles.gaurd';
+import { RolesGuards } from '../roles_permissions/roles.guard';
 
 
 
-@UseGuards(AuthGaurd,RolesGaurds)
+@UseGuards(AuthGaurd,RolesGuards)
 @Controller('users')
 export class UsersController {
     constructor(

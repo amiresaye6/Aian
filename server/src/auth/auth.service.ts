@@ -60,8 +60,10 @@ export class AuthService {
             id:existedUser.id,
             email:existedUser.email,
             fullName:existedUser.fullName,
-            roleId:existedUser.roleId,
-            role:existedUser.role?.name||'unkown'
+            roleId:existedUser.roleId||'unkown',
+            role:existedUser.role?.name||'unkown',
+            organizationId:existedUser.organizationId||'unkown',
+            organization:existedUser.organization?.name||'unkown'
         }
 
         const {access_token,refresh_token}= await this.getTokens(payload);
@@ -105,12 +107,18 @@ export class AuthService {
         const user = await this.prismaService.user.findUnique({
             where:{id:userid},
             include: {
-            role: {
-                select: {
-                id: true,  
-                name: true,
+                role: {
+                    select: {
+                    id: true,  
+                    name: true,
+                    }
+                },
+                organization: {
+                    select: {
+                        id:true,
+                        name:true
+                    }
                 }
-            }
             }
         });
         if (!user || !user.refreshTokenHash) {
@@ -132,8 +140,10 @@ export class AuthService {
             id:user.id,
             email:user.email,
             fullName:user.fullName,
-            roleId:user.roleId,
-            role:user.role?.name||'unkown'
+            roleId:user.roleId||'unkown',
+            role:user.role?.name||'unkown',
+            organizationId:user.organizationId||'unkown',
+            organization:user.organization?.name||'unkown'
         }
 
         const {access_token,refresh_token} = await this.getTokens(payload)
