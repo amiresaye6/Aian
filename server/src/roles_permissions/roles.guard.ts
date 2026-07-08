@@ -3,7 +3,7 @@ import { Reflector } from "@nestjs/core";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
-export class RolesGaurds implements CanActivate{
+export class RolesGuards implements CanActivate{
     constructor(
         private readonly reflector:Reflector,
         private readonly prismaService:PrismaService
@@ -15,7 +15,7 @@ export class RolesGaurds implements CanActivate{
         const [roleId,role]= [user.roleId,user.role];
         const handler= context.getHandler();
 
-        if(role=='Owner' || role=='Admin') return true;
+        if(role=='Owner') return true;
 
         const requiredPermissions= this.reflector.get<string[]>('permissions',handler);
         if(!requiredPermissions || requiredPermissions.length===0) return true;
@@ -35,13 +35,7 @@ export class RolesGaurds implements CanActivate{
         const hasRequieredPermissions= requiredPermissions.every(p => rolesPermissionsKeys.includes(p));
         if(hasRequieredPermissions)return true;
 
-        throw new ForbiddenException({
-            success:false,
-            message:"you don't have the required permissions",
-            error:{
-                type:'ForbiddenException'
-            }
-        });
+        throw new ForbiddenException("you don't have the required permissions");
         
     }
 }
