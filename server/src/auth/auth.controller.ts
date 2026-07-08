@@ -2,10 +2,12 @@ import {
   Body, 
   ClassSerializerInterceptor, 
   Controller, 
+  Get, 
   HttpCode, 
   HttpStatus, 
   NotFoundException, 
   Post, 
+  Req, 
   UseGuards, 
   UseInterceptors
  } from '@nestjs/common';
@@ -18,6 +20,8 @@ import { UsersService } from '../users/users.service';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { AuthGaurd } from './auth.gaurd';
 import { User } from '@prisma/client';
+import { changePasswordDTO } from './dto/change-password.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('auth')
@@ -54,5 +58,37 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() body: { userId: string, refreshToken: string }) {
     return this.authService.checkRefreshTokens(body.userId, body.refreshToken);
+  }
+
+  @UseGuards(AuthGaurd)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@CurrentUser() user:UserEntity,@Body() body:changePasswordDTO){
+    const {oldPassword, newPassword, confirmNewPassword}= body;
+    const updateUser= await this.authService.changePassword(user.id,oldPassword, newPassword, confirmNewPassword);
+    return updateUser;
+  }
+
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(@Req() req:any) {
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req:any) {
+    return this.authService.validateOAuthUser(req.user);
+  }
+
+  @Get('github')
+  @UseGuards(AuthGuard('github'))
+  async githubAuth(@Req() req:any) {
+  }
+
+  @Get('github/callback')
+  @UseGuards(AuthGuard('github'))
+  async githubAuthRedirect(@Req() req:any) {
+    return this.authService.validateOAuthUser(req.user);
   }
 }

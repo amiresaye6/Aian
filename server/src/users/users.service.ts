@@ -26,6 +26,12 @@ export class UsersService {
                 id: true,  
                 name: true,
                 }
+            },
+            organization: {
+                select: {
+                    id:true,
+                    name:true,
+                }
             }
             }
         });
@@ -43,6 +49,12 @@ export class UsersService {
                 select: {
                 id: true,  
                 name: true,
+                }
+            },
+            organization: {
+                select: {
+                    id:true,
+                    name:true,
                 }
             }
             }
