@@ -61,14 +61,15 @@
               "script": {
                 "exec": [
                   "var jsonData = pm.response.json();",
-                  "if (jsonData.access_token) {",
-                  "    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
+                  "var data = jsonData.data || jsonData;",
+                  "if (data.access_token) {",
+                  "    pm.collectionVariables.set(\"access_token\", data.access_token);",
                   "}",
-                  "if (jsonData.refresh_token) {",
-                  "    pm.collectionVariables.set(\"refresh_token\", jsonData.refresh_token);",
+                  "if (data.refresh_token) {",
+                  "    pm.collectionVariables.set(\"refresh_token\", data.refresh_token);",
                   "}",
-                  "if (jsonData.user && jsonData.user.id) {",
-                  "    pm.collectionVariables.set(\"userId\", jsonData.user.id);",
+                  "if (data.user && data.user.id) {",
+                  "    pm.collectionVariables.set(\"userId\", data.user.id);",
                   "}"
                 ],
                 "type": "text/javascript"
