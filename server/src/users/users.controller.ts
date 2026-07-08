@@ -18,6 +18,7 @@ export class UsersController {
         private readonly usersService:UsersService
     ){}
 
+    @RequiredPermissions('users.read')
     @Get('/:id')
     async findOne(@Param('id') id:string){
         try{
@@ -29,7 +30,7 @@ export class UsersController {
     }
 
     @Get()
-    @RequiredPermissions('dashboard.read','providers.read')
+    @RequiredPermissions('users.read')
     async findAllOrOneByEmail(@Query('email') email:string,@CurrentUser()user:any){
         console.log(user)
         if(email){
@@ -48,6 +49,7 @@ export class UsersController {
         }
     }
     
+    @RequiredPermissions('users.update')
     @Patch('/:id')
     async updateUser(@Param('id') id:string,@Body() body:UpdateUserDTO){
         try{
@@ -58,6 +60,7 @@ export class UsersController {
         }
     }
 
+    @RequiredPermissions('users.delete')
     @Delete('/:id')
     async deleteUser(@Param('id') id:string){
         try{

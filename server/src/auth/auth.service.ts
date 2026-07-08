@@ -1,4 +1,4 @@
-import { BadRequestException, ClassSerializerInterceptor, ForbiddenException, Injectable, NotFoundException, UnauthorizedException, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, ClassSerializerInterceptor, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException, UseInterceptors } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -146,5 +146,58 @@ export class AuthService {
             where:{id:userId},
             data:{refreshTokenHash:null}
         })
+    }
+
+    async changePassword(userId:string,oldPassword:string,newPassword:string,confirmNewPassword:string){
+        if(newPassword!==confirmNewPassword){
+            throw new BadRequestException("password doesn't match confirm-password")
+        }
+        if(oldPassword===newPassword){
+            throw new BadRequestException("new password can't be the old one")
+        }
+        const user= await this.usersService.findOneById(userId);
+        if(!user){
+            throw new NotFoundException('user not found');
+        }
+        const isMatched= await bcrypt.compare(oldPassword,user.passwordHash as string);
+        if(!isMatched){
+            throw new UnauthorizedException('wrong password');
+        }
+
+        const newHash= await bcrypt.hash(newPassword,10);
+        const updatedUser=await this.prismaService.user.update({
+            where:{id:userId},
+            data:{passwordHash:newHash}
+        })
+        return updatedUser;
+
+    }
+
+    async validateOAuthUser(oauthUser: { email: string; fullName: string }) {
+    let user = await this.usersService.findOneByEmail(oauthUser.email);
+
+    if (!user) {
+        user = await this.usersService.create(
+        oauthUser.fullName,
+        oauthUser.email,
+        '', 
+        )as any;
+    }
+    if(!user){
+        throw new ConflictException("couldn't authenticate")
+    }
+
+    let payload = {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        roleId: user.roleId,
+        role: (user as any).role?.name || 'unknown',
+    };
+
+    const { access_token, refresh_token } = await this.getTokens(payload);
+    await this.updateRefreshToken(user.id, refresh_token);
+
+    return { user: payload, access_token, refresh_token };
     }
 }
