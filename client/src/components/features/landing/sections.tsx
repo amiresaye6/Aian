@@ -37,7 +37,7 @@ import {
   Building2,
   Quote,
 } from "lucide-react";
-import { AianMark, AianLogo } from "./Logo";
+import { AianMark, AianLogo } from "../../ui/Logo";
 import { NeuralBackdrop } from "./NeuralBackdrop";
 import { useTheme } from "next-themes";
 

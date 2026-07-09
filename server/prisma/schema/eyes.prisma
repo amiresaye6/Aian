@@ -13,9 +13,9 @@ model OrganizationEye {
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  organization     Organization  @relation(fields: [organizationId], references: [id])
-  eyeType          EyeType       @relation(fields: [eyeTypeId], references: [id])
-  selectedProvider Provider?     @relation(fields: [selectedProviderId], references: [id])
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  eyeType          EyeType      @relation(fields: [eyeTypeId], references: [id])
+  selectedProvider Provider?    @relation(fields: [selectedProviderId], references: [id])
   integration      Integration?
   syncJobs         EyeSyncJob[]
 

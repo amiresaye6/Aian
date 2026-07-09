@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
-import { AianLogo } from "@/components/features/landing/Logo";
+import { AianLogo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function Navbar() {
