@@ -1,0 +1,46 @@
+import { Global, Module } from '@nestjs/common';
+import { PrismaModule } from '../prisma/prisma.module';
+import { EncryptionService } from '../common/encryption.service';
+import { ProviderConnectionRepository } from './repositories/provider-connection.repository';
+import { ProviderResourceSelectionRepository } from './repositories/provider-resource-selection.repository';
+import { ProviderCursorRepository } from './repositories/provider-cursor.repository';
+import { RawProviderEventRepository } from './repositories/raw-provider-event.repository';
+import { KnowledgeItemRepository } from './repositories/knowledge-item.repository';
+import { IngestionBatchRepository } from './repositories/ingestion-batch.repository';
+import { ProcessingSettingsRepository } from './repositories/processing-settings.repository';
+import { CollectionRunRepository } from './repositories/collection-run.repository';
+
+/**
+ * Global Ingestion Module.
+ *
+ * Provides all shared repositories and the encryption service
+ * to every module in the application. Provider developers import
+ * nothing extra — they just inject the repositories they need.
+ */
+@Global()
+@Module({
+  imports: [PrismaModule],
+  providers: [
+    EncryptionService,
+    ProviderConnectionRepository,
+    ProviderResourceSelectionRepository,
+    ProviderCursorRepository,
+    RawProviderEventRepository,
+    KnowledgeItemRepository,
+    IngestionBatchRepository,
+    ProcessingSettingsRepository,
+    CollectionRunRepository,
+  ],
+  exports: [
+    EncryptionService,
+    ProviderConnectionRepository,
+    ProviderResourceSelectionRepository,
+    ProviderCursorRepository,
+    RawProviderEventRepository,
+    KnowledgeItemRepository,
+    IngestionBatchRepository,
+    ProcessingSettingsRepository,
+    CollectionRunRepository,
+  ],
+})
+export class IngestionModule {}

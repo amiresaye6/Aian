@@ -14,7 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { MembersModule } from './members/members.module';
 import { RolesPermissionsModule } from './roles_permissions/roles_permissions.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
-
+import { IngestionModule } from './ingestion/ingestion.module';
 
 @Module({
   imports: [
@@ -27,6 +27,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
       global:true
     }),
     PrismaModule,
+    IngestionModule,
     HealthModule,
     UploadModule,
     EmailModule,
