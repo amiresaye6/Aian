@@ -17,6 +17,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { CollectionModule } from './ingestion/collection/collection.module';
+import { SchedulerModule } from './ingestion/scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CollectionModule } from './ingestion/collection/collection.module';
     IntegrationsModule,
     IngestionModule,
     CollectionModule,
+    SchedulerModule,
     HealthModule,
     UploadModule,
     EmailModule,
