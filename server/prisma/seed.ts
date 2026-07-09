@@ -19,7 +19,6 @@ async function main() {
 
   // 1. Clean existing data (in reverse dependency order)
   console.log('Cleaning existing data...');
-  await prisma.eyeSyncJob.deleteMany();
   await prisma.integrationResource.deleteMany();
   await prisma.integration.deleteMany();
   await prisma.organizationEye.deleteMany();
@@ -75,12 +74,17 @@ async function main() {
     'members.read',
     'members.invite',
     'members.update_role',
+    'members.update_status',
     'members.remove',
     'roles.read',
     'roles.create',
     'roles.update',
     'roles.delete',
     'roles.assign_permissions',
+    'permission.get',
+    'users.read',
+    'users.update',
+    'users.delete',
     'eyes.read',
     'eyes.manage',
     'providers.read',

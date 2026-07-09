@@ -1,6 +1,6 @@
 "use client";
 
-import { AianLogo } from "@/components/features/landing/Logo";
+import { AianLogo } from "@/components/ui/Logo";
 
 export function Footer() {
   return (

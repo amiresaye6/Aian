@@ -17,10 +17,10 @@ model Role {
 }
 
 model Permission {
-  id          String   @id @default(uuid())
-  key         String   @unique @db.VarChar(100)
-  name        String   @db.VarChar(150)
-  description String?  @db.Text
+  id          String  @id @default(uuid())
+  key         String  @unique @db.VarChar(100)
+  name        String  @db.VarChar(150)
+  description String? @db.Text
 
   // Relations
   roles RolePermission[]
