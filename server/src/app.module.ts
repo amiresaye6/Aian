@@ -13,6 +13,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 // import { DashboardModule } from './dashboard/dashboard.module';
 import { MembersModule } from './members/members.module';
 import { RolesPermissionsModule } from './roles_permissions/roles_permissions.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 
 
 @Module({
@@ -32,6 +33,7 @@ import { RolesPermissionsModule } from './roles_permissions/roles_permissions.mo
     TestModule,
     UsersModule,
     AuthModule,
+    OnboardingModule,
     DashboardModule,
     // DashboardModule,
     MembersModule ,
