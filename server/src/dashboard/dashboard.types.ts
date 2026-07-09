@@ -1,4 +1,5 @@
 export interface EyeStatusItem {
+  id: string;     
   eyeType: string;
   providerName: string | null;
   status: string;

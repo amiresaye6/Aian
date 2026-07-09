@@ -57,9 +57,9 @@ export class DashboardService {
 
       this.prisma.provider.findMany(),
 
-      this.prisma.integration.findMany(),
+      this.prisma.integration.findMany({ where: { organizationEye: { organizationId } } }),
 
-      this.prisma.eyeSyncJob.findMany(),
+     this.prisma.eyeSyncJob.findMany({where: { organizationEye: { organizationId } },}),
 
       this.prisma.organizationKnowledgeFile.findMany({
         where: { organizationId },
@@ -117,6 +117,7 @@ export class DashboardService {
         );
 
         return {
+          id: eye.id,
           eyeType: eyeType?.key ?? '',
           eyeTypeName: eyeType?.name ?? '',
           providerName: provider?.name ?? null,
