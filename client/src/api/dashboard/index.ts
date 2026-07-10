@@ -1,13 +1,9 @@
-// Dashboard API Endpoints placeholder
-import api from "../axios";
+import { api } from "@/api/axios";
+import { DashboardOwnerData } from "@/types/dashboard";
 
-export const dashboardApi = {
-  getStats: async () => {
-    const response = await api.get("/dashboard/stats");
-    return response.data;
-  },
-  getRecentActivity: async () => {
-    const response = await api.get("/dashboard/activity");
-    return response.data;
-  },
-};
+export async function getOwnerDashboard(): Promise<DashboardOwnerData> {
+  const response = await api.get<{ success: boolean; data: DashboardOwnerData }>(
+    "/dashboard/owner"
+  );
+  return response.data.data;
+}
