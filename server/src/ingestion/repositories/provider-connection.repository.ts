@@ -14,10 +14,44 @@ export class ProviderConnectionRepository {
     return this.prisma.providerConnection.findUnique({ where: { id } });
   }
 
+  async findByIdMapped(id: string) {
+    const conn = await this.prisma.providerConnection.findUnique({
+      where: { id },
+      include: { organizationEye: true },
+    });
+    if (!conn) return null;
+    return this.mapToInterface(conn);
+  }
+
   async findByOrganizationEyeId(organizationEyeId: string) {
     return this.prisma.providerConnection.findUnique({
       where: { organizationEyeId },
     });
+  }
+
+  async findByOrganizationId(organizationId: string) {
+    return this.prisma.providerConnection.findMany({
+      where: { organizationEye: { organizationId } },
+      include: { organizationEye: true },
+    });
+  }
+
+  mapToInterface(conn: any) {
+    return {
+      id: conn.id,
+      organizationEyeId: conn.organizationEyeId,
+      organizationId: conn.organizationEye?.organizationId || '',
+      provider: conn.providerId as any,
+      eyeType: conn.organizationEye?.eyeType as any,
+      accessTokenEncrypted: conn.accessTokenEncrypted,
+      refreshTokenEncrypted: conn.refreshTokenEncrypted,
+      tokenExpiresAt: conn.tokenExpiresAt,
+      scopes: conn.scopes || [],
+      externalAccountId: conn.externalAccountId,
+      externalAccountName: conn.externalAccountName,
+      connectionMetadata: conn.connectionMetadata || {},
+      webhookSecret: conn.webhookSecret,
+    };
   }
 
   async create(data: Prisma.ProviderConnectionUncheckedCreateInput) {

@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
+import { IngestionApiModule } from './api/ingestion-api.module';
 import { EncryptionService } from '../common/encryption.service';
 import { ProviderConnectionRepository } from './repositories/provider-connection.repository';
 import { ProviderResourceSelectionRepository } from './repositories/provider-resource-selection.repository';
@@ -19,7 +20,7 @@ import { CollectionRunRepository } from './repositories/collection-run.repositor
  */
 @Global()
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, IngestionApiModule],
   providers: [
     EncryptionService,
     ProviderConnectionRepository,
