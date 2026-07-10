@@ -22,7 +22,10 @@ model User {
   invitedByUser    User?       @relation("UserInvitations", fields: [invitedByUserId], references: [id])
   invitedUsers     User[]      @relation("UserInvitations")
 
-  // Relations الأخرى
+  otpHash          String?
+  otpExpiresAt     DateTime?
+  
+  // Relations 
   createdOrganizations Organization[] @relation("OrgCreator")
   connectedIntegrations Integration[]
   uploadedFiles         OrganizationKnowledgeFile[]

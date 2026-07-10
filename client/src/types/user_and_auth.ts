@@ -9,9 +9,21 @@ export interface User {
 }
 
 export interface AuthResponse { 
-  access_token: string; 
-  refresh_token: string; 
-  user: User; 
+  success: boolean;
+  data:{
+    access_token: string; 
+    refresh_token: string; 
+    user: User; 
+  }
+  
+};
+
+export interface VerifyOtpResponse { 
+  success: boolean;
+  data:{
+    resetToken: string;  
+  }
+  
 };
 
 export interface RefreshResponse {

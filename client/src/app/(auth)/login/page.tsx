@@ -8,6 +8,7 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { AuthField } from "@/components/features/auth/AuthFields";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/store/auth/auth.store";
+import { AuthResponse } from "@/types/user_and_auth";
 import {
   AuthPrimaryButton,
   AuthSocialButton,
@@ -29,10 +30,10 @@ export default function LoginPage() {
     setErrorMsg(null);
 
     try {
-      const data = await authApi.login({ email, password });
+      const response = await authApi.login({ email, password });
       
-      loginStore(data.user, data.access_token, data.refresh_token);
-      
+      loginStore(response.data.user, response.data.access_token, response.data.refresh_token);
+      //console.log("Login successful:", response.data);
       router.push("/workspaces");
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Invalid email or password");
@@ -97,7 +98,7 @@ export default function LoginPage() {
             Remember me
           </label>
           <Link
-            href="/auth/forgot-password"
+            href="/forgot-password"
             className="text-[13px] font-medium text-muted-foreground transition-colors hover:text-[color:var(--gold-soft)]"
           >
             Forgot password?

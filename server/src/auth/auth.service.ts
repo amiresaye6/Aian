@@ -4,13 +4,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { error } from 'console';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
     constructor(
         private readonly usersService:UsersService,
         private readonly prismaService:PrismaService,
-        private readonly jwtService:JwtService
+        private readonly jwtService:JwtService,
+        private readonly emailService:EmailService
     ){}
 
     async SignUp(fullName: string, email: string, password: string, confirmPassword: string){
@@ -67,7 +69,7 @@ export class AuthService {
         }
 
         const {access_token,refresh_token}= await this.getTokens(payload);
-        this.updateRefreshToken(existedUser.id,refresh_token);
+        await this.updateRefreshToken(existedUser.id,refresh_token);
 
         return {user:payload,access_token,refresh_token} 
     }
@@ -147,7 +149,7 @@ export class AuthService {
         }
 
         const {access_token,refresh_token} = await this.getTokens(payload)
-        this.updateRefreshToken(userid,refresh_token);
+        await this.updateRefreshToken(userid,refresh_token);
         return {access_token,refresh_token};
     }
 
@@ -210,4 +212,91 @@ export class AuthService {
 
     return { user: payload, access_token, refresh_token };
     }
+
+    async forgotPassword(email:string){
+        const user= await this.usersService.findOneByEmail(email);
+        if(!user)
+            throw new UnauthorizedException('user not found');
+        
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpHash = await bcrypt.hash(otp, 10);
+        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await this.usersService.updateUser(user.id,{
+                otpHash,
+                otpExpiresAt
+        })
+        const emailContent = `
+            <h3>Reset Your Password</h3>
+            <p>Hello ${user.fullName},</p>
+            <p>You requested to reset your password. Use the following One-Time Password (OTP) to proceed:</p>
+            <h2 style="color: #4CAF50; letter-spacing: 2px;">${otp}</h2>
+            <p>This OTP is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
+        `;
+        await this.emailService.sendBrandedEmail(email,"reset-password",emailContent)
+
+        return;
+    }
+
+    async verifyOtp(email: string, otp: string) {
+        const user = await this.prismaService.user.findUnique({ where: { email } });
+        if (!user || !user.otpHash || !user.otpExpiresAt) {
+            throw new BadRequestException('Invalid request or OTP not found');
+        }
+
+        if (new Date() > user.otpExpiresAt) {
+            throw new BadRequestException('OTP has expired');
+        }
+
+        const isOtpMatched = await bcrypt.compare(otp, user.otpHash);
+        if (!isOtpMatched) {
+            throw new BadRequestException('Invalid OTP code');
+        }
+
+        const resetToken = await this.jwtService.signAsync(
+            { userId: user.id, email: user.email, purpose: 'password_reset' },
+            { secret: process.env.JWT_SECRET, expiresIn: '5m' } 
+        );
+
+        await this.prismaService.user.update({
+            where: { id: user.id },
+            data: { otpHash: null, otpExpiresAt: null }
+        });
+
+        return { 
+            resetToken
+        };
+    }
+
+    async resetPasswordWithToken(resetToken: string, newPassword: string, confirmNewPassword: string) {
+        if (newPassword !== confirmNewPassword) {
+            throw new BadRequestException("Password doesn't match confirm password");
+        }
+
+        let payload: any;
+        try {
+            payload = await this.jwtService.verifyAsync(resetToken, {
+                secret: process.env.JWT_SECRET,
+            });
+        } catch (error) {
+            throw new ForbiddenException('Invalid or expired reset token');
+        }
+
+        if (payload.purpose !== 'password_reset') {
+            throw new ForbiddenException('Invalid token purpose');
+        }
+
+        const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+        await this.prismaService.user.update({
+            where: { id: payload.userId },
+            data: {
+                passwordHash: newPasswordHash,
+                refreshTokenHash: null
+            }
+        });
+
+        return { success: true, message: 'Password has been reset successfully.' };
+    }
+    
 }
