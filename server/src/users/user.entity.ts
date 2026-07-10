@@ -23,6 +23,12 @@ export class UserEntity implements User {
   joinedAt: Date | null;
   invitedByUserId: string | null;
 
+  @Exclude() 
+  otpHash:          string | null;
+
+  @Exclude() 
+  otpExpiresAt:     Date | null
+
   constructor(partial: Partial<UserEntity>) {
     Object.assign(this, partial);
   }

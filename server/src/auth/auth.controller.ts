@@ -23,6 +23,9 @@ import { AuthGaurd } from './auth.gaurd';
 import { User } from '@prisma/client';
 import { changePasswordDTO } from './dto/change-password.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('auth')
@@ -70,6 +73,24 @@ export class AuthController {
     return updateUser;
   }
 
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  async verifyOtp(@Body() body: VerifyOtpDto) {
+    return this.authService.verifyOtp(body.email, body.otp);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    const { resetToken, newPassword, confirmNewPassword } = body;
+    return this.authService.resetPasswordWithToken(resetToken, newPassword, confirmNewPassword);
+  }
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
