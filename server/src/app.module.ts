@@ -14,6 +14,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { MembersModule } from './members/members.module';
 import { RolesPermissionsModule } from './roles_permissions/roles_permissions.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { PaymobModule } from './paymob/paymob.module';
+import { BillingModule } from './billing/billing.module';
 
 
 @Module({
@@ -37,7 +39,9 @@ import { OnboardingModule } from './onboarding/onboarding.module';
     DashboardModule,
     // DashboardModule,
     MembersModule ,
-    RolesPermissionsModule
+    RolesPermissionsModule,
+    PaymobModule,
+    BillingModule,
   ],
 })
 export class AppModule {}
