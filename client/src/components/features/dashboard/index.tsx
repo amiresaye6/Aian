@@ -12,7 +12,7 @@ import { RecentActivityCard } from "./RecentActivityCard";
 import { StatsRow } from "./StatsRow";
 import { SubscriptionCard } from "./SubscriptionCard";
 import { ConnectedIntegrationsCard } from "./ConnectedIntegrationsCard";
-// import { TeamCard } from "./TeamCard";
+import { TeamCard } from "./TeamCard";
 import { AskAianBar } from "./AskAianBar";
 import { PlaceholderListCard } from "./PlaceholderListCard";
 import { UsagePlaceholderCard } from "./UsagePlaceholderCard";
@@ -88,7 +88,7 @@ export default function DashboardPage() {
           {data.organization && <OrganizationDetailsCard organization={data.organization} />}
           <UsagePlaceholderCard />
           <ConnectedIntegrationsCard eyes={data.eyes} integrations={data.integrations} />
-          {/* {data.organization?.id && <TeamCard organizationId={data.organization.id} />} */}
+          {data.organization?.id && <TeamCard organizationId={data.organization.id} />}
           <PlaceholderListCard title="Upcoming" icon={CalendarClock} emptyMessage="Nothing scheduled yet." />
         </div>
       </div>
