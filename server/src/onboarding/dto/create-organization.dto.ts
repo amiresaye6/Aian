@@ -12,16 +12,20 @@ export class CreateOrganizationDto {
   slug: string;
 
   @IsString()
-  description?: string;
+  @IsNotEmpty()
+  description: string;
 
   @IsString()
-  industry?: string;
+  @IsNotEmpty()
+  industry: string;
 
   @IsString()
-  companySize?: string;
+  @IsNotEmpty()
+  companySize: string;
 
   @IsString()
-  country?: string;
+  @IsNotEmpty()
+  country: string;
 
   @IsString()
   @IsNotEmpty()
