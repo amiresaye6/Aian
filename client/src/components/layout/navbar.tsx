@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { AianLogo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import Link from "next/link";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -51,18 +52,18 @@ export function Navbar() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <a
-              href="#cta"
+            <Link
+              href="/login"
               className="hidden rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
             >
               Sign in
-            </a>
-            <a
-              href="#cta"
+            </Link>
+            <Link
+              href="/login"
               className="btn-gold btn-gold-hover inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium"
             >
               Start Free <ArrowRight className="h-3.5 w-3.5" />
-            </a>
+            </Link>
           </div>
         </nav>
       </div>

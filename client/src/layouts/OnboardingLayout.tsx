@@ -11,11 +11,11 @@ import { NeuralBackdrop } from "@/components/features/landing/NeuralBackdrop";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { path: "/onboarding/subscription", label: "Plan" },
-  { path: "/onboarding/payment", label: "Payment" },
-  { path: "/onboarding/create-organization", label: "Organization" },
-  { path: "/onboarding/invite", label: "Members" },
-  { path: "/onboarding/integrations", label: "Integrations" },
+  { path: "/subscription", label: "Plan" },
+  { path: "/payment", label: "Payment" },
+  { path: "/create-organization", label: "Organization" },
+  { path: "/integrations", label: "Integrations" },
+  { path: "/invite", label: "Members" },
 ];
 
 export function OnboardingLayout({
@@ -34,7 +34,10 @@ export function OnboardingLayout({
   showSteps?: boolean;
 }) {
   const pathname = usePathname();
-  const currentIdx = STEPS.findIndex((s) => s.path === pathname);
+  let currentIdx = STEPS.findIndex((s) => s.path === pathname);
+  if (pathname === "/payment-result") {
+    currentIdx = 1;
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
@@ -65,8 +68,8 @@ export function OnboardingLayout({
                       active
                         ? "border-[color:var(--gold-soft)]/60 bg-gold-gradient text-[#17130A] shadow-[0_0_20px_-4px_rgba(232,200,106,0.6)]"
                         : done
-                          ? "border-[color:var(--gold-soft)]/40 bg-white/[0.04] text-[color:var(--gold-soft)]"
-                          : "border-white/10 bg-white/[0.02] text-muted-foreground",
+                          ? "border-[color:var(--gold-soft)]/40 bg-black/[0.04] dark:bg-white/[0.04] text-[color:var(--gold-soft)]"
+                          : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] text-muted-foreground",
                     )}
                   >
                     {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
@@ -79,7 +82,7 @@ export function OnboardingLayout({
                   >
                     {s.label}
                   </span>
-                  {i < STEPS.length - 1 && <div className="mx-1 h-px w-6 bg-white/10" />}
+                  {i < STEPS.length - 1 && <div className="mx-1 h-px w-6 bg-black/10 dark:bg-white/10" />}
                 </div>
               );
             })}
@@ -104,7 +107,7 @@ export function OnboardingLayout({
           className="mb-10 text-center"
         >
           {eyebrow && (
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-gold-gradient" />
               {eyebrow}
             </div>

@@ -1,20 +1,68 @@
+model SubscriptionPlan {
+  id                String   @id @default(uuid())
+
+  name              String   @db.VarChar(100)
+  slug              String   @unique @db.VarChar(50)
+
+  description       String?
+
+  monthlyPriceCents Int      @map("monthly_price_cents")
+  yearlyPriceCents  Int      @map("yearly_price_cents")
+
+  currency          String   @default("USD") @db.VarChar(10)
+
+  maxMembers        Int      @map("max_members")
+
+  storageLimitMb    Int      @map("storage_limit_mb")
+
+  active            Boolean  @default(true)
+
+  sortOrder         Int      @default(0) @map("sort_order")
+
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  subscriptions     Subscription[]
+
+  @@map("subscription_plans")
+}
+
+
 model Subscription {
   id                     String             @id @default(uuid())
+
   organizationId         String             @unique @map("organization_id")
+
+  planId                 String             @map("plan_id")
+
   billingCycle           BillingCycle       @map("billing_cycle")
+
   status                 SubscriptionStatus
+
   paymentProvider        String             @map("payment_provider") @db.VarChar(50)
+
   providerCustomerId     String?            @map("provider_customer_id") @db.VarChar(255)
+
   providerSubscriptionId String?            @unique @map("provider_subscription_id") @db.VarChar(255)
+
   currentPeriodStart     DateTime?          @map("current_period_start") @db.Timestamptz
+
   currentPeriodEnd       DateTime?          @map("current_period_end") @db.Timestamptz
+
   cancelAtPeriodEnd      Boolean            @default(false) @map("cancel_at_period_end")
+
   createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz
+
   updatedAt              DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  organization Organization @relation(fields: [organizationId], references: [id])
-  payments     Payment[]
+  organization Organization      @relation(fields: [organizationId], references: [id])
+
+  plan SubscriptionPlan          @relation(fields: [planId], references: [id])
+
+  payments Payment[]
+
+  @@index([planId])
 
   @@map("subscriptions")
 }
@@ -32,6 +80,7 @@ model Payment {
   paidAt            DateTime?     @map("paid_at") @db.Timestamptz
   failureReason     String?       @map("failure_reason") @db.Text
   providerPayload   Json?         @map("provider_payload")
+  invoiceId         String?       @map("invoice_id") @db.VarChar(255)
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

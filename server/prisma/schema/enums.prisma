@@ -30,18 +30,21 @@ enum BillingCycle {
 }
 
 enum SubscriptionStatus {
+  trialing
   active
   past_due
   cancelled
-  trialing
+  expired
 
   @@map("subscription_status")
 }
+
 
 enum PaymentStatus {
   pending
   paid
   failed
+  cancelled
   refunded
 
   @@map("payment_status")

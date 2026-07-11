@@ -1,5 +1,6 @@
 "use client";
 
+import { useSubscriptionPlans } from "@/hooks/billing/useSubscriptionPlans";
 import { motion, useScroll, useTransform, useSpring, useInView } from "motion/react";
 import { useRef, useState, useEffect } from "react";
 import {
@@ -1298,13 +1299,25 @@ export function Testimonials() {
 /* ---------------- Pricing ---------------- */
 
 export function Pricing() {
-  const plans = [
+  const { data: serverPlans, isLoading } = useSubscriptionPlans();
+
+  const plans = serverPlans?.map((plan) => ({
+    t: plan.name,
+    p: `$${(plan.monthlyPriceCents / 100).toLocaleString()}`,
+    s: plan.tagline || "per user / month · billed annually",
+    f: plan.features || [],
+    cta: "Book Demo",
+    highlight: plan.highlighted,
+    slug: plan.slug,
+  })) || [
     {
       t: "Starter",
       p: "$0",
       s: "For small teams exploring organizational memory.",
       f: ["3 connectors", "Semantic search", "Ask AIAN · 500 queries/mo", "Community support"],
       cta: "Start Free",
+      highlight: false,
+      slug: "starter",
     },
     {
       t: "Growth",
@@ -1318,6 +1331,8 @@ export function Pricing() {
         "Priority support",
       ],
       cta: "Start 14‑day trial",
+      highlight: false,
+      slug: "growth",
     },
     {
       t: "Enterprise",
@@ -1332,6 +1347,7 @@ export function Pricing() {
       ],
       cta: "Book Demo",
       highlight: true,
+      slug: "enterprise",
     },
   ];
   return (
@@ -1379,7 +1395,7 @@ export function Pricing() {
                   ))}
                 </ul>
                 <a
-                  href="#cta"
+                  href={`/subscription?plan=${p.slug}`}
                   className={
                     "mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all " +
                     (p.highlight
