@@ -184,12 +184,18 @@ async function main() {
   // 5. Seed Providers
   console.log('Seeding providers...');
   const slack = await prisma.provider.create({
-    data: { key: 'slack', name: 'Slack', oauthSupported: true },
+    data: {
+      key: 'slack',
+      name: 'Slack',
+      logoUrl: 'https://cdn.simpleicons.org/slack',
+      oauthSupported: true,
+    },
   });
   const msTeams = await prisma.provider.create({
     data: {
       key: 'microsoft_teams',
       name: 'Microsoft Teams',
+      logoUrl: 'https://cdn.simpleicons.org/microsoftteams',
       oauthSupported: true,
       isActive: false,
     },
@@ -198,30 +204,43 @@ async function main() {
     data: {
       key: 'discord',
       name: 'Discord',
+      logoUrl: 'https://cdn.simpleicons.org/discord',
       oauthSupported: true,
       isActive: false,
     },
   });
 
   const zoom = await prisma.provider.create({
-    data: { key: 'zoom', name: 'Zoom', oauthSupported: true },
+    data: {
+      key: 'zoom',
+      name: 'Zoom',
+      logoUrl: 'https://cdn.simpleicons.org/zoom',
+      oauthSupported: true,
+    },
   });
   const googleMeet = await prisma.provider.create({
     data: {
       key: 'google_meet',
       name: 'Google Meet',
+      logoUrl: 'https://cdn.simpleicons.org/googlemeet',
       oauthSupported: true,
       isActive: false,
     },
   });
 
   const jira = await prisma.provider.create({
-    data: { key: 'jira', name: 'Jira', oauthSupported: true },
+    data: {
+      key: 'jira',
+      name: 'Jira',
+      logoUrl: 'https://cdn.simpleicons.org/jira',
+      oauthSupported: true,
+    },
   });
   const linear = await prisma.provider.create({
     data: {
       key: 'linear',
       name: 'Linear',
+      logoUrl: 'https://cdn.simpleicons.org/linear',
       oauthSupported: true,
       isActive: false,
     },
@@ -230,18 +249,25 @@ async function main() {
     data: {
       key: 'clickup',
       name: 'ClickUp',
+      logoUrl: 'https://cdn.simpleicons.org/clickup',
       oauthSupported: true,
       isActive: false,
     },
   });
 
   const github = await prisma.provider.create({
-    data: { key: 'github', name: 'GitHub', oauthSupported: true },
+    data: {
+      key: 'github',
+      name: 'GitHub',
+      logoUrl: 'https://cdn.simpleicons.org/github',
+      oauthSupported: true,
+    },
   });
   const gitlab = await prisma.provider.create({
     data: {
       key: 'gitlab',
       name: 'GitLab',
+      logoUrl: 'https://cdn.simpleicons.org/gitlab',
       oauthSupported: true,
       isActive: false,
     },
@@ -250,6 +276,7 @@ async function main() {
     data: {
       key: 'bitbucket',
       name: 'Bitbucket',
+      logoUrl: 'https://cdn.simpleicons.org/bitbucket',
       oauthSupported: true,
       isActive: false,
     },
@@ -312,9 +339,13 @@ async function main() {
   const targetOrgId = crypto.randomUUID();
   const targetOwnerId = crypto.randomUUID();
 
-  console.log('Temporarily disabling FK triggers to resolve circular dependency...');
+  console.log(
+    'Temporarily disabling FK triggers to resolve circular dependency...',
+  );
   await prisma.$executeRawUnsafe('ALTER TABLE "users" DISABLE TRIGGER ALL;');
-  await prisma.$executeRawUnsafe('ALTER TABLE "organizations" DISABLE TRIGGER ALL;');
+  await prisma.$executeRawUnsafe(
+    'ALTER TABLE "organizations" DISABLE TRIGGER ALL;',
+  );
 
   let ownerUser;
   let org;
@@ -349,7 +380,9 @@ async function main() {
     // so the schema's integrity enforcement is restored immediately.
     console.log('Re-enabling FK triggers...');
     await prisma.$executeRawUnsafe('ALTER TABLE "users" ENABLE TRIGGER ALL;');
-    await prisma.$executeRawUnsafe('ALTER TABLE "organizations" ENABLE TRIGGER ALL;');
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "organizations" ENABLE TRIGGER ALL;',
+    );
   }
 
   const createdUsers = [ownerUser];
