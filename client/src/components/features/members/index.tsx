@@ -6,7 +6,8 @@ import { useMembers } from "@/hooks/use-members";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InviteMemberSection } from "./InviteMemberSection";
 import { MembersList } from "./MembersList";
-
+import Link from "next/dist/client/link";
+import { ArrowLeft } from "lucide-react";
 export default function MembersPage() {
   const user = useAuthStore((s) => s.user);
   console.log("User:", user);
@@ -34,6 +35,15 @@ export default function MembersPage() {
       maxWidth="max-w-4xl"
       showSteps={false}
     >
+      <div className="mb-4 flex justify-start">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] px-4 py-2 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
+        </Link>
+      </div>
+
       <div className="glass-strong relative overflow-hidden rounded-3xl p-7">
         <InviteMemberSection organizationId={organizationId} />
 

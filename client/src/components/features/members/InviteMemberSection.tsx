@@ -29,16 +29,21 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAdd())}
           placeholder="colleague@company.com"
-          className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.03] pl-10 pr-4 text-[14px] outline-none transition-all placeholder:text-muted-foreground/60 focus:border-[color:var(--gold-soft)]/40 focus:bg-white/[0.05]"
+          className="h-12 w-full rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] pl-10 pr-4 text-[14px] outline-none transition-all placeholder:text-muted-foreground/60 focus:border-[color:var(--gold-soft)]/40 focus:bg-black/[0.03] dark:focus:bg-white/[0.05]"
         />
       </div>
       <select
         value={roleId}
         onChange={(e) => setRoleId(e.target.value)}
-        className="h-12 appearance-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 pr-10 text-[14px] outline-none focus:border-[color:var(--gold-soft)]/40"
+       className="h-12 appearance-none rounded-2xl border border-black/10 dark:border-white/10 bg-[color:var(--popover)] text-[color:var(--popover-foreground)] px-4 pr-10 text-[14px] outline-none focus:border-[color:var(--gold-soft)]/40"
       >
         {ROLE_OPTIONS.map((r) => (
-          <option key={r.id} value={r.id}>{r.name}</option>
+          <option key={r.id}
+           value={r.id}
+           className="bg-[color:var(--popover)] text-[color:var(--popover-foreground)]"
+          >
+            {r.name}
+          </option>
         ))}
       </select>
       <button
@@ -51,3 +56,5 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
     </div>
   );
 }
+
+   
