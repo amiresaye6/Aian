@@ -33,8 +33,14 @@ export default function LoginPage() {
       const response = await authApi.login({ email, password });
       
       loginStore(response.data.user, response.data.access_token, response.data.refresh_token);
-      //console.log("Login successful:", response.data);
-      router.push("/workspaces");
+      console.log("Login successful:", response.data);
+      console.log("org id:", response.data.user.organizationId);
+      if(!response.data.user.organizationId && response.data.user.organizationId !== "" 
+        && response.data.user.organizationId !== "unkown" && response.data.user.organizationId !== "null") {
+        router.push("/workspaces");
+      }
+      router.push("/dashboard");
+      
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Invalid email or password");
     } finally {
