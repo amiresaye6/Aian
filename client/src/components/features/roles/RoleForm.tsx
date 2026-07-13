@@ -1,36 +1,63 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, ShieldCheck, Info } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Info, AlertTriangle } from "lucide-react";
 import { Role, CreateRoleBody } from "@/types/roles";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {rolesApi} from "@/api/roles/index";
+import { rolesApi } from "@/api/roles/index";
 
 interface RoleFormProps {
   editingRole: Role | null;
   onClose: () => void;
   onSubmit: (data: CreateRoleBody) => void;
   isPending: boolean;
+  error?: any; 
 }
 
-export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleFormProps) {
+export function RoleForm({ editingRole, onClose, onSubmit, isPending, error }: RoleFormProps) {
   const [name, setName] = useState("");
   const [key, setKey] = useState("");
   const [description, setDescription] = useState("");
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
   const [permissions, setPermissions] = useState<{ id: string; key: string; name: string; description?: string }[]>([]);
+
+  const serverErrorMessage = error?.response?.data?.message || error?.message;
+
   useEffect(() => {
-    if (editingRole) {
-      setName(editingRole.name);
-      setKey(editingRole.key);
-      setDescription(editingRole.description || "");
-      const pIds = editingRole.permissions?.map(p => p.permissionId) || [];
-      setSelectedPermissionIds(pIds);
-    }
+    const fetchFullRoleDetails = async () => {
+      if (editingRole) {
+        setName(editingRole.name);
+        setKey(editingRole.key);
+        setDescription(editingRole.description || "");
+
+        try {
+          const response = await rolesApi.getRoleById(editingRole.id);
+          const fullRoleData = response.data; 
+          
+          if (fullRoleData && fullRoleData.permissions) {
+            console.log("Full Permissions From API:", fullRoleData.permissions);
+            const pIds = fullRoleData.permissions.map((p: any) => {
+              return String(p.permissionId);
+            }).filter(Boolean);
+            
+            setSelectedPermissionIds(pIds);
+          }
+        } catch (error) {
+          console.error("Error fetching full role details:", error);
+        }
+      } else {
+        setName("");
+        setKey("");
+        setDescription("");
+        setSelectedPermissionIds([]);
+      }
+    };
+
+    fetchFullRoleDetails();
   }, [editingRole]);
 
   useEffect(() => {
@@ -73,7 +100,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
             variant="ghost" 
             size="icon" 
             onClick={onClose}
-            className="rounded-xl border border-white/5 bg-white/[0.02]"
+            className="rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -88,6 +115,16 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
         </div>
       </div>
 
+      {serverErrorMessage && (
+        <div className="flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive animate-in fade-in slide-in-from-top-2 duration-200">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="font-semibold">Deployment Failure</div>
+            <div className="text-xs text-destructive/90 leading-relaxed">{serverErrorMessage}</div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2">
           <label className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
@@ -99,7 +136,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., Senior Systems Officer"
-            className="h-11 rounded-xl border-white/10 bg-white/[0.01] focus-visible:ring-[color:var(--gold-soft)]/30"
+            className="h-11 rounded-xl border-white/15 bg-white/[0.03] placeholder:text-muted-foreground/40 focus:border-white/30 focus:bg-white/[0.05] focus-visible:ring-[color:var(--gold-soft)]/30 transition-all"
           />
         </div>
 
@@ -114,7 +151,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
             value={key}
             onChange={(e) => setKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
             placeholder="e.g., senior_systems_officer"
-            className="h-11 rounded-xl border-white/10 bg-white/[0.01] font-mono disabled:opacity-30 focus-visible:ring-[color:var(--gold-soft)]/30"
+            className="h-11 rounded-xl border-white/15 bg-white/[0.03] placeholder:text-muted-foreground/40 font-mono disabled:opacity-20 disabled:bg-white/[0.01] focus-border-white/30 focus:bg-white/[0.05] focus-visible:ring-[color:var(--gold-soft)]/30 transition-all"
           />
         </div>
 
@@ -126,7 +163,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Provide context regarding the scope of deployment and restrictions governing this account identity..."
-            className="min-h-[75px] rounded-xl border-white/10 bg-white/[0.01] resize-none focus-visible:ring-[color:var(--gold-soft)]/30"
+            className="min-h-[85px] rounded-xl border-white/15 bg-white/[0.03] placeholder:text-muted-foreground/40 resize-none focus:border-white/30 focus:bg-white/[0.05] focus-visible:ring-[color:var(--gold-soft)]/30 transition-all"
           />
         </div>
       </div>
@@ -141,20 +178,21 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
           {permissions.map((perm) => {
             const isChecked = selectedPermissionIds.includes(perm.id);
             return (
-              <div 
+              <label 
                 key={perm.id}
-                onClick={() => togglePermission(perm.id)}
-                className={`group flex items-start gap-3.5 p-3.5 rounded-2xl cursor-pointer transition-all border ${
+                htmlFor={`perm-${perm.id}`}
+                className={cn(
+                  "group flex items-start gap-3.5 p-3.5 rounded-2xl cursor-pointer transition-all border",
                   isChecked 
-                    ? "bg-[#C9982B]/3 border-[#C9982B]/25 text-foreground shadow-[0_4px_20px_-5px_rgba(201,152,43,0.05)]" 
-                    : "border-white/5 bg-white/[0.01] hover:bg-white/[0.02] text-muted-foreground"
-                }`}
+                    ? "bg-[#C9982B]/[0.05] border-[#C9982B]/35 text-foreground shadow-[0_4px_20px_-5px_rgba(201,152,43,0.08)]" 
+                    : "border-white/[0.04] bg-zinc-100 hover:bg-zinc-200"
+                )}
               >
                 <Checkbox 
+                  id={`perm-${perm.id}`}
                   checked={isChecked}
                   onCheckedChange={() => togglePermission(perm.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-0.5 border-white/20 data-[state=checked]:bg-gold-gradient data-[state=checked]:border-transparent data-[state=checked]:text-[#17130A]"
+                  className="mt-0.5 border-white/30 data-[state=checked]:bg-gold-gradient data-[state=checked]:border-transparent data-[state=checked]:text-[#17130A]"
                 />
                 <div className="space-y-0.5 select-none">
                   <div className={cn("text-[13.5px] font-medium transition-colors", isChecked && "text-foreground")}>
@@ -164,7 +202,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
                     {perm.description || "No description provided for this permission."}
                   </div>
                 </div>
-              </div>
+              </label>
             );
           })}
         </div>

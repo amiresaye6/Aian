@@ -83,6 +83,14 @@ export class RolesPermissionsService {
             throw new BadRequestException("invalid new role's data")
         }
 
+        const existingRole = await this.prismaService.role.findFirst({
+            where: { key: roleData.key }
+        });
+
+        if(existingRole) {
+            throw new BadRequestException("a role with the same key already exists");
+        }
+
         for (const pId of permissionIds) {
             await this.getPermissionById(pId);
         }

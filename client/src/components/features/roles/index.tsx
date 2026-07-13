@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Shield, ShieldPlus, AlertCircle } from "lucide-react";
 
 export default function RolesPage() {
-  const { roles, isLoading, isError, createRole, isCreating, updateRole, isUpdating, deleteRole } = useRoles();
+  const { roles, isLoading, isError, createRole, isCreating, updateRole, isUpdating, deleteRole, createRoleError, updateRoleError } = useRoles();
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -39,7 +39,7 @@ export default function RolesPage() {
             </div>
             <button
               onClick={handleCreateClick}
-              className="btn-gold btn-gold-hover inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[13.5px] font-semibold"
+              className="btn-gold btn-gold-hover inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[13.5px] font-semibold"
             >
               <ShieldPlus className="h-4 w-4" /> Create Custom Role
             </button>
@@ -62,6 +62,7 @@ export default function RolesPage() {
                 }
               }}
               isPending={editingRole ? isUpdating : isCreating}
+              error={editingRole ? updateRoleError : createRoleError}
             />
           </div>
         ) : (

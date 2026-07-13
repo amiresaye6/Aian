@@ -43,8 +43,10 @@ export function useRoles() {
     isError: rolesQuery.isError,
     createRole: createRoleMutation.mutate,
     isCreating: createRoleMutation.isPending,
+    createRoleError: createRoleMutation.error,
     updateRole: updateRoleMutation.mutate,
     isUpdating: updateRoleMutation.isPending,
+    updateRoleError: updateRoleMutation.error,
     deleteRole: deleteRoleMutation.mutate,
     isDeleting: deleteRoleMutation.isPending,
   };
