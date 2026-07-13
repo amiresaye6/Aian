@@ -7,8 +7,8 @@ import { GithubStrategy } from './strategies/github.strategy';
 import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports:[UsersModule,EmailModule],
+  imports: [UsersModule, EmailModule],
   controllers: [AuthController],
-  providers: [AuthService,GoogleStrategy,GithubStrategy],
+  providers: [AuthService, GoogleStrategy, GithubStrategy],
 })
 export class AuthModule {}

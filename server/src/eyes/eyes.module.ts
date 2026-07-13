@@ -4,6 +4,6 @@ import { EyesService } from './eyes.service';
 
 @Module({
   controllers: [EyesController],
-  providers: [EyesService]
+  providers: [EyesService],
 })
 export class EyesModule {}

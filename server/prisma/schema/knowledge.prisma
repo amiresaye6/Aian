@@ -35,23 +35,3 @@ model OnboardingProgress {
 
   @@map("onboarding_progress")
 }
-
-model EyeSyncJob {
-  id                 String          @id @default(uuid())
-  organizationEyeId  String          @map("organization_eye_id")
-  integrationId      String?         @map("integration_id")
-  triggerType        SyncTriggerType @map("trigger_type")
-  status             SyncJobStatus   @default(queued)
-  startedAt          DateTime?       @map("started_at") @db.Timestamptz
-  finishedAt         DateTime?       @map("finished_at") @db.Timestamptz
-  progressPercentage Int             @map("progress_percentage") @db.SmallInt
-  summary            Json
-  errorMessage       String?         @map("error_message") @db.Text
-  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz
-
-  // Relations
-  organizationEye OrganizationEye @relation(fields: [organizationEyeId], references: [id])
-  integration     Integration?    @relation(fields: [integrationId], references: [id])
-
-  @@map("eye_sync_jobs")
-}

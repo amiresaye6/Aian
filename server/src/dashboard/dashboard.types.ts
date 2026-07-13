@@ -1,5 +1,5 @@
 export interface EyeStatusItem {
-  id: string;     
+  id: string;
   eyeType: string;
   providerName: string | null;
   status: string;
@@ -56,5 +56,3 @@ export interface DashboardOwnerData {
   memberCount: number;
   roleCount: number;
 }
-
-  

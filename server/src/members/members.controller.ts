@@ -54,7 +54,12 @@ export class MembersController {
     @Body() dto: ChangeMemberRoleDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.membersService.changeRole(organizationId, memberId, dto, user.id);
+    return this.membersService.changeRole(
+      organizationId,
+      memberId,
+      dto,
+      user.id,
+    );
   }
 
   @Patch(':memberId/status')
@@ -66,7 +71,12 @@ export class MembersController {
     @Body() dto: ChangeMemberStatusDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.membersService.changeStatus(organizationId, memberId, dto, user.id);
+    return this.membersService.changeStatus(
+      organizationId,
+      memberId,
+      dto,
+      user.id,
+    );
   }
 
   @Delete(':memberId')

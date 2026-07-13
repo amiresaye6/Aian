@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "./../store/auth/auth.store";
+import { authApi } from "@/api/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:1234/api/v1";
 
@@ -35,13 +36,10 @@ api.interceptors.response.use(
 
       if (user?.id && refreshToken) {
         try {
-          const response = await axios.post(`${API_URL}/auth/refresh`, {
-            userId: user.id,
-            refreshToken: refreshToken,
-          });
-
+          const response:any= await authApi.refresh(user.id, refreshToken);
+          console.log("Refresh response from axios:", response); // Log the response data
           const { access_token, refresh_token } = response.data;
-
+          console.log("New access token:", access_token);
           setTokens(access_token, refresh_token);
 
           originalRequest.headers.Authorization = `Bearer ${access_token}`;

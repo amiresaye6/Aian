@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsUUID, IsString, MinLength} from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsUUID,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class InviteMemberDto {
   // @IsString({ message: 'fullName must be a string.' })
@@ -12,5 +18,4 @@ export class InviteMemberDto {
   @IsUUID('4', { message: 'roleId must be a valid UUID.' })
   @IsNotEmpty()
   roleId!: string;
-
 }

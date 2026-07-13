@@ -39,7 +39,6 @@ enum SubscriptionStatus {
   @@map("subscription_status")
 }
 
-
 enum PaymentStatus {
   pending
   paid
@@ -78,19 +77,40 @@ enum KnowledgeFileStatus {
   @@map("knowledge_file_status")
 }
 
-enum SyncTriggerType {
-  initial
-  scheduled
-  manual
+// ── Sprint 2 Enums ──────────────────────────────────────────────────────
 
-  @@map("sync_trigger_type")
+enum IngestionStatus {
+  pending
+  locked
+  handed_off
+  acknowledged
+  failed
+
+  @@map("ingestion_status")
 }
 
-enum SyncJobStatus {
-  queued
+enum BatchStatus {
+  pending
+  locked
+  handed_off
+  acknowledged
+  failed
+
+  @@map("batch_status")
+}
+
+enum CollectionMethod {
+  webhook
+  polling
+  manual
+
+  @@map("collection_method")
+}
+
+enum CollectionRunStatus {
   running
   completed
   failed
 
-  @@map("sync_job_status")
+  @@map("collection_run_status")
 }

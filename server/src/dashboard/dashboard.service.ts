@@ -57,9 +57,13 @@ export class DashboardService {
 
       this.prisma.provider.findMany(),
 
-      this.prisma.integration.findMany({ where: { organizationEye: { organizationId } } }),
+      this.prisma.providerConnection.findMany({
+        where: { organizationEye: { organizationId } },
+      }),
 
-     this.prisma.eyeSyncJob.findMany({where: { organizationEye: { organizationId } },}),
+      this.prisma.collectionRun.findMany({
+        where: { organizationEye: { organizationId } },
+      }),
 
       this.prisma.organizationKnowledgeFile.findMany({
         where: { organizationId },
@@ -74,10 +78,7 @@ export class DashboardService {
 
       this.prisma.role.count({
         where: {
-          OR: [
-            { organizationId: null },
-            { organizationId },
-          ],
+          OR: [{ organizationId: null }, { organizationId }],
         },
       }),
     ]);
@@ -108,13 +109,9 @@ export class DashboardService {
         : null,
 
       eyes: organizationEyes.map((eye) => {
-        const eyeType = eyeTypes.find(
-          (e) => e.id === eye.eyeTypeId,
-        );
+        const eyeType = eyeTypes.find((e) => e.id === eye.eyeTypeId);
 
-        const provider = providers.find(
-          (p) => p.id === eye.selectedProviderId,
-        );
+        const provider = providers.find((p) => p.id === eye.selectedProviderId);
 
         return {
           id: eye.id,
@@ -131,10 +128,8 @@ export class DashboardService {
         providerId: integration.providerId,
         status: integration.status,
         externalAccountName: integration.externalAccountName,
-        lastSyncAt:
-          integration.lastSyncAt?.toISOString() ?? null,
-        connectedAt:
-          integration.connectedAt.toISOString(),
+        lastSyncAt: integration.lastSyncAt?.toISOString() ?? null,
+        connectedAt: integration.connectedAt.toISOString(),
       })),
 
       syncJobs: syncJobs.map((job) => ({

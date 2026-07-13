@@ -35,12 +35,14 @@ export default function PaymentPage() {
     //   toast.error("You must be logged in to subscribe");
     //   return;
     // }
+    console.log(user);
 
     // We send organizationId from the user object if available, otherwise a default for testing
     checkoutMutation.mutate({
       planSlug,
       billingCycle: cycle,
-      organizationId: user?.organizationId || "dafccd4e-58a4-4886-af73-2ac0db62368e",
+      organizationId: user!.organizationId,
+      // || "dafccd4e-58a4-4886-af73-2ac0db62368e"
     }, {
       onSuccess: (data) => {
         // Redirect to Paymob unified checkout

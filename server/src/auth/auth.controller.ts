@@ -5,7 +5,6 @@ import {
   Get, 
   HttpCode, 
   HttpStatus, 
-  NotFoundException, 
   Post, 
   Req, 
   Res, 
@@ -16,7 +15,6 @@ import { AuthService } from './auth.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { SignInDto } from './dto/signIn.dto';
 import { UserEntity } from '../users/user.entity';
-import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { AuthGaurd } from './auth.gaurd';
@@ -26,6 +24,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResendOtpDto } from './dto/resend-otp.dto';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('auth')
@@ -82,7 +81,7 @@ export class AuthController {
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() body: VerifyOtpDto) {
-    return this.authService.verifyOtp(body.email, body.otp);
+    return this.authService.verifyOtp(body.email, body.otp, body.purpose);
   }
 
   @Post('reset-password')

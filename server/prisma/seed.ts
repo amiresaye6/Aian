@@ -19,8 +19,15 @@ async function main() {
 
   // 1. Clean existing data (in reverse dependency order)
   console.log('Cleaning existing data...');
-  await prisma.integrationResource.deleteMany();
-  await prisma.integration.deleteMany();
+  await prisma.ingestionBatchItem.deleteMany();
+  await prisma.ingestionBatch.deleteMany();
+  await prisma.knowledgeItem.deleteMany();
+  await prisma.rawProviderEvent.deleteMany();
+  await prisma.collectionRun.deleteMany();
+  await prisma.providerCursor.deleteMany();
+  await prisma.providerResourceSelection.deleteMany();
+  await prisma.providerConnection.deleteMany();
+  await prisma.organizationProcessingSettings.deleteMany();
   await prisma.organizationEye.deleteMany();
   await prisma.onboardingProgress.deleteMany();
   await prisma.organizationKnowledgeFile.deleteMany();
@@ -363,6 +370,7 @@ async function main() {
         memberStatus: 'active',
         joinedAt: new Date(),
         organizationId: targetOrgId,
+        emailVerifiedAt: new Date(),
       },
     });
 

@@ -5,10 +5,7 @@ import { OnboardingController } from './onboarding.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { UploadModule } from '../upload/upload.module';
 @Module({
-  imports: [
-    PrismaModule,
-    UploadModule,
-  ],
+  imports: [PrismaModule, UploadModule],
   controllers: [OnboardingController],
   providers: [OnboardingService],
 })

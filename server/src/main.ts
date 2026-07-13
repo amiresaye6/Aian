@@ -1,12 +1,16 @@
 import 'dotenv/config';
 
 import { NestFactory, Reflector } from '@nestjs/core';
-import { ClassSerializerInterceptor, Logger, ValidationPipe } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  Logger,
+  ValidationPipe,
+} from '@nestjs/common';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './interceptors/transform.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const logger = new Logger('Bootstrap');
 
   // Enforce validation rules globally on all incoming requests
@@ -16,15 +20,14 @@ async function bootstrap() {
       forbidNonWhitelisted: true, // Throws an error if unknown properties are sent
       transform: true, // Automatically transforms payloads to be objects typed according to their DTO classes
     }),
-    
   );
 
   app.enableCors({
     origin: true, // Allow all origins for dev (fixes ngrok CORS errors)
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, 
+    credentials: true,
   });
-  
+
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
     new TransformInterceptor(),

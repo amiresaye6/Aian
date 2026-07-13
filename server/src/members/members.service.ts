@@ -9,8 +9,8 @@ import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { InviteMemberDto } from './dto/invite-member.dto';
-import{ChangeMemberRoleDto} from './dto/change-member-role.dto';
-import {ChangeMemberStatusDto} from './dto/change-member-status.dto'
+import { ChangeMemberRoleDto } from './dto/change-member-role.dto';
+import { ChangeMemberStatusDto } from './dto/change-member-status.dto';
 @Injectable()
 export class MembersService {
   constructor(
@@ -42,8 +42,7 @@ export class MembersService {
 
     const pick = (chars: string) => chars[randomInt(chars.length)];
 
-    let password =
-      pick(upper) + pick(lower) + pick(digits) + pick(special);
+    let password = pick(upper) + pick(lower) + pick(digits) + pick(special);
 
     for (let i = password.length; i < 12; i++) {
       password += pick(all);
@@ -72,7 +71,11 @@ export class MembersService {
     });
   }
 
-  async inviteMember(organizationId: string,dto: InviteMemberDto,invitedByUserId: string,) {
+  async inviteMember(
+    organizationId: string,
+    dto: InviteMemberDto,
+    invitedByUserId: string,
+  ) {
     await this.assertMembership(organizationId, invitedByUserId);
 
     const existingUser = await this.prisma.user.findUnique({
@@ -139,142 +142,156 @@ export class MembersService {
     return newMember;
   }
 
-  async changeRole(organizationId: string,memberId: string,dto: ChangeMemberRoleDto,requesterId: string,) {
-  await this.assertMembership(organizationId, requesterId);
+  async changeRole(
+    organizationId: string,
+    memberId: string,
+    dto: ChangeMemberRoleDto,
+    requesterId: string,
+  ) {
+    await this.assertMembership(organizationId, requesterId);
 
-  const targetMember = await this.prisma.user.findFirst({
-    where: { id: memberId, organizationId },
-  });
-  if (!targetMember) {
-    throw new NotFoundException({
-      success: false,
-      message: 'Member not found in this organization.',
-      error: { type: 'NotFoundException' },
+    const targetMember = await this.prisma.user.findFirst({
+      where: { id: memberId, organizationId },
+    });
+    if (!targetMember) {
+      throw new NotFoundException({
+        success: false,
+        message: 'Member not found in this organization.',
+        error: { type: 'NotFoundException' },
+      });
+    }
+
+    const newRole = await this.prisma.role.findFirst({
+      where: {
+        id: dto.roleId,
+        OR: [{ organizationId: null }, { organizationId }],
+      },
+    });
+    if (!newRole) {
+      throw new NotFoundException({
+        success: false,
+        message: 'Role not found for this organization.',
+        error: { type: 'NotFoundException' },
+      });
+    }
+
+    // Rule from sprint doc: Owner role can't be assigned by non-Owners.
+    if (newRole.key === 'owner') {
+      const requester = await this.prisma.user.findUnique({
+        where: { id: requesterId },
+        select: { role: { select: { key: true } } },
+      });
+      if (requester?.role?.key !== 'owner') {
+        throw new ForbiddenException({
+          success: false,
+          message: 'Only the current Owner can assign the Owner role.',
+          error: { type: 'ForbiddenException' },
+        });
+      }
+    }
+
+    return this.prisma.user.update({
+      where: { id: memberId },
+      data: { roleId: dto.roleId },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        memberStatus: true,
+        role: { select: { id: true, key: true, name: true } },
+      },
     });
   }
 
-  const newRole = await this.prisma.role.findFirst({
-    where: {
-      id: dto.roleId,
-      OR: [{ organizationId: null }, { organizationId }],
-    },
-  });
-  if (!newRole) {
-    throw new NotFoundException({
-      success: false,
-      message: 'Role not found for this organization.',
-      error: { type: 'NotFoundException' },
-    });
-  }
+  async changeStatus(
+    organizationId: string,
+    memberId: string,
+    dto: ChangeMemberStatusDto,
+    requesterId: string,
+  ) {
+    await this.assertMembership(organizationId, requesterId);
 
-  // Rule from sprint doc: Owner role can't be assigned by non-Owners.
-  if (newRole.key === 'owner') {
-    const requester = await this.prisma.user.findUnique({
-      where: { id: requesterId },
-      select: { role: { select: { key: true } } },
-    });
-    if (requester?.role?.key !== 'owner') {
+    if (memberId === requesterId) {
       throw new ForbiddenException({
         success: false,
-        message: 'Only the current Owner can assign the Owner role.',
+        message: 'You cannot change your own membership status.',
         error: { type: 'ForbiddenException' },
       });
     }
-  }
 
-  return this.prisma.user.update({
-    where: { id: memberId },
-    data: { roleId: dto.roleId },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      memberStatus: true,
-      role: { select: { id: true, key: true, name: true } },
-    },
-  });
-}
+    const targetMember = await this.prisma.user.findFirst({
+      where: { id: memberId, organizationId },
+    });
+    if (!targetMember) {
+      throw new NotFoundException({
+        success: false,
+        message: 'Member not found in this organization.',
+        error: { type: 'NotFoundException' },
+      });
+    }
 
-  async changeStatus(organizationId: string,memberId: string,dto: ChangeMemberStatusDto,requesterId: string,) {
-  await this.assertMembership(organizationId, requesterId);
-
-  if (memberId === requesterId) {
-    throw new ForbiddenException({
-      success: false,
-      message: 'You cannot change your own membership status.',
-      error: { type: 'ForbiddenException' },
+    return this.prisma.user.update({
+      where: { id: memberId },
+      data: { memberStatus: dto.status },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        memberStatus: true,
+        role: { select: { id: true, key: true, name: true } },
+      },
     });
   }
 
-  const targetMember = await this.prisma.user.findFirst({
-    where: { id: memberId, organizationId },
-  });
-  if (!targetMember) {
-    throw new NotFoundException({
-      success: false,
-      message: 'Member not found in this organization.',
-      error: { type: 'NotFoundException' },
-    });
-  }
+  async removeMember(
+    organizationId: string,
+    memberId: string,
+    requesterId: string,
+  ) {
+    await this.assertMembership(organizationId, requesterId);
 
-  return this.prisma.user.update({
-    where: { id: memberId },
-    data: { memberStatus: dto.status },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      memberStatus: true,
-      role: { select: { id: true, key: true, name: true } },
-    },
-  });
-}
-
-  async removeMember(organizationId: string,memberId: string,requesterId: string,) {
-  await this.assertMembership(organizationId, requesterId);
-
-  if (memberId === requesterId) {
-    throw new ForbiddenException({
-      success: false,
-      message: 'You cannot remove yourself from the organization.',
-      error: { type: 'ForbiddenException' },
-    });
-  }
-
-  const targetMember = await this.prisma.user.findFirst({
-    where: { id: memberId, organizationId },
-    select: { id: true, role: { select: { key: true } } },
-  });
-  if (!targetMember) {
-    throw new NotFoundException({
-      success: false,
-      message: 'Member not found in this organization.',
-      error: { type: 'NotFoundException' },
-    });
-  }
-
-  if (targetMember.role?.key === 'owner') {
-    const ownerCount = await this.prisma.user.count({
-      where: { organizationId, role: { key: 'owner' } },
-    });
-    if (ownerCount <= 1) {
+    if (memberId === requesterId) {
       throw new ForbiddenException({
         success: false,
-        message: 'Cannot remove the only Owner of the organization.',
+        message: 'You cannot remove yourself from the organization.',
         error: { type: 'ForbiddenException' },
       });
     }
+
+    const targetMember = await this.prisma.user.findFirst({
+      where: { id: memberId, organizationId },
+      select: { id: true, role: { select: { key: true } } },
+    });
+    if (!targetMember) {
+      throw new NotFoundException({
+        success: false,
+        message: 'Member not found in this organization.',
+        error: { type: 'NotFoundException' },
+      });
+    }
+
+    if (targetMember.role?.key === 'owner') {
+      const ownerCount = await this.prisma.user.count({
+        where: { organizationId, role: { key: 'owner' } },
+      });
+      if (ownerCount <= 1) {
+        throw new ForbiddenException({
+          success: false,
+          message: 'Cannot remove the only Owner of the organization.',
+          error: { type: 'ForbiddenException' },
+        });
+      }
+    }
+
+    await this.prisma.user.update({
+      where: { id: memberId },
+      data: {
+        organizationId: null,
+        roleId: null,
+        memberStatus: null,
+      },
+    });
+
+    return { id: memberId, removed: true };
   }
-
-  await this.prisma.user.update({
-    where: { id: memberId },
-    data: {
-      organizationId: null,
-      roleId: null,
-      memberStatus: null,
-    },
-  });
-
-  return { id: memberId, removed: true };
-}
 }

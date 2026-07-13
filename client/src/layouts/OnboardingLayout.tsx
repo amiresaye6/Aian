@@ -2,8 +2,9 @@
 
 import { type ReactNode, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { useAuthStore } from "@/store/auth/auth.store";
 import { Check } from "lucide-react";
 import { AianLogo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -13,8 +14,8 @@ import { cn } from "@/lib/utils";
 const STEPS = [
   { path: "/subscription", label: "Plan" },
   { path: "/payment", label: "Payment" },
-  { path: "/create-organization", label: "Organization" },
-  { path: "/integrations", label: "Integrations" },
+  { path: "/organization", label: "Organization" },
+  { path: "/providers", label: "Integrations" },
   { path: "/invite", label: "Members" },
 ];
 
@@ -34,6 +35,9 @@ export function OnboardingLayout({
   showSteps?: boolean;
 }) {
   const pathname = usePathname();
+  const { logout } = useAuthStore();
+  const router = useRouter();
+  
   let currentIdx = STEPS.findIndex((s) => s.path === pathname);
   if (pathname === "/payment-result") {
     currentIdx = 1;
@@ -90,12 +94,15 @@ export function OnboardingLayout({
         )}
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <Link
-            href="/dashboard"
+          <button
+            onClick={() => {
+              logout();
+              router.push("/login");
+            }}
             className="hidden text-[13px] text-muted-foreground transition-colors hover:text-foreground md:inline"
           >
-            Skip for now
-          </Link>
+            Sign out
+          </button>
         </div>
       </header>
 

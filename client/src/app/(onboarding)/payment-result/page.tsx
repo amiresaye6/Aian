@@ -148,10 +148,10 @@ export default function PaymentResultPage() {
             <div className="mt-8 flex w-full max-w-md flex-col gap-3">
               {isSuccess ? (
                 <button
-                  onClick={() => router.push("/workspaces")}
+                  onClick={() => router.push("/organization")}
                   className="btn-gold btn-gold-hover group inline-flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[14.5px] font-semibold"
                 >
-                  Go to Workspace <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  Continue to Organization <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </button>
               ) : (
                 <button

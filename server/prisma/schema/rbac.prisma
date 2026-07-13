@@ -9,8 +9,8 @@ model Role {
   organizationId String?       @map("organization_id")
   organization   Organization? @relation(fields: [organizationId], references: [id])
 
-  users        User[]   
-  permissions  RolePermission[]
+  users       User[]
+  permissions RolePermission[]
 
   @@unique([key, organizationId])
   @@map("roles")
@@ -39,4 +39,3 @@ model RolePermission {
   @@id([roleId, permissionId])
   @@map("role_permissions")
 }
-

@@ -18,6 +18,11 @@ import { EyesModule } from './eyes/eyes.module';
 import { PaymobModule } from './paymob/paymob.module';
 import { BillingModule } from './billing/billing.module';
 
+import { IngestionModule } from './ingestion/ingestion.module';
+import { IntegrationsModule } from './integrations/integrations.module';
+import { CollectionModule } from './ingestion/collection/collection.module';
+import { SchedulerModule } from './ingestion/scheduler/scheduler.module';
+import { ProcessorModule } from './processor/processor.module';
 
 @Module({
   imports: [
@@ -27,9 +32,14 @@ import { BillingModule } from './billing/billing.module';
       serveRoot: '/uploads',
     }),
     JwtModule.register({
-      global:true
+      global: true,
     }),
     PrismaModule,
+    IntegrationsModule,
+    IngestionModule,
+    CollectionModule,
+    SchedulerModule,
+    ProcessorModule,
     HealthModule,
     UploadModule,
     EmailModule,

@@ -7,11 +7,14 @@ import {
   UseGuards,
   Request,
   Logger,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { AuthGaurd } from '../auth/auth.gaurd';
 import type { PaymobCallbackPayload } from '../paymob/paymob.types';
+import { RequiredPermissions } from '../decorators/required-permissions.decorator';
 
 @Controller('billing')
 export class BillingController {
@@ -19,28 +22,27 @@ export class BillingController {
 
   constructor(private readonly billingService: BillingService) {}
 
-  
   @Get('plans')
   // @UseGuards(AuthGaurd)
+  @HttpCode(HttpStatus.OK)
   async getPlans() {
     return this.billingService.getPlans();
   }
 
-  
   @Get('plans/:slug')
   // @UseGuards(AuthGaurd)
+  @HttpCode(HttpStatus.OK)
   async getPlanBySlug(@Param('slug') slug: string) {
     return this.billingService.getPlanBySlug(slug);
   }
 
-  
   @Post('checkout')
-  // @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  @HttpCode(HttpStatus.CREATED)
   async checkout(@Body() dto: CheckoutDto) {
     return this.billingService.checkout(dto);
   }
 
-  
   @Post('webhook')
   async handleWebhook(@Body() payload: PaymobCallbackPayload) {
     this.logger.log('Received billing webhook');
@@ -48,12 +50,11 @@ export class BillingController {
     return { received: true };
   }
 
- 
   @Get('verify/:providerPaymentId')
   // @UseGuards(AuthGaurd)
-  async verifyPayment(
-    @Param('providerPaymentId') providerPaymentId: string,
-  ) {
+  @RequiredPermissions('billing.manage')
+  @HttpCode(HttpStatus.OK)
+  async verifyPayment(@Param('providerPaymentId') providerPaymentId: string) {
     return this.billingService.verifyPayment(providerPaymentId);
   }
 }

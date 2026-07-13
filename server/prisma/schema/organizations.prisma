@@ -1,27 +1,30 @@
 model Organization {
-  id               String             @id @default(uuid())
-  name             String             @db.VarChar(150)
-  slug             String             @unique @db.VarChar(180)
-  description      String?            @db.Text
-  industry         String?            @db.VarChar(100)
-  companySize      String?            @map("company_size") @db.VarChar(50)
-  country          String?            @db.VarChar(100)
-  timezone         String             @db.VarChar(100)
-  logoUrl          String?            @map("logo_url") @db.Text
-  status           OrganizationStatus @default(pending_connections)
+  id              String             @id @default(uuid())
+  name            String             @db.VarChar(150)
+  slug            String             @unique @db.VarChar(180)
+  description     String?            @db.Text
+  industry        String?            @db.VarChar(100)
+  companySize     String?            @map("company_size") @db.VarChar(50)
+  country         String?            @db.VarChar(100)
+  timezone        String             @db.VarChar(100)
+  logoUrl         String?            @map("logo_url") @db.Text
+  status          OrganizationStatus @default(pending_connections)
   createdByUserId String             @map("created_by_user_id")
-  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  createdByUser      User                        @relation("OrgCreator", fields: [createdByUserId], references: [id])
-  users              User[]                      @relation("OrgUsers")
-  roles              Role[]                      
+  createdByUser      User                            @relation("OrgCreator", fields: [createdByUserId], references: [id])
+  users              User[]                          @relation("OrgUsers")
+  roles              Role[]
   subscriptions      Subscription?
   payments           Payment[]
   eyes               OrganizationEye[]
   knowledgeFiles     OrganizationKnowledgeFile[]
   onboardingProgress OnboardingProgress?
+  knowledgeItems     KnowledgeItem[]
+  ingestionBatches   IngestionBatch[]
+  processingSettings OrganizationProcessingSettings?
 
   @@map("organizations")
 }

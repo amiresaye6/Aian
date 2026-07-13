@@ -58,7 +58,7 @@ export class OnboardingService {
           organizationId: org.id,
           currentStep: 'providers',
           isCompleted: false,
-          completedSteps: {organization_created: true},
+          completedSteps: { organization_created: true },
           startedAt: new Date(),
         },
       });
@@ -68,7 +68,7 @@ export class OnboardingService {
   }
 
   async updateProviders(
-    organizationId: string, 
+    organizationId: string,
     providers: { eyeType: string; providerKey: string }[],
   ) {
     return await this.prisma.$transaction(async (tx) => {
@@ -141,13 +141,13 @@ export class OnboardingService {
     });
   }
 
-  async getProgress(organizationId: string) { 
+  async getProgress(organizationId: string) {
     return await this.prisma.onboardingProgress.findUnique({
       where: { organizationId },
     });
   }
 
-  async completeOnboarding(organizationId: string) { 
+  async completeOnboarding(organizationId: string) {
     return await this.prisma.onboardingProgress.update({
       where: { organizationId },
       data: {

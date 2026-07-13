@@ -1,10 +1,11 @@
-import { BadRequestException, ClassSerializerInterceptor, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { error } from 'console';
 import { EmailService } from '../email/email.service';
+import { OtpPurpose } from './dto/verify-otp.dto';
+import { UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -15,47 +16,74 @@ export class AuthService {
         private readonly emailService:EmailService
     ){}
 
+    private generateOtp(){
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        return { otp, otpExpiresAt };
+    }
+
     async SignUp(fullName: string, email: string, password: string, confirmPassword: string){
 
         if(password!==confirmPassword){
-            throw new BadRequestException({
-                success:false,
-                message:'password and confirm password are not matched',
-                error:{type:'BadRequestException'}
-            })
+            throw new BadRequestException('password and confirm password are not matched')
         }
 
         const existedUser= await this.usersService.findOneByEmail(email);
-        if(existedUser){
-            throw new BadRequestException({
-                success:false,
-                message:'user is already exist',
-                error:{type:'BadRequestException'}
-            })
+        if(existedUser && existedUser.status !== UserStatus.pending_verification){
+            throw new BadRequestException('user is already exist')
         }
 
         const passwordHash=await bcrypt.hash(password,10);
-        const user= await this.usersService.create(fullName,email,passwordHash);
+        const { otp, otpExpiresAt } = this.generateOtp();
+        const otpHash = await bcrypt.hash(otp, 10);
+
+        let user;
+        if(existedUser){
+            user = await this.prismaService.user.update({
+                where:{ id: existedUser.id },
+                data:{
+                    fullName,
+                    passwordHash,
+                    otpHash,
+                    otpExpiresAt
+                }
+            });
+        } else {
+            user = await this.usersService.create(
+                fullName,
+                email,
+                passwordHash,
+                UserStatus.pending_verification,
+                otpHash,
+                otpExpiresAt
+            );
+        }
+
+        const emailContent = `
+            <h3>Verify Your Email</h3>
+            <p>Hello ${fullName},</p>
+            <p>Use the following One-Time Password (OTP) to verify your email and activate your account:</p>
+            <h2 style="color: #4CAF50; letter-spacing: 2px;">${otp}</h2>
+            <p>This OTP is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
+        `;
+        await this.emailService.sendBrandedEmail(email,"verify-email",emailContent);
+
         return user;
     }
 
     async SignIn(email:string, password:string){
         const existedUser= await this.usersService.findOneByEmail(email);
         if(!existedUser){
-            throw new UnauthorizedException({
-                success:false,
-                message:'invalid email or password',
-                error:{type:'UnauthorizedException'}
-            })
+            throw new UnauthorizedException('invalid email or password')
         }
 
         const isMatched= await bcrypt.compare(password, existedUser.passwordHash as string)
         if(!isMatched){
-            throw new UnauthorizedException({
-                success:false,
-                message:'invalid email or password',
-                error:{type:'UnauthorizedException'}
-            })
+            throw new UnauthorizedException('invalid email or password')
+        }
+
+        if(existedUser.status !== UserStatus.active || !existedUser.emailVerifiedAt){
+            throw new ForbiddenException('Please verify your email before signing in')
         }
 
         let payload={
@@ -103,7 +131,7 @@ export class AuthService {
                 secret: process.env.JWT_SECRET_REFRESH_TOKEN,
             });
         } catch (error:any) {
-            throw new ForbiddenException({ success: false, message: 'Expired or invalid refresh token',error:{message:error.message} });
+            throw new ForbiddenException('Expired or invalid refresh token');
         }
 
         const user = await this.prismaService.user.findUnique({
@@ -124,18 +152,11 @@ export class AuthService {
             }
         });
         if (!user || !user.refreshTokenHash) {
-            throw new ForbiddenException({
-                success:false,
-                message:'Access denied'
-            });
+            throw new ForbiddenException('Access denied');
         }
         const isMatched= await bcrypt.compare(refreshToken, user.refreshTokenHash as string);
         if(!isMatched){
-            throw new ForbiddenException({
-                success:false,
-                message:'Access denied',
-                error:{message:'Refresh token does not match'}
-            });
+            throw new ForbiddenException('Access denied');
         }
 
         let payload={
@@ -192,7 +213,10 @@ export class AuthService {
         user = await this.usersService.create(
         oauthUser.fullName,
         oauthUser.email,
-        '', 
+        '',
+        UserStatus.pending_verification,
+        '',
+        new Date()
         )as any;
     }
     if(!user){
@@ -217,10 +241,9 @@ export class AuthService {
         const user= await this.usersService.findOneByEmail(email);
         if(!user)
             throw new UnauthorizedException('user not found');
-        
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        const { otp, otpExpiresAt } = this.generateOtp();
         const otpHash = await bcrypt.hash(otp, 10);
-        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
         await this.usersService.updateUser(user.id,{
                 otpHash,
@@ -238,7 +261,35 @@ export class AuthService {
         return;
     }
 
-    async verifyOtp(email: string, otp: string) {
+    async resendOtp(email: string, purpose: OtpPurpose){
+        const user = await this.usersService.findOneByEmail(email);
+        if(!user){
+            throw new NotFoundException('user not found');
+        }
+
+        if(purpose === OtpPurpose.REGISTER && user.status !== UserStatus.pending_verification){
+            throw new BadRequestException('This account is already verified');
+        }
+
+        const { otp, otpExpiresAt } = this.generateOtp();
+        const otpHash = await bcrypt.hash(otp, 10);
+
+        await this.usersService.updateUser(user.id, { otpHash, otpExpiresAt });
+
+        const isRegister = purpose === OtpPurpose.REGISTER;
+        const emailContent = `
+            <h3>${isRegister ? 'Verify Your Email' : 'Reset Your Password'}</h3>
+            <p>Hello ${user.fullName},</p>
+            <p>Use the following One-Time Password (OTP) to ${isRegister ? 'verify your email' : 'reset your password'}:</p>
+            <h2 style="color: #4CAF50; letter-spacing: 2px;">${otp}</h2>
+            <p>This OTP is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
+        `;
+        await this.emailService.sendBrandedEmail(email, isRegister ? "verify-email" : "reset-password", emailContent);
+
+        return;
+    }
+
+    async verifyOtp(email: string, otp: string, purpose: OtpPurpose) {
         const user = await this.prismaService.user.findUnique({ where: { email } });
         if (!user || !user.otpHash || !user.otpExpiresAt) {
             throw new BadRequestException('Invalid request or OTP not found');
@@ -253,6 +304,21 @@ export class AuthService {
             throw new BadRequestException('Invalid OTP code');
         }
 
+        if(purpose === OtpPurpose.REGISTER){
+            await this.prismaService.user.update({
+                where: { id: user.id },
+                data: {
+                    otpHash: null,
+                    otpExpiresAt: null,
+                    status: UserStatus.active,
+                    memberStatus: 'active',
+                    emailVerifiedAt: new Date()
+                }
+            });
+
+            return { purpose: OtpPurpose.REGISTER };
+        }
+
         const resetToken = await this.jwtService.signAsync(
             { userId: user.id, email: user.email, purpose: 'password_reset' },
             { secret: process.env.JWT_SECRET, expiresIn: '5m' } 
@@ -264,6 +330,7 @@ export class AuthService {
         });
 
         return { 
+            purpose: OtpPurpose.RESET_PASSWORD,
             resetToken
         };
     }
@@ -296,7 +363,7 @@ export class AuthService {
             }
         });
 
-        return { success: true, message: 'Password has been reset successfully.' };
+        return { message: 'Password has been reset successfully.' };
     }
     
 }

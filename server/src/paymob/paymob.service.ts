@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import axios,{ AxiosInstance} from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import {
   PAYMOB_ENV_KEYS,
   PAYMOB_ENDPOINTS,
@@ -71,8 +71,7 @@ export class PaymobService {
       `Initiating Paymob Intention for merchant order: ${merchantOrderId}`,
     );
 
-   
-    const EXCHANGE_RATE = 50; 
+    const EXCHANGE_RATE = 50;
     const amountEgpCents = amountCents * EXCHANGE_RATE;
     const paymobCurrency = 'EGP';
 
@@ -98,7 +97,7 @@ export class PaymobService {
           headers: {
             Authorization: `Token ${this.apiKey}`,
           },
-        }
+        },
       );
 
       const clientSecret = response.data.client_secret;
@@ -118,7 +117,9 @@ export class PaymobService {
       this.logger.error(
         `Paymob Intention Error: ${error?.response?.data ? JSON.stringify(error.response.data) : error.message}`,
       );
-      throw new BadRequestException('Failed to initiate payment with provider.');
+      throw new BadRequestException(
+        'Failed to initiate payment with provider.',
+      );
     }
   }
 
@@ -134,7 +135,6 @@ export class PaymobService {
       this.logger.warn(
         `HMAC verification failed for transaction: ${transaction.id}. Bypassing strict check for development.`,
       );
-    
     }
 
     const status = this.resolvePaymentStatus(transaction);
@@ -163,7 +163,6 @@ export class PaymobService {
       this.logger.warn(
         `HMAC verification failed for redirect, transaction: ${query.id}. Bypassing strict check for development.`,
       );
-     
     }
 
     const status = this.resolveRedirectStatus(query);
@@ -183,7 +182,11 @@ export class PaymobService {
   private resolvePaymentStatus(
     transaction: PaymobCallbackPayload['obj'],
   ): PaymobPaymentStatus {
-    if (transaction.success && !transaction.is_voided && !transaction.is_refunded) {
+    if (
+      transaction.success &&
+      !transaction.is_voided &&
+      !transaction.is_refunded
+    ) {
       return 'paid';
     }
     if (transaction.pending) {
@@ -195,7 +198,11 @@ export class PaymobService {
   private resolveRedirectStatus(
     query: PaymobRedirectQuery,
   ): PaymobPaymentStatus {
-    if (query.success === 'true' && query.is_voided === 'false' && query.is_refunded === 'false') {
+    if (
+      query.success === 'true' &&
+      query.is_voided === 'false' &&
+      query.is_refunded === 'false'
+    ) {
       return 'paid';
     }
     if (query.pending === 'true') {

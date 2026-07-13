@@ -14,7 +14,10 @@ import type {
   CheckoutResult,
   PaymentVerificationResult,
 } from './types/billing.types';
-import type { PaymobCallbackPayload, PaymobPaymentStatus } from '../paymob/paymob.types';
+import type {
+  PaymobCallbackPayload,
+  PaymobPaymentStatus,
+} from '../paymob/paymob.types';
 import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 
@@ -163,7 +166,6 @@ export class BillingService {
       this.logger.log(
         `Payment failed — Subscription ${payment.subscriptionId} remains pending`,
       );
-      
     }
   }
 

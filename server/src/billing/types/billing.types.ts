@@ -1,4 +1,8 @@
-import type { BillingCycle, PaymentStatus, SubscriptionStatus } from '@prisma/client';
+import type {
+  BillingCycle,
+  PaymentStatus,
+  SubscriptionStatus,
+} from '@prisma/client';
 
 // ─── Plan Response ───────────────────────────────────────────────────────────
 

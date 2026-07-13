@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "@/store/auth/auth.store";
 import {
@@ -25,6 +25,7 @@ import {
   Command,
   Plus,
   Check,
+  LogOut,
 } from "lucide-react";
 import { AianMark } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -177,7 +178,8 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
 }
 
 function TopBar() {
-  const user = useAuthStore((s) => s.user);
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/5 bg-[color:var(--background)]/70 px-4 backdrop-blur-xl md:px-6">
@@ -199,6 +201,16 @@ function TopBar() {
             <div className="text-[10.5px] text-muted-foreground">{user?.role ?? ""}</div>
           </div>
         </div>
+        <button
+          onClick={() => {
+            logout();
+            router.push("/login");
+          }}
+          className="ml-2 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+          title="Sign out"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
       </div>
     </header>
   );

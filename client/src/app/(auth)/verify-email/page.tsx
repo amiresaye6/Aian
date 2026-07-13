@@ -9,12 +9,13 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { AuthField } from "@/components/features/auth/AuthFields";
 import { AuthPrimaryButton } from "@/components/features/auth/AuthPrimitives";
 import { authApi } from "@/api/auth";
-import { VerifyOtpResponse } from "@/types/user_and_auth";
+import { OtpPurpose, VerifyOtpResponse } from "@/types/user_and_auth";
 
 function VerifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("you@company.com");
+  const [purpose, setPurpose] = useState<OtpPurpose>(OtpPurpose.RESET_PASSWORD);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [resent, setResent] = useState(false);
@@ -26,7 +27,16 @@ function VerifyPageContent() {
     if (emailParam) {
       setEmail(emailParam);
     }
+
+    const purposeParam = searchParams.get("purpose");
+    if (purposeParam === OtpPurpose.REGISTER) {
+      setPurpose(OtpPurpose.REGISTER);
+    } else {
+      setPurpose(OtpPurpose.RESET_PASSWORD);
+    }
   }, [searchParams]);
+
+  const isRegisterFlow = purpose === OtpPurpose.REGISTER;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -35,12 +45,19 @@ function VerifyPageContent() {
     setSuccessMsg(null);
 
     try {
-      const response:VerifyOtpResponse = await authApi.verifyOtp(email, otp);
-      setSuccessMsg("OTP verified successfully! Redirecting...");
-      
-      setTimeout(() => {
-        router.push(`/reset-password?token=${encodeURIComponent(response.data.resetToken)}`);
-      }, 2000);
+      const response: VerifyOtpResponse = await authApi.verifyOtp(email, otp, purpose);
+      console.log("Verify OTP response:", response); // Log the response data
+      if (response.data.purpose === OtpPurpose.REGISTER) {
+        setSuccessMsg("Email verified! Redirecting to sign in...");
+        setTimeout(() => {
+          router.push("/login");
+        }, 2000);
+      } else {
+        setSuccessMsg("OTP verified successfully! Redirecting...");
+        setTimeout(() => {
+          router.push(`/reset-password?token=${encodeURIComponent(response.data.resetToken!)}`);
+        }, 2000);
+      }
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Invalid OTP code. Please try again.");
     } finally {
@@ -51,7 +68,7 @@ function VerifyPageContent() {
   const handleResend = async () => {
     setErrorMsg(null);
     try {
-      await authApi.forgotPassword(email);
+      await authApi.resendOtp(email, purpose);
       setResent(true);
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Failed to resend email.");
@@ -61,8 +78,18 @@ function VerifyPageContent() {
   return (
     <AuthLayout
       eyebrow="Almost there"
-      title={<>Verify your <span className="text-gold-gradient">email address</span></>}
-      subtitle="We sent a secure verification OTP code to your inbox. Enter it below to proceed."
+      title={
+        isRegisterFlow ? (
+          <>Verify your <span className="text-gold-gradient">email address</span></>
+        ) : (
+          <>Verify your <span className="text-gold-gradient">email address</span></>
+        )
+      }
+      subtitle={
+        isRegisterFlow
+          ? "We sent a secure verification OTP code to your inbox. Verify it to activate your account."
+          : "We sent a secure verification OTP code to your inbox. Enter it below to proceed."
+      }
       visualVariant="verify"
       footer={
         <Link href="/login" className="font-medium text-foreground hover:text-[color:var(--gold-soft)]">

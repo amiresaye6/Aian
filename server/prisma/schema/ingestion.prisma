@@ -1,0 +1,144 @@
+// ── Sprint 2: Ingestion Pipeline Models ─────────────────────────────────
+
+model ProviderCursor {
+  id                 String   @id @default(uuid())
+  connectionId       String   @map("connection_id")
+  externalResourceId String?  @map("external_resource_id") @db.VarChar(255)
+  cursorValue        String   @map("cursor_value") @db.Text
+  lastFetchedAt      DateTime @map("last_fetched_at") @db.Timestamptz
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  connection ProviderConnection @relation(fields: [connectionId], references: [id])
+
+  @@unique([connectionId, externalResourceId])
+  @@map("provider_cursors")
+}
+
+model RawProviderEvent {
+  id                String   @id @default(uuid())
+  connectionId      String   @map("connection_id")
+  provider          String   @db.VarChar(20)
+  eyeType           String   @map("eye_type") @db.VarChar(20)
+  providerEventType String   @map("provider_event_type") @db.VarChar(100)
+  providerEventId   String?  @map("provider_event_id") @db.VarChar(255)
+  payload           Json
+  receivedAt        DateTime @default(now()) @map("received_at") @db.Timestamptz
+
+  @@index([connectionId, receivedAt])
+  @@index([providerEventId])
+  @@map("raw_provider_events")
+}
+
+model KnowledgeItem {
+  id                       String          @id @default(uuid())
+  organizationId           String          @map("organization_id")
+  eyeType                  String          @map("eye_type") @db.VarChar(20)
+  provider                 String          @db.VarChar(20)
+  sourceType               String          @map("source_type") @db.VarChar(50)
+  eventType                String          @map("event_type") @db.VarChar(50)
+  externalResourceId       String          @map("external_resource_id") @db.VarChar(255)
+  externalEventId          String?         @map("external_event_id") @db.VarChar(255)
+  parentExternalResourceId String?         @map("parent_external_resource_id") @db.VarChar(255)
+  title                    String?         @db.Text
+  content                  String          @db.Text
+  author                   Json?
+  participants             Json            @default("[]")
+  contextLocation          String?         @map("context_location") @db.VarChar(500)
+  sourceUrl                String?         @map("source_url") @db.Text
+  occurredAt               DateTime        @map("occurred_at") @db.Timestamptz
+  receivedAt               DateTime        @map("received_at") @db.Timestamptz
+  visibility               String          @default("ORGANIZATION") @db.VarChar(20)
+  metadata                 Json            @default("{}")
+  rawPayloadReference      String          @map("raw_payload_reference") @db.VarChar(255)
+  idempotencyKey           String          @unique @map("idempotency_key") @db.VarChar(500)
+  ingestionStatus          IngestionStatus @default(pending) @map("ingestion_status")
+  version                  String?         @db.VarChar(20)
+  createdAt                DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  batchItems   IngestionBatchItem[]
+
+  @@index([organizationId, ingestionStatus])
+  @@index([organizationId, eyeType, provider])
+  @@index([externalResourceId])
+  @@map("knowledge_items")
+}
+
+model IngestionBatch {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  status         BatchStatus @default(pending)
+  triggerType    String      @map("trigger_type") @db.VarChar(20)
+  itemCount      Int         @default(0) @map("item_count")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  lockedAt       DateTime?   @map("locked_at") @db.Timestamptz
+  handedOffAt    DateTime?   @map("handed_off_at") @db.Timestamptz
+  acknowledgedAt DateTime?   @map("acknowledged_at") @db.Timestamptz
+  failedAt       DateTime?   @map("failed_at") @db.Timestamptz
+  errorMessage   String?     @map("error_message") @db.Text
+  retryCount     Int         @default(0) @map("retry_count")
+
+  // Relations
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  items        IngestionBatchItem[]
+
+  @@index([organizationId, status])
+  @@map("ingestion_batches")
+}
+
+model IngestionBatchItem {
+  batchId         String @map("batch_id")
+  knowledgeItemId String @map("knowledge_item_id")
+
+  // Relations
+  batch         IngestionBatch @relation(fields: [batchId], references: [id])
+  knowledgeItem KnowledgeItem  @relation(fields: [knowledgeItemId], references: [id])
+
+  @@id([batchId, knowledgeItemId])
+  @@map("ingestion_batch_items")
+}
+
+model OrganizationProcessingSettings {
+  id                      String   @id @default(uuid())
+  organizationId          String   @unique @map("organization_id")
+  timeIntervalHours       Int      @default(6) @map("time_interval_hours")
+  pendingItemThreshold    Int      @default(100) @map("pending_item_threshold")
+  retentionDays           Int      @default(15) @map("retention_days")
+  isAutoProcessingEnabled Boolean  @default(true) @map("is_auto_processing_enabled")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("organization_processing_settings")
+}
+
+model CollectionRun {
+  id                String              @id @default(uuid())
+  organizationEyeId String              @map("organization_eye_id")
+  connectionId      String?             @map("connection_id")
+  eyeType           String              @map("eye_type") @db.VarChar(20)
+  provider          String              @db.VarChar(20)
+  collectionMethod  CollectionMethod    @map("collection_method")
+  status            CollectionRunStatus @default(running)
+  startedAt         DateTime            @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt        DateTime?           @map("finished_at") @db.Timestamptz
+  itemsFetched      Int                 @default(0) @map("items_fetched")
+  itemsStored       Int                 @default(0) @map("items_stored")
+  itemsIgnored      Int                 @default(0) @map("items_ignored")
+  errorCode         String?             @map("error_code") @db.VarChar(100)
+  errorMessage      String?             @map("error_message") @db.Text
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  organizationEye OrganizationEye     @relation(fields: [organizationEyeId], references: [id])
+  connection      ProviderConnection? @relation(fields: [connectionId], references: [id])
+
+  @@index([organizationEyeId, createdAt])
+  @@map("collection_runs")
+}

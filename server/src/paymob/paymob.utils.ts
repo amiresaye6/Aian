@@ -6,7 +6,6 @@ import type {
   PaymobTransactionData,
 } from './paymob.types';
 
-
 export function verifyHmac(
   data: Record<string, string | number | boolean>,
   receivedHmac: string,
@@ -24,7 +23,6 @@ export function verifyHmac(
 
   return computedHmac === receivedHmac;
 }
-
 
 export function flattenTransactionForHmac(
   transaction: PaymobTransactionData,
@@ -53,7 +51,6 @@ export function flattenTransactionForHmac(
   };
 }
 
-
 export function flattenRedirectQueryForHmac(
   query: PaymobRedirectQuery,
 ): Record<string, string | number | boolean> {
@@ -80,7 +77,6 @@ export function flattenRedirectQueryForHmac(
     success: query.success,
   };
 }
-
 
 export function buildBillingData(
   overrides?: Partial<PaymobBillingData>,

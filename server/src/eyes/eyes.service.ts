@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EyeStatusItem, EyeDetailResponse } from './types/eyes.types'; 
+import { EyeStatusItem, EyeDetailResponse } from './types/eyes.types';
 
 @Injectable()
 export class EyesService {
@@ -21,7 +21,10 @@ export class EyesService {
     }));
   }
 
-  async findOne(organizationId: string, eyeType: string): Promise<EyeDetailResponse> {
+  async findOne(
+    organizationId: string,
+    eyeType: string,
+  ): Promise<EyeDetailResponse> {
     const eye = await this.prisma.organizationEye.findFirst({
       where: { organizationId, eyeType: { key: eyeType } },
       include: { eyeType: true, selectedProvider: true },
@@ -36,16 +39,17 @@ export class EyesService {
       providerLogoUrl: eye.selectedProvider?.logoUrl ?? null,
       status: eye.status,
       lastSyncedAt: eye.lastSuccessfulSyncAt?.toISOString() ?? null,
-      connectionExplanation: "OAuth connection will be available in the integrations sprint.",
+      connectionExplanation:
+        'OAuth connection will be available in the integrations sprint.',
     };
   }
 
   async requestConnection(organizationId: string, eyeType: string) {
-    await this.findOne(organizationId, eyeType); 
+    await this.findOne(organizationId, eyeType);
     return {
       success: true,
-      message: "OAuth connection will be available in the integrations sprint.",
-      data: { eyeStatus: "ready_to_connect" },
+      message: 'OAuth connection will be available in the integrations sprint.',
+      data: { eyeStatus: 'ready_to_connect' },
     };
   }
 }

@@ -22,8 +22,6 @@ import { CurrentUser } from '../decorators/current-user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../upload/upload.service';
 
-
-
 @Controller('onboarding')
 @UseGuards(AuthGaurd)
 export class OnboardingController {
@@ -90,28 +88,25 @@ export class OnboardingController {
   }
 
   @Post('organization/logo')
-@UseInterceptors(FileInterceptor('file'))
-async uploadOrganizationLogo(
-  @CurrentUser() user: any,
-  @UploadedFile() file: Express.Multer.File,
-) {
-  const orgId = await this.getOrgId(user.id);
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadOrganizationLogo(
+    @CurrentUser() user: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const orgId = await this.getOrgId(user.id);
 
-  const logoUrl = await this.uploadService.uploadFile(
-    file,
-    'images',
-  );
+    const logoUrl = await this.uploadService.uploadFile(file, 'images');
 
-  await this.prisma.organization.update({
-    where: { id: orgId },
-    data: { logoUrl },
-  });
+    await this.prisma.organization.update({
+      where: { id: orgId },
+      data: { logoUrl },
+    });
 
-  return {
-    success: true,
-    data: {
-      logoUrl,
-    },
-  };
-}
+    return {
+      success: true,
+      data: {
+        logoUrl,
+      },
+    };
+  }
 }

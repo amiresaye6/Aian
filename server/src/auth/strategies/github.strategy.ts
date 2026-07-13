@@ -20,8 +20,9 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
     done: any,
   ): Promise<any> {
     const { displayName, username, emails, photos } = profile;
-    const email = emails && emails[0] ? emails[0].value : `${username}@github.com`; 
-    
+    const email =
+      emails && emails[0] ? emails[0].value : `${username}@github.com`;
+
     const user = {
       email: email,
       fullName: displayName || username,

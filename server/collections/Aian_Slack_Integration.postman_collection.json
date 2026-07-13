@@ -1,0 +1,190 @@
+{
+  "info": {
+    "name": "Aian - Slack Integration",
+    "description": "Postman collection to test the full Slack OAuth flow and provider client endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Slack Install (Redirect)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/integrations/slack/install?organizationEyeId={{organizationEyeId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            "slack",
+            "install"
+          ],
+          "query": [
+            {
+              "key": "organizationEyeId",
+              "value": "{{organizationEyeId}}",
+              "description": "The ID of the OrganizationEye from the DB"
+            }
+          ]
+        },
+        "description": "Note: This endpoint is normally opened in a browser because it redirects the user to the Slack OAuth consent screen. It won't return JSON."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Slack Callback (Token Exchange)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "",
+              "if (jsonData.success && jsonData.data && jsonData.data.connectionId) {",
+              "    pm.collectionVariables.set(\"connectionId\", jsonData.data.connectionId);",
+              "    console.log(\"Saved connectionId: \" + jsonData.data.connectionId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/integrations/slack/callback?code=REPLACE_WITH_CODE&state={{organizationEyeId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            "slack",
+            "callback"
+          ],
+          "query": [
+            {
+              "key": "code",
+              "value": "REPLACE_WITH_CODE",
+              "description": "The OAuth code returned by Slack in the redirect URL"
+            },
+            {
+              "key": "state",
+              "value": "{{organizationEyeId}}",
+              "description": "The state parameter containing the eye ID"
+            }
+          ]
+        },
+        "description": "Simulates the redirect from Slack. Paste the `code` you get from the browser URL. On success, the script automatically saves the `connectionId` to the collection variables for the next requests!"
+      },
+      "response": []
+    },
+    {
+      "name": "3. Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "health"
+          ],
+          "variable": [
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}",
+              "description": "Automatically populated by the Callback request"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Fetch Available Channels",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/resources/available",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "resources",
+            "available"
+          ],
+          "variable": [
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}",
+              "description": "Automatically populated by the Callback request"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Disconnect (Revoke)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId"
+          ],
+          "variable": [
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}",
+              "description": "Automatically populated by the Callback request"
+            }
+          ]
+        },
+        "description": "Revokes the token on Slack's end, deletes the connection from the database, and sets the OrganizationEye status back to disconnected."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:12345",
+      "type": "string"
+    },
+    {
+      "key": "organizationEyeId",
+      "value": "d155bd83-8327-4414-b5c9-041f1efb86fd",
+      "type": "string"
+    },
+    {
+      "key": "connectionId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
