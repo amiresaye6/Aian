@@ -121,7 +121,7 @@ export default function ProvidersPage() {
             transition={{ duration: 0.4, delay: 0.05 * eyeIdx }}
           >
             <div className="mb-4 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[color:var(--gold-soft)]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.04] text-[color:var(--gold-soft)]">
                 <eye.icon className="h-4.5 w-4.5" />
               </div>
               <h3 className="text-[16px] font-semibold text-foreground">{eye.label}</h3>
@@ -137,10 +137,10 @@ export default function ProvidersPage() {
                     className={cn(
                       "group relative overflow-hidden rounded-2xl border p-5 transition-all",
                       isSelected
-                        ? "border-[color:var(--gold-soft)]/30 bg-white/[0.04]"
+                        ? "border-[color:var(--gold-soft)]/30 bg-black/[0.03] dark:bg-white/[0.04]"
                         : provider.availableInV1
-                          ? "border-white/10 bg-white/[0.03] hover:border-white/20"
-                          : "border-white/5 bg-white/[0.015] opacity-50",
+                          ? "border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] hover:border-black/20 dark:hover:border-white/20"
+                          : "border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.015] opacity-50",
                     )}
                   >
                     <div className="flex items-start justify-between">
@@ -164,7 +164,7 @@ export default function ProvidersPage() {
                         </span>
                       )}
                       {!provider.availableInV1 && (
-                        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className="shrink-0 rounded-full border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                           Coming soon
                         </span>
                       )}
@@ -177,10 +177,10 @@ export default function ProvidersPage() {
                       className={cn(
                         "mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border py-2 text-[13px] font-semibold transition-all",
                         isSelected
-                          ? "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"
+                          ? "border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] text-muted-foreground hover:text-foreground"
                           : provider.availableInV1
-                            ? "border-[color:var(--gold-soft)]/40 bg-white/[0.03] text-foreground hover:bg-white/[0.06]"
-                            : "cursor-not-allowed border-white/5 text-muted-foreground/50",
+                            ? "border-[color:var(--gold-soft)]/40 bg-black/[0.03] dark:bg-white/[0.03] text-foreground hover:bg-black/[0.06] dark:hover:bg-white/[0.06]"
+                            : "cursor-not-allowed border-black/5 dark:border-white/5 text-muted-foreground/50",
                       )}
                     >
                       {isSelected ? (
@@ -205,7 +205,7 @@ export default function ProvidersPage() {
         <button
           onClick={() => router.push("/organization")}
           disabled={loading}
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[13.5px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-4 py-2.5 text-[13.5px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>

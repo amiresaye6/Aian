@@ -5,9 +5,13 @@ import { ArrowRight } from "lucide-react";
 import { AianLogo } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import Link from "next/link";
+import { useAuthStore } from "@/store/auth/auth.store";
+import { useRouter } from "next/navigation";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
 
   useEffect(() => {
     const on = () => setScrolled(window.scrollY > 12);
@@ -52,18 +56,40 @@ export function Navbar() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Link
-              href="/login"
-              className="hidden rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/login"
-              className="btn-gold btn-gold-hover inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium"
-            >
-              Start Free <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/dashboard"
+                  className="hidden rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={() => {
+                    logout();
+                    router.push("/login");
+                  }}
+                  className="btn-gold btn-gold-hover inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium"
+                >
+                  Sign out <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/login"
+                  className="hidden rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/login"
+                  className="btn-gold btn-gold-hover inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium"
+                >
+                  Start Free <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
         </nav>
       </div>

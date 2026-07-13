@@ -311,10 +311,10 @@ export default function CreateOrganizationPage() {
                 className={cn(
                   "flex h-8 items-center gap-2 rounded-full border px-3 text-[12px] font-medium transition-all",
                   active
-                    ? "border-[color:var(--gold-soft)]/50 bg-white/[0.06] text-foreground"
+                    ? "border-[color:var(--gold-soft)]/50 bg-black/[0.06] dark:bg-white/[0.06] text-foreground"
                     : done
-                      ? "border-[color:var(--gold-soft)]/30 bg-white/[0.03] text-[color:var(--gold-soft)]"
-                      : "border-white/10 bg-white/[0.02] text-muted-foreground",
+                      ? "border-[color:var(--gold-soft)]/30 bg-black/[0.03] dark:bg-white/[0.03] text-[color:var(--gold-soft)]"
+                      : "border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] text-muted-foreground",
                 )}
               >
                 {done ? (
@@ -324,7 +324,7 @@ export default function CreateOrganizationPage() {
                 )}
                 {s.label}
               </div>
-              {i < STEPS.length - 1 && <div className="h-px w-6 bg-white/10" />}
+              {i < STEPS.length - 1 && <div className="h-px w-6 bg-black/10 dark:bg-white/10" />}
             </div>
           );
         })}
@@ -635,7 +635,7 @@ export default function CreateOrganizationPage() {
           <button
             onClick={goBack}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[13.5px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-2xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-4 py-2.5 text-[13.5px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
           >
             <ArrowLeft className="h-4 w-4" /> Back
           </button>

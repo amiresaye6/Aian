@@ -8,7 +8,7 @@ import { OnboardingLayout } from "@/layouts/OnboardingLayout";
 import { cn } from "@/lib/utils";
 import { useSubscriptionPlans } from "@/hooks/billing/useSubscriptionPlans";
 import { BillingCycle } from "@/types/billing/billing";
-// import { useAuthStore } from "@/store/auth/auth.store";
+import { useAuthStore } from "@/store/auth/auth.store";
 
 const ICONS: Record<string, any> = {
   zap: Zap,
@@ -20,17 +20,18 @@ export default function SubscriptionPage() {
   const [cycle, setCycle] = useState<BillingCycle>("yearly");
   const [selectedSlug, setSelectedSlug] = useState<string>("growth");
   const router = useRouter();
-  // const user = useAuthStore((state) => state.user);
+  const user = useAuthStore((state) => state.user);
   
   const { data: plans, isLoading } = useSubscriptionPlans();
 
+  console.log(user);
   // useEffect(() => {
   //   if (!user) {
   //     router.push("/login");
   //   }
   // }, [user, router]);
 
-  if (isLoading) {
+  if (isLoading ) {
     return (
       <OnboardingLayout eyebrow="Subscription" title="Loading plans..." subtitle="Please wait...">
         <div className="flex h-64 items-center justify-center">
