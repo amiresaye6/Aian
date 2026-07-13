@@ -44,5 +44,10 @@ export const rolesApi = {
   deleteCustomRole: async (roleId: string): Promise<ApiResponse<Role>> => {
     const response = await api.delete<ApiResponse<Role>>(`/roles-permissions/role/${roleId}`);
     return response.data;
+  },
+
+  getAllPermissions: async (): Promise<ApiResponse<Permission[]>> => {
+    const response = await api.get<ApiResponse<Permission[]>>(`/roles-permissions/permissions`);
+    return response.data;
   }
 };

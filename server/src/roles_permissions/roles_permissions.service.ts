@@ -170,4 +170,8 @@ export class RolesPermissionsService {
             });
         });
     }
+
+    async getAllPermissions() {
+        return await this.prismaService.permission.findMany();
+    }
 }

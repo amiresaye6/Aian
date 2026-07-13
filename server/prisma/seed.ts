@@ -83,6 +83,7 @@ async function main() {
     'roles.delete',
     'roles.assign_permissions',
     'permission.get',
+    'permissions.read',
     'users.read',
     'users.update',
     'users.delete',

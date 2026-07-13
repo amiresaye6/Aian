@@ -88,4 +88,10 @@ export class RolesPermissionsController {
   ) {
     return this.rolesPermissionsService.deleteCustomRole(roleId, user.organizationId);
   }
+
+  @RequiredPermissions('permissions.read')
+  @Get('permissions')
+  async getAllPermissions() {
+    return this.rolesPermissionsService.getAllPermissions();
+  }
 }

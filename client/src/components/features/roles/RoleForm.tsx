@@ -8,15 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-const AVAILABLE_PERMISSIONS = [
-  { id: "p1", key: "roles.read", name: "Read Roles", desc: "Allows full query visibility over organizational security matrix nodes." },
-  { id: "p2", key: "roles.create", name: "Create Roles", desc: "Grants ability to instantiate customized operational security clearings." },
-  { id: "p3", key: "roles.update", name: "Update Roles", desc: "Allows operational re-routing and permission flag switches on custom trees." },
-  { id: "p4", key: "roles.delete", name: "Delete Roles", desc: "Enables purging empty custom clearance profiles with 0 bound objects." },
-  { id: "p5", key: "roles.assign_permissions", name: "Assign Roles", desc: "Grants administrative authority to bind staff profiles to specific keys." },
-  { id: "p6", key: "organization.read", name: "Read Organization", desc: "Allows structural node analytics readouts and corporate tier visibility." },
-];
+import {rolesApi} from "@/api/roles/index";
 
 interface RoleFormProps {
   editingRole: Role | null;
@@ -30,7 +22,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
   const [key, setKey] = useState("");
   const [description, setDescription] = useState("");
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
-
+  const [permissions, setPermissions] = useState<{ id: string; key: string; name: string; description?: string }[]>([]);
   useEffect(() => {
     if (editingRole) {
       setName(editingRole.name);
@@ -40,6 +32,19 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
       setSelectedPermissionIds(pIds);
     }
   }, [editingRole]);
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const response = await rolesApi.getAllPermissions();
+        setPermissions(response.data as any);
+      } catch (error) {
+        console.error("Error fetching permissions:", error);
+      }
+    };
+
+    fetchPermissions();
+  }, []);
 
   const togglePermission = (id: string) => {
     setSelectedPermissionIds(prev => 
@@ -133,7 +138,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {AVAILABLE_PERMISSIONS.map((perm) => {
+          {permissions.map((perm) => {
             const isChecked = selectedPermissionIds.includes(perm.id);
             return (
               <div 
@@ -156,7 +161,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending }: RoleForm
                     {perm.name}
                   </div>
                   <div className="text-[11px] opacity-60 leading-normal font-sans">
-                    {perm.desc}
+                    {perm.description || "No description provided for this permission."}
                   </div>
                 </div>
               </div>
