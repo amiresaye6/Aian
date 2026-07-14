@@ -12,14 +12,12 @@ export default function OAuthSuccess() {
   useEffect(() => {
     const token = searchParams.get("token");
     const refreshToken = searchParams.get("refresh_token");
-    const userRaw = searchParams.get("user"); // التقاط النص الخاص بالمستخدم
+    const userRaw = searchParams.get("user");
 
     if (token && refreshToken && userRaw) {
       try {
-        // فك التشفير وتحويل النص إلى Object حقيقي يحتوي على قيمك الحقيقية
         const userData = JSON.parse(decodeURIComponent(userRaw));
 
-        // userData هنا ستحتوي تلقائياً على: id, email, fullName, role, roleId, organizationId والقيم القادمة من الباك إند
         loginStore(userData, token, refreshToken);
         
         router.push("/workspaces");

@@ -60,11 +60,11 @@ export default function RegisterPage() {
     try {
       await authApi.register({ fullName, email, password, confirmPassword });
       
-      setSuccessMsg("Account created successfully! Redirecting to login page...");
+      setSuccessMsg("Account created! Redirecting to verify your email...");
       
       setTimeout(() => {
-        router.push("/login");
-      }, 3000);
+        router.push(`/verify-email?email=${encodeURIComponent(email)}&purpose=register`);
+      }, 2000);
       
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Registration failed. Try again.");

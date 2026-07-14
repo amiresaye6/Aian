@@ -18,14 +18,6 @@ export interface AuthResponse {
   
 };
 
-export interface VerifyOtpResponse { 
-  success: boolean;
-  data:{
-    resetToken: string;  
-  }
-  
-};
-
 export interface RefreshResponse {
   access_token: string;
   refresh_token: string;
@@ -48,3 +40,16 @@ export interface ChangePasswordData {
   newPassword: string;
   confirmNewPassword: string;
 }
+
+export enum OtpPurpose {
+  REGISTER = 'register',
+  RESET_PASSWORD = 'reset_password',
+}
+
+export type VerifyOtpResponse = {
+  success: boolean;
+  data: {
+    purpose: OtpPurpose;
+    resetToken?: string;
+  };
+};  

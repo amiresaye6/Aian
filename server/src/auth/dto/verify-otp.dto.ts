@@ -1,11 +1,18 @@
-import { IsEmail, IsNotEmpty, Length } from 'class-validator';
+import { IsEmail, IsEnum, IsString, Length } from 'class-validator';
+
+export enum OtpPurpose {
+  REGISTER = 'register',
+  RESET_PASSWORD = 'reset_password',
+}
 
 export class VerifyOtpDto {
   @IsEmail()
-  @IsNotEmpty()
   email: string;
 
-  @IsNotEmpty()
-  @Length(6, 6, { message: 'OTP must be exactly 6 digits' })
+  @IsString()
+  @Length(6, 6)
   otp: string;
+
+  @IsEnum(OtpPurpose)
+  purpose: OtpPurpose;
 }
