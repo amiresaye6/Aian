@@ -25,6 +25,9 @@ export class WebhookEventDispatcherService {
     connectionId: string,
     provider: string,
     organizationEyeId: string,
+    organizationId: string,
+    eyeType: string,
+    providerEventType: string,
     payload: any,
   ) {
     try {
@@ -32,8 +35,8 @@ export class WebhookEventDispatcherService {
       const rawEvent = await this.rawEventRepository.create({
         connectionId,
         provider,
-        eyeType: provider, // Using provider temporarily if eyeType isn't passed separately
-        providerEventType: 'webhook',
+        eyeType,
+        providerEventType,
         payload,
       });
 
@@ -45,7 +48,7 @@ export class WebhookEventDispatcherService {
       const eventInput: ProviderEventInput = {
         rawPayload: payload,
         rawEventReference: rawEvent.id,
-        organizationId: 'unknown_org_id', // Would be fetched from connection relation in a real impl
+        organizationId,
         connectionId,
       };
 

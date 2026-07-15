@@ -181,7 +181,7 @@ export class ZoomAdapterService implements ProviderAdapter {
 ---
 
 ### Step 4: Implement Webhook Validator
-Create `<provider>-webhook.validator.ts`. The global pipeline exposes `POST /api/v1/webhooks/<CONNECTION_ID>`. You must validate the provider's signature.
+Create `<provider>-webhook.validator.ts`. The global pipeline exposes `POST /api/v1/webhooks/<CONNECTION_ID>`. You must validate the provider's signature and extract the event type.
 
 **Example: Slack Webhook Validator**
 ```typescript
@@ -201,6 +201,14 @@ export class SlackWebhookValidator implements WebhookSignatureValidator {
     const expected = 'v0=' + crypto.createHmac('sha256', secret).update(sigBasestring).digest('hex');
     
     return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  }
+
+  getEventType(req: Request): string {
+    // Extract the specific event type from the provider's payload or headers
+    if (req.body?.event?.type) {
+      return req.body.event.type;
+    }
+    return 'webhook';
   }
 }
 ```

@@ -50,4 +50,16 @@ export class SlackWebhookValidator implements WebhookSignatureValidator {
       return false;
     }
   }
+
+  getEventType(req: Request): string {
+    // Slack Events API payload puts the event type in body.event.type
+    // or body.type (for top-level events like url_verification)
+    if (req.body?.event?.type) {
+      return req.body.event.type;
+    }
+    if (req.body?.type) {
+      return req.body.type;
+    }
+    return 'slack_webhook';
+  }
 }

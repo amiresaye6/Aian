@@ -53,4 +53,13 @@ export class GithubWebhookValidator implements WebhookSignatureValidator {
 
     return crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
   }
+
+  getEventType(req: Request): string {
+    // GitHub sends the event type in the X-GitHub-Event header
+    const eventType = req.headers['x-github-event'];
+    if (typeof eventType === 'string') {
+      return eventType;
+    }
+    return 'github_webhook';
+  }
 }

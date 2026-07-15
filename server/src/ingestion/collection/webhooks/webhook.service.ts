@@ -30,7 +30,7 @@ export class WebhookService {
    */
   async processWebhook(connectionId: string, req: Request) {
     // 1. Fetch connection and provider info
-    const connection = await this.connectionRepo.findById(connectionId);
+    const connection = await this.connectionRepo.findByIdMapped(connectionId);
     if (!connection) {
       throw new NotFoundException('Connection not found');
     }
@@ -45,7 +45,7 @@ export class WebhookService {
     const secret = this.encryptionService.decrypt(connection.webhookSecret);
 
     // 3. Validate signature using the provider-specific validator
-    const validator = this.validatorFactory.getValidator(connection.providerId);
+    const validator = this.validatorFactory.getValidator(connection.provider);
 
     // req.rawBody is populated by NestJS because we enabled rawBody: true in main.ts
     const rawBody = (req as any).rawBody;
@@ -61,13 +61,19 @@ export class WebhookService {
       throw new UnauthorizedException('Invalid webhook signature');
     }
 
+    // Delegate the extraction of the real event type to the provider's validator
+    const providerEventType = validator.getEventType(req);
+
     // 4. Dispatch the verified payload for processing
     // We return immediately to the provider, processing the payload asynchronously
     this.dispatcher
       .dispatch(
         connectionId,
-        connection.providerId,
-        connection.organizationEyeId, // Using this to pass to dispatcher
+        connection.provider,
+        connection.organizationEyeId,
+        connection.organizationId,
+        connection.eyeType,
+        providerEventType,
         req.body, // The parsed JSON body
       )
       .catch((err) => {
