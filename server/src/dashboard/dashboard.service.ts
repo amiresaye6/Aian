@@ -18,6 +18,8 @@ export class DashboardService {
             status: true,
             country: true,
             industry: true,
+            slug:true,
+            logoUrl:true,
           },
         },
       },
@@ -90,6 +92,8 @@ export class DashboardService {
         status: user.organization.status,
         country: user.organization.country,
         industry: user.organization.industry,
+        slug: user.organization.slug,
+        logo_url: user.organization.logoUrl,
       },
 
       subscription: subscription

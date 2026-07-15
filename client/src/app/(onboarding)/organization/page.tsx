@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuthStore } from "@/store/auth/auth.store";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -35,15 +36,24 @@ const STEPS = [
 
 function Field({
   label,
+  required,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div>
       <label className="mb-1.5 block text-[12px] font-medium tracking-wide text-muted-foreground">
         {label}
+        {required ? (
+          <span className="ml-0.5 text-[color:var(--gold-soft)]">*</span>
+        ) : (
+          <span className="ml-1.5 text-[10px] font-normal normal-case text-muted-foreground/50">
+            (optional)
+          </span>
+        )}
       </label>
       {children}
     </div>
@@ -187,6 +197,7 @@ export default function CreateOrganizationPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const { setOrgId } = useAuthStore();
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -194,7 +205,7 @@ export default function CreateOrganizationPage() {
     const file = e.target.files?.[0];
 
     if (!file) return;
-
+    
     setLogoFile(file);
     setLogoPreview(URL.createObjectURL(file));
   };
@@ -220,13 +231,47 @@ export default function CreateOrganizationPage() {
     email: false,
   });
 
+  // const update = (k: keyof CreateOrganizationPayload, v: string) => {
+  //   setForm((f) => {
+  //     const next = { ...f, [k]: v };
+  //     if (k === "name") next.slug = slugify(v);
+  //     return next;
+  //   });
+  // };
   const update = (k: keyof CreateOrganizationPayload, v: string) => {
-    setForm((f) => {
-      const next = { ...f, [k]: v };
-      if (k === "name") next.slug = slugify(v);
-      return next;
-    });
-  };
+  // Update form values
+  setForm((f) => {
+    const next = { ...f, [k]: v };
+
+    // Auto-generate slug when name changes
+    if (k === "name") {
+      next.slug = slugify(v);
+    }
+
+    return next;
+  });
+
+  // Clear validation error for the edited field
+  setErrors((prev) => {
+    if (!prev[k] && !(k === "name" && prev.slug)) {
+      return prev;
+    }
+
+    const next = { ...prev };
+
+    delete next[k];
+
+    // If the name changes, the slug changes too
+    if (k === "name") {
+      delete next.slug;
+    }
+
+    return next;
+  });
+
+  // Clear global error when the user starts correcting input
+  setGlobalError(null);
+};
 
   const updateFuture = <K extends keyof FutureFields>(
     k: K,
@@ -235,41 +280,64 @@ export default function CreateOrganizationPage() {
     setFuture((f) => ({ ...f, [k]: v }));
   };
 
+  // مطلوب: name, slug, description
+  // اختياري: logo (وكل حقول الخطوة 3، 4 مؤقتًا لحد ما الباك إند يدعمها)
   const validateStep = (s: number) => {
     if (s === 1)
-      return form.name.trim().length >= 2 && form.slug.trim().length >= 2;
+      return (
+        form.name.trim().length >= 2 &&
+        form.slug.trim().length >= 2 &&
+        form.description.trim().length > 0
+      );
     if (s === 2)
-      return form.industry && form.companySize && form.country && form.timezone;
+      return (
+        form.industry && form.companySize && form.country && form.timezone
+      );
     return true;
   };
 
   const handleSubmit = async () => {
-  setLoading(true);
-  setErrors({});
-  setGlobalError(null);
+    setLoading(true);
+    setErrors({});
+    setGlobalError(null);
 
-  try {
-    await onboardingApi.createOrganization(form);
+    try {
+      const response = await onboardingApi.createOrganization(form);
+      if (response.data && response.data.id) {
+        setOrgId(response.data.id);
+      }
+      if (logoFile) {
+        await onboardingApi.uploadOrganizationLogo(logoFile);
+      }
 
-    if (logoFile) {
-      await onboardingApi.uploadOrganizationLogo(logoFile);
+      router.push("/providers");
+    } catch (err: any) {
+      const response = err?.response?.data;
+      console.log("ERROR:", response);
+
+      if (response?.error?.fields) {
+        setErrors(response.error.fields);
+      
+        const erroredFields = Object.keys(response.error.fields);
+        const step1Fields = ["name", "slug", "description"];
+        const step2Fields = ["industry", "companySize", "country", "timezone"];
+
+        if (erroredFields.some((f) => step1Fields.includes(f))) {
+          setStep(1);
+        } else if (erroredFields.some((f) => step2Fields.includes(f))) {
+          setStep(2);
+        }
+      }
+
+      setGlobalError(
+        response?.message ??
+          response?.error ??
+          "Something went wrong. Please try again.",
+      );
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/providers");
-  } catch (err: any) {
-    const response = err?.response?.data;
-
-    console.log("ERROR:", response);
-
-    setGlobalError(
-      response?.message ??
-      response?.error ??
-      "Something went wrong. Please try again."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const goNext = () => {
     if (!validateStep(step)) return;
@@ -300,7 +368,6 @@ export default function CreateOrganizationPage() {
       subtitle="A few details to tailor the AI, the memory graph and the operating model."
       maxWidth="max-w-4xl"
     >
-      {/* Sub-stepper */}
       <div className="mb-8 flex items-center justify-center gap-2 overflow-x-auto">
         {STEPS.map((s, i) => {
           const done = step > s.id;
@@ -324,7 +391,9 @@ export default function CreateOrganizationPage() {
                 )}
                 {s.label}
               </div>
-              {i < STEPS.length - 1 && <div className="h-px w-6 bg-black/10 dark:bg-white/10" />}
+              {i < STEPS.length - 1 && (
+                <div className="h-px w-6 bg-black/10 dark:bg-white/10" />
+              )}
             </div>
           );
         })}
@@ -347,7 +416,7 @@ export default function CreateOrganizationPage() {
           >
             {step === 1 && (
               <div className="grid gap-6 md:grid-cols-2">
-                <Field label="Organization name">
+                <Field label="Organization name" required>
                   <input
                     className={inputCls}
                     value={form.name}
@@ -360,7 +429,7 @@ export default function CreateOrganizationPage() {
                     </p>
                   )}
                 </Field>
-                <Field label="Organization slug">
+                <Field label="Organization slug" required>
                   <div className="flex items-center rounded-2xl border border-white/10 bg-white/[0.03] focus-within:border-[color:var(--gold-soft)]/40">
                     <span className="pl-4 pr-1 text-[13px] text-muted-foreground">
                       aian.co/
@@ -378,7 +447,7 @@ export default function CreateOrganizationPage() {
                   )}
                 </Field>
                 <div className="md:col-span-2">
-                  <Field label="Description">
+                  <Field label="Description" required>
                     <textarea
                       rows={3}
                       className={cn(inputCls, "h-auto py-3 leading-relaxed")}
@@ -419,8 +488,7 @@ export default function CreateOrganizationPage() {
                       </label>
                     </div>
                     <p className="mt-2 text-[11px] text-muted-foreground/70">
-                      Upload your organization logo (SVG, PNG, JPG, JPEG, or
-                      WebP).
+                      You can skip this and add a logo later from settings.
                     </p>
                   </Field>
                 </div>
@@ -429,7 +497,7 @@ export default function CreateOrganizationPage() {
 
             {step === 2 && (
               <div className="grid gap-6 md:grid-cols-2">
-                <Field label="Industry">
+                <Field label="Industry" required>
                   <Select
                     value={form.industry}
                     onChange={(e) => update("industry", e.target.value)}
@@ -439,7 +507,7 @@ export default function CreateOrganizationPage() {
                     ))}
                   </Select>
                 </Field>
-                <Field label="Company size">
+                <Field label="Company size" required>
                   <Select
                     value={form.companySize}
                     onChange={(e) => update("companySize", e.target.value)}
@@ -449,7 +517,7 @@ export default function CreateOrganizationPage() {
                     ))}
                   </Select>
                 </Field>
-                <Field label="Country">
+                <Field label="Country" required>
                   <Select
                     value={form.country}
                     onChange={(e) => update("country", e.target.value)}
@@ -459,7 +527,7 @@ export default function CreateOrganizationPage() {
                     ))}
                   </Select>
                 </Field>
-                <Field label="Timezone">
+                <Field label="Timezone" required>
                   <Select
                     value={form.timezone}
                     onChange={(e) => update("timezone", e.target.value)}
