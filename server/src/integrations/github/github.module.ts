@@ -8,7 +8,7 @@ import { WebhookSignatureValidatorFactory } from '../../ingestion/collection/web
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderKeyDbMap } from './github-connection.constants';
 import { ConfigModule } from '@nestjs/config/dist/config.module';
-import { GithubWebhookController } from './github-webhook.controller';
+import { CollectionModule } from '../../ingestion/collection/collection.module';
 
 /**
  * The GitHub Integration Module.
@@ -23,7 +23,7 @@ import { GithubWebhookController } from './github-webhook.controller';
  */
 @Module({
   imports: [ConfigModule],
-  controllers: [GithubAuthController, GithubWebhookController],
+  controllers: [GithubAuthController],
   providers: [GithubClientService, GithubWebhookValidator],
   exports: [GithubClientService],
 })

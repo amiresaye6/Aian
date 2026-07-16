@@ -4,7 +4,7 @@ import { WebhookService } from './webhooks/webhook.service';
 import { WebhookEventDispatcherService } from './webhooks/webhook-event-dispatcher.service';
 import { IntegrationsModule } from '../../integrations/integrations.module';
 import { BaseCollectorService } from './base-collector.service';
-
+import { GithubWebhookController} from './webhooks/github-webhook.controller';
 /**
  * Collection Module.
  * Manages webhook reception, signature validation, and routing to base collectors.
@@ -12,12 +12,12 @@ import { BaseCollectorService } from './base-collector.service';
  */
 @Module({
   imports: [IntegrationsModule], // We need ProviderClientFactory from this
-  controllers: [WebhookController],
+  controllers: [WebhookController,GithubWebhookController,],
   providers: [
     WebhookEventDispatcherService,
     WebhookService,
     BaseCollectorService,
   ],
-  exports: [BaseCollectorService],
+  exports: [BaseCollectorService,WebhookService,],
 })
 export class CollectionModule {}
