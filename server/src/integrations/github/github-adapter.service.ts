@@ -20,9 +20,13 @@ import {
  *
  * Normalizes raw GitHub webhook/polling payloads into KnowledgeItems.
  *
- * IMPORTANT: ProviderEventInput does not carry the `X-GitHub-Event` header
- * value, so the GitHub event type is detected structurally from the shape
- * of `rawPayload` itself (see detectGithubEventType()). This mirrors how
+ * Event type resolution:
+ * ProviderEventInput.providerEventType now carries the value derived from
+ * GitHub's `X-GitHub-Event` header (set by WebhookEventDispatcherService).
+ * When present, it is used directly via resolveEventKind(). When absent
+ * (e.g. some polling paths that don't set it), the adapter falls back to
+ * detecting the event type structurally from the shape of `rawPayload`
+ * itself (see detectGithubEventType()), which mirrors how
  * SlackAdapterService infers `event.type` from the payload envelope.
  *
  * Supported source types:
@@ -54,7 +58,7 @@ export class GitHubAdapterService implements ProviderAdapter {
 
   normalizeEvent(input: ProviderEventInput): KnowledgeItem[] {
     const payload = input.rawPayload as any;
-    const kind = this.detectGithubEventType(payload);
+    const kind = this.resolveEventKind(input);
 
     switch (kind) {
       case 'pull_request':
@@ -89,7 +93,7 @@ export class GitHubAdapterService implements ProviderAdapter {
 
   getExternalEventId(input: ProviderEventInput): string | null {
     const payload = input.rawPayload as any;
-    const kind = this.detectGithubEventType(payload);
+    const kind = this.resolveEventKind(input);
 
     try {
       switch (kind) {
@@ -114,7 +118,55 @@ export class GitHubAdapterService implements ProviderAdapter {
     }
   }
 
-  // ── Structural event-type detection ────────────────────────────────────
+  // ── Event-type resolution ────────────────────────────────────────────────
+
+  /**
+   * Resolves the GitHub event kind for a given input.
+   *
+   * Priority:
+   * 1. input.providerEventType (from the X-GitHub-Event header, set by
+   *    WebhookEventDispatcherService) — used directly when present.
+   * 2. Structural detection from the payload shape (detectGithubEventType)
+   *    — used as a fallback when providerEventType is not set (e.g. some
+   *    polling paths).
+   */
+  private resolveEventKind(
+    input: ProviderEventInput,
+  ): ReturnType<GitHubAdapterService['detectGithubEventType']> {
+    const payload = input.rawPayload as any;
+    const headerType = input.providerEventType;
+
+    if (!headerType) {
+      return this.detectGithubEventType(payload);
+    }
+
+    switch (headerType) {
+      case 'push':
+        return 'push';
+      case 'pull_request':
+        return 'pull_request';
+      case 'pull_request_review':
+        return 'pull_request_review';
+      case 'pull_request_review_comment':
+        return 'pull_request_review_comment';
+      case 'issues':
+        return 'issues';
+      case 'issue_comment':
+        // GitHub sends the same header type for comments on issues AND on
+        // PR conversation tabs. Still need to inspect the payload to tell
+        // them apart, since GitHub doesn't distinguish this in the header.
+        return payload?.issue?.pull_request
+          ? 'issue_comment_on_pr'
+          : 'issue_comment_on_issue';
+      default:
+        this.logger.debug(
+          `Unrecognized providerEventType "${headerType}", falling back to shape detection`,
+        );
+        return this.detectGithubEventType(payload);
+    }
+  }
+
+  // ── Structural event-type detection (fallback) ──────────────────────────
 
   private detectGithubEventType(
     payload: any,
