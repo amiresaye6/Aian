@@ -101,4 +101,13 @@ export class ProviderConnectionRepository {
       data: { lastErrorMessage: errorMessage, status: 'error' },
     });
   }
+
+  async findByExternalAccountId(externalAccountId: string) {
+    const conn = await this.prisma.providerConnection.findFirst({
+    where: { externalAccountId },
+    include: { organizationEye: true },
+    });
+    if (!conn) return null;
+    return this.mapToInterface(conn);
+  }
 }
