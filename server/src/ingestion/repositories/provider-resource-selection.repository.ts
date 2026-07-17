@@ -57,6 +57,13 @@ export class ProviderResourceSelectionRepository {
     }
   }
 
+  async deselectAll(connectionId: string) {
+    return this.prisma.providerResourceSelection.updateMany({
+      where: { connectionId },
+      data: { isSelected: false },
+    });
+  }
+
   async deleteByConnectionId(connectionId: string) {
     return this.prisma.providerResourceSelection.deleteMany({
       where: { connectionId },

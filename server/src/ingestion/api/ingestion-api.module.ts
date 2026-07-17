@@ -4,6 +4,7 @@ import { ResourcesController } from './controllers/resources.controller';
 import { HealthController } from './controllers/health.controller';
 import { BatchesController } from './controllers/batches.controller';
 import { MessagesController } from './controllers/messages.controller';
+import { SettingsController } from './controllers/settings.controller';
 import { MessagesService } from '../../integrations/messages/messages.service';
 import { IntegrationsModule } from '../../integrations/integrations.module';
 
@@ -16,6 +17,7 @@ import { IntegrationsModule } from '../../integrations/integrations.module';
     HealthController,
     BatchesController,
     MessagesController,
+    SettingsController,
   ],
 })
 export class IngestionApiModule {}

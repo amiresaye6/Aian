@@ -10,7 +10,7 @@ model ProviderCursor {
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  connection ProviderConnection @relation(fields: [connectionId], references: [id])
+  connection ProviderConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, externalResourceId])
   @@map("provider_cursors")
@@ -135,9 +135,8 @@ model CollectionRun {
   errorMessage      String?             @map("error_message") @db.Text
   createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
 
-  // Relations
-  organizationEye OrganizationEye     @relation(fields: [organizationEyeId], references: [id])
-  connection      ProviderConnection? @relation(fields: [connectionId], references: [id])
+  organizationEye OrganizationEye     @relation(fields: [organizationEyeId], references: [id], onDelete: Cascade)
+  connection      ProviderConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
 
   @@index([organizationEyeId, createdAt])
   @@map("collection_runs")

@@ -129,4 +129,11 @@ export class ProviderConnectionRepository {
       data: { lastErrorMessage: errorMessage, status: 'error' },
     });
   }
+
+  async updateConnectionMetadata(id: string, metadata: Record<string, unknown>) {
+    return this.prisma.providerConnection.update({
+      where: { id },
+      data: { connectionMetadata: metadata as any },
+    });
+  }
 }

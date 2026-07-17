@@ -55,4 +55,13 @@ export interface ProviderClient {
     connection: ProviderConnection,
     payload: MessagePayload,
   ): Promise<MessageSendResult>;
+
+  /**
+   * Hook executed when the user saves their selected resources for this connection.
+   * Optional — providers can use this to join channels, set up webhooks, or send welcome messages.
+   */
+  onResourcesSelected?(
+    connection: ProviderConnection,
+    resources: any[], // Type loosely to avoid circular dependency for now, we'll map it to the selection payload
+  ): Promise<void>;
 }
