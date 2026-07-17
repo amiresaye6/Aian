@@ -16,6 +16,12 @@ export interface ProviderEventInput {
 
   /** The connection ID that received this event. */
   connectionId: string;
+
+  /** 
+   * The specific event type extracted from the provider (e.g. from headers or body).
+   * Optional so that polling or other methods that don't have it won't break.
+   */
+  providerEventType?: string;
 }
 
 /**

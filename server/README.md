@@ -138,3 +138,96 @@ export class AuthService {
 - **`sendBrandedEmail(to, subject, html)`**: Wraps the provided HTML in the Aian company template.
 - **`sendRawEmail(to, subject, html)`**: Bypasses the wrapper for completely custom emails.
 - Depends on the `SMTP_*` variables in your `.env` file.
+
+### 3. EncryptionService (`EncryptionService`)
+
+A core utility service for symmetrically encrypting and decrypting sensitive strings (like OAuth tokens, secrets) before saving them to the database. It uses AES-256-GCM.
+
+**Location:** `src/common/encryption.service.ts`
+
+**How to use:**
+1. Inject `EncryptionService` into your class.
+2. Ensure `ENCRYPTION_KEY` is set in `.env` (a 64-character hex string).
+
+**Example:**
+```typescript
+import { EncryptionService } from '../../common/encryption.service';
+
+@Injectable()
+export class CredentialManager {
+  constructor(private readonly crypto: EncryptionService) {}
+
+  saveSecret(rawSecret: string) {
+    const encrypted = this.crypto.encrypt(rawSecret);
+    // Returns format: iv:authTag:ciphertext
+    // Save `encrypted` to DB
+  }
+
+  useSecret(encryptedFromDb: string) {
+    const raw = this.crypto.decrypt(encryptedFromDb);
+    // Use the raw token
+  }
+}
+```
+
+### 4. Messages Service (`MessagesService`)
+
+The `MessagesService` is the single entry point for sending outgoing messages to any connected provider (Slack, Teams, etc.). Consumers of this service do *not* need to know which provider they are talking to—they simply provide a connection UUID and a generic payload.
+
+**Location:** `src/integrations/messages/messages.service.ts`
+
+**How to use:**
+1. Import `IntegrationsModule` into your feature module.
+2. Inject `MessagesService` into your controller/service.
+3. Call `await this.messagesService.send(connectionId, payload)`.
+
+**Example:**
+```typescript
+import { MessagesService } from '../../integrations/messages/messages.service';
+
+@Injectable()
+export class AlertEngine {
+  constructor(private readonly messagesService: MessagesService) {}
+
+  async triggerAlert(connectionId: string, alertText: string) {
+    // Fire and forget, or await the result
+    const result = await this.messagesService.send(connectionId, {
+      targetId: 'C0BGJMBSS23', // e.g., the Slack channel ID
+      text: alertText,
+    });
+
+    if (!result.success) {
+      console.error('Failed to dispatch alert:', result.error);
+    }
+  }
+}
+```
+
+**Acceptable Payload Format (`MessagePayload`)**
+
+| Field | Type | Required? | Description |
+|-------|------|-----------|-------------|
+| `targetId` | string | Yes | The provider-specific destination ID (e.g. Slack channel ID or user ID). |
+| `text` | string | Yes | The text content of the message. |
+| `blocks` | array | No | Structured UI elements (e.g. Slack Block Kit). |
+| `threadId` | string | No | The ID/timestamp of a parent message to reply to a thread. |
+| `broadcastReply`| boolean| No | If replying to a thread, broadcast it to the main channel too. |
+
+**Return Example (`MessageSendResult`)**
+
+*On Success:*
+```typescript
+{
+  success: true,
+  messageId: "1721060933.000100", // The provider-specific ID of the created message
+  channelId: "C0BGJMBSS23"
+}
+```
+
+*On Failure (e.g. target channel not found):*
+```typescript
+{
+  success: false,
+  error: "channel_not_found" // Human-readable/provider error string
+}
+```

@@ -3,6 +3,7 @@ import { SlackClientService } from './slack-client.service';
 import { SlackAdapterService } from './slack-adapter.service';
 import { SlackWebhookValidator } from './slack-webhook.validator';
 import { SlackAuthController } from './slack-auth.controller';
+import { SlackEventsController } from './slack-events.controller';
 import { ProviderClientFactory } from '../provider-client.factory';
 import { WebhookSignatureValidatorFactory } from '../../ingestion/collection/webhooks/webhook-signature-validator.factory';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -15,7 +16,7 @@ import { PrismaService } from '../../prisma/prisma.service';
  * the global factories so the shared pipeline can route to them.
  */
 @Module({
-  controllers: [SlackAuthController],
+  controllers: [SlackAuthController, SlackEventsController],
   providers: [SlackClientService, SlackAdapterService, SlackWebhookValidator],
   exports: [SlackClientService, SlackAdapterService],
 })

@@ -168,6 +168,64 @@
         "description": "Revokes the token on Slack's end, deletes the connection from the database, and sets the OrganizationEye status back to disconnected."
       },
       "response": []
+    },
+    {
+      "name": "6. Send Message",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"targetId\": \"{{slackChannelId}}\",\n  \"text\": \"🚀 *Hello from Aian!*\\n\\nI am *Aian*, your new intelligent assistant, successfully connected to your Slack workspace!\\n\\nI'm here to help streamline your team's workflow, organize knowledge, and keep everything running smoothly.\\n\\n*What can I do?*\\n• 🔍 *Analyze* context from discussions and threads.\\n• 🧠 *Synthesize* knowledge into actionable insights.\\n• ⚡ *Automate* tedious parts of your day.\\n\\nIf you have any questions or just want to say hi, feel free to tag me. Let's build something amazing together!\\n\\n_Beep boop. Connection test successful. ✅_\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "messages"
+          ],
+          "variable": [
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}",
+              "description": "Automatically populated by the Callback request"
+            }
+          ]
+        },
+        "description": "Sends a message to a Slack channel via the MessagesService. Set `targetId` to any channel ID (e.g. C12345) your bot has access to. Optionally add `blocks`, `threadId`, or `broadcastReply`."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.success && jsonData.data && jsonData.data.messageId) {",
+              "    pm.collectionVariables.set('lastMessageTs', jsonData.data.messageId);",
+              "    console.log('Saved lastMessageTs: ' + jsonData.data.messageId);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
     }
   ],
   "variable": [
@@ -183,6 +241,16 @@
     },
     {
       "key": "connectionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "slackChannelId",
+      "value": "REPLACE_WITH_CHANNEL_ID",
+      "type": "string"
+    },
+    {
+      "key": "lastMessageTs",
       "value": "",
       "type": "string"
     }

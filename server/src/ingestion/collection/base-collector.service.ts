@@ -25,7 +25,9 @@ export class BaseCollectorService {
    */
   async processEvent(
     providerId: string,
+    providerKey: string,
     organizationEyeId: string,
+    eyeType: string,
     collectionMethod: CollectionMethod,
     eventInput: ProviderEventInput,
     connectionId?: string,
@@ -34,8 +36,8 @@ export class BaseCollectorService {
     const run = await this.collectionRunRepo.create({
       organizationEyeId,
       connectionId,
-      eyeType: providerId, // Temporary mapping, usually we'd have the real eyeType
-      provider: providerId,
+      eyeType,
+      provider: providerKey, // Use the string key (e.g. 'slack') instead of the UUID to avoid VarChar(20) overflow
       collectionMethod,
     });
 

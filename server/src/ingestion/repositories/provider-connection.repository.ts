@@ -17,7 +17,10 @@ export class ProviderConnectionRepository {
   async findByIdMapped(id: string) {
     const conn = await this.prisma.providerConnection.findUnique({
       where: { id },
-      include: { organizationEye: true },
+      include: { 
+        organizationEye: { include: { eyeType: true } },
+        provider: true
+      },
     });
     if (!conn) return null;
     return this.mapToInterface(conn);
@@ -29,10 +32,33 @@ export class ProviderConnectionRepository {
     });
   }
 
+  /**
+   * Finds a connection by externalAccountId (e.g. Slack team_id) and providerId.
+   * Used by providers like Slack where webhooks arrive at a single global URL
+   * and the connection must be resolved from the payload's team/account ID.
+   */
+  async findByExternalAccountMapped(
+    externalAccountId: string,
+    providerId: string,
+  ) {
+    const conn = await this.prisma.providerConnection.findFirst({
+      where: { externalAccountId, providerId },
+      include: { 
+        organizationEye: { include: { eyeType: true } },
+        provider: true
+      },
+    });
+    if (!conn) return null;
+    return this.mapToInterface(conn);
+  }
+
   async findByOrganizationId(organizationId: string) {
     return this.prisma.providerConnection.findMany({
       where: { organizationEye: { organizationId } },
-      include: { organizationEye: true },
+      include: { 
+        organizationEye: { include: { eyeType: true } },
+        provider: true
+      },
     });
   }
 
@@ -41,8 +67,10 @@ export class ProviderConnectionRepository {
       id: conn.id,
       organizationEyeId: conn.organizationEyeId,
       organizationId: conn.organizationEye?.organizationId || '',
-      provider: conn.providerId as any,
-      eyeType: conn.organizationEye?.eyeType as any,
+      providerId: conn.providerId,
+      provider: conn.providerId as any, // Keep for backward compatibility
+      providerKey: conn.provider?.key || '',
+      eyeType: conn.organizationEye?.eyeType?.key || '',
       accessTokenEncrypted: conn.accessTokenEncrypted,
       refreshTokenEncrypted: conn.refreshTokenEncrypted,
       tokenExpiresAt: conn.tokenExpiresAt,

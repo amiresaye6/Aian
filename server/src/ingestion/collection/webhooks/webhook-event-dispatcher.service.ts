@@ -23,7 +23,8 @@ export class WebhookEventDispatcherService {
    */
   async dispatch(
     connectionId: string,
-    provider: string,
+    providerId: string,
+    providerKey: string,
     organizationEyeId: string,
     organizationId: string,
     eyeType: string,
@@ -34,7 +35,7 @@ export class WebhookEventDispatcherService {
       // 1. Store the raw event
       const rawEvent = await this.rawEventRepository.create({
         connectionId,
-        provider,
+        provider: providerKey, // Use the string key (e.g. 'slack') for the DB
         eyeType,
         providerEventType,
         payload,
@@ -50,12 +51,15 @@ export class WebhookEventDispatcherService {
         rawEventReference: rawEvent.id,
         organizationId,
         connectionId,
+        providerEventType,
       };
 
       // 3. Dispatch to BaseCollectorService
       await this.baseCollector.processEvent(
-        provider,
+        providerId,
+        providerKey,
         organizationEyeId,
+        eyeType,
         'webhook', // CollectionMethod.webhook
         eventInput,
         connectionId,

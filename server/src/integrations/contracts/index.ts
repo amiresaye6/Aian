@@ -43,3 +43,9 @@ export type {
   KnowledgeProcessorGateway,
   ProcessorHandoffResult,
 } from './processor-gateway.interface';
+
+// Messaging
+export type {
+  MessagePayload,
+  MessageSendResult,
+} from './message-payload.interface';

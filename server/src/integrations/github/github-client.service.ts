@@ -11,6 +11,7 @@ import {
 } from '../contracts';
 import { EncryptionService } from '../../common/encryption.service';
 import { GithubAppEnvKeys, GithubApiUrls, GithubResourceType } from './github-connection.constants';
+import { ProviderConnectionRepository } from '../../ingestion/repositories/provider-connection.repository';
 
 /**
  * GitHub-specific implementation of ProviderClient.
@@ -26,8 +27,19 @@ export class GithubClientService implements ProviderClient {
   constructor(
     private readonly configService: ConfigService,
     private readonly encryptionService: EncryptionService,
-  ) {}
+    private readonly connectionRepo: ProviderConnectionRepository,
+  ) { }
+  private isInstallationRevoked(error: any): boolean {
+    const status = error?.response?.status;
 
+    return status === 401 || status === 403 || status === 404;
+  }
+  private isRateLimited(error: any): boolean {
+    const status = error?.response?.status;
+    const remaining = error?.response?.headers?.['x-ratelimit-remaining'];
+
+    return status === 429 || (status === 403 && remaining === '0');
+  }
   /**
    * Verify the connection by listing repositories accessible to this
    * installation. If the call succeeds, the installation is still active.
@@ -58,14 +70,32 @@ export class GithubClientService implements ProviderClient {
         accountName: connection.externalAccountId ?? undefined,
         accountId: connection.externalAccountId ?? undefined,
       };
+
     } catch (error) {
       this.logger.error(
         `GitHub verifyConnection error: ${(error as Error).message}`,
       );
+      if (this.isRateLimited(error)) {
+        await this.connectionRepo.update(connection.id, {
+          lastErrorMessage: 'GitHub API rate limit exceeded',
+        });
+
+        return {
+          isValid: false,
+          message: 'GitHub API rate limit exceeded. Please try again later.',
+        };
+      }
+      if (this.isInstallationRevoked(error)) {
+        await this.connectionRepo.update(connection.id, {
+          status: 'disconnected',
+          lastErrorMessage: 'GitHub App installation revoked',
+        });
+      }
       return {
         isValid: false,
         message: `Failed to verify GitHub installation: ${(error as Error).message}`,
       };
+
     }
   }
 
@@ -76,6 +106,7 @@ export class GithubClientService implements ProviderClient {
   async getResources(
     connection: ProviderConnection,
   ): Promise<ProviderResource[]> {
+   try {
     const token = await this.getValidInstallationToken(connection);
     const resources: ProviderResource[] = [];
 
@@ -115,7 +146,31 @@ export class GithubClientService implements ProviderClient {
 
     this.logger.log(`Fetched ${resources.length} GitHub repositories`);
     return resources;
+   }catch (error) {
+    if (this.isRateLimited(error)) {
+      await this.connectionRepo.update(connection.id, {
+        lastErrorMessage: 'GitHub API rate limit exceeded',
+      });
+
+      throw new InternalServerErrorException(
+        'GitHub API rate limit exceeded. Please try again later.',
+      );
+    }
+
+    if (this.isInstallationRevoked(error)) {
+      await this.connectionRepo.update(connection.id, {
+        status: 'disconnected',
+        lastErrorMessage: 'GitHub App installation revoked',
+      });
+
+      throw new InternalServerErrorException(
+        'GitHub installation has been revoked.',
+      );
+    }
+
+    throw error;
   }
+}
 
   /**
    * Installation tokens expire hourly. This regenerates one if the

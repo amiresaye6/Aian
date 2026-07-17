@@ -1,6 +1,7 @@
+/* eslint-disable prettier/prettier */
 import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { GithubClientService } from './github-client.service';
-// import { GitHubAdapterService } from './github-adapter.service';
+import { GitHubAdapterService } from './github-adapter.service';
 import { GithubWebhookValidator } from './github-webhook.validator';
 import { GithubAuthController } from './github-auth.controller';
 import { ProviderClientFactory } from '../provider-client.factory';
@@ -24,8 +25,8 @@ import { CollectionModule } from '../../ingestion/collection/collection.module';
 @Module({
   imports: [ConfigModule],
   controllers: [GithubAuthController],
-  providers: [GithubClientService, GithubWebhookValidator],
-  exports: [GithubClientService],
+  providers: [GithubClientService, GithubWebhookValidator, GitHubAdapterService],
+  exports: [GithubClientService, GitHubAdapterService],
 })
 export class GithubModule implements OnModuleInit {
   private readonly logger = new Logger(GithubModule.name);
@@ -35,7 +36,7 @@ export class GithubModule implements OnModuleInit {
     private readonly clientFactory: ProviderClientFactory,
     private readonly validatorFactory: WebhookSignatureValidatorFactory,
     private readonly githubClient: GithubClientService,
-    // private readonly githubAdapter: GitHubAdapterService,
+    private readonly githubAdapter: GitHubAdapterService,
     private readonly githubValidator: GithubWebhookValidator,
   ) {}
 
@@ -56,7 +57,7 @@ export class GithubModule implements OnModuleInit {
     const providerId = githubProvider.id;
 
     this.clientFactory.registerClient(providerId, this.githubClient);
-    // this.clientFactory.registerAdapter(providerId, this.githubAdapter);
+    this.clientFactory.registerAdapter(providerId, this.githubAdapter);
     this.validatorFactory.registerValidator(providerId, this.githubValidator);
 
     this.logger.log(`GitHub module registered with provider ID: ${providerId}`);

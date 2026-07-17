@@ -69,7 +69,8 @@ export class WebhookService {
     this.dispatcher
       .dispatch(
         connectionId,
-        connection.provider,
+        connection.providerId,
+        connection.providerKey,
         connection.organizationEyeId,
         connection.organizationId,
         connection.eyeType,

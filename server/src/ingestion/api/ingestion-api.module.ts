@@ -3,15 +3,19 @@ import { EyesController } from './controllers/eyes.controller';
 import { ResourcesController } from './controllers/resources.controller';
 import { HealthController } from './controllers/health.controller';
 import { BatchesController } from './controllers/batches.controller';
+import { MessagesController } from './controllers/messages.controller';
+import { MessagesService } from '../../integrations/messages/messages.service';
 import { IntegrationsModule } from '../../integrations/integrations.module';
 
 @Module({
   imports: [IntegrationsModule], // Needs access to ProviderClientFactory
+  providers: [MessagesService],
   controllers: [
     EyesController,
     ResourcesController,
     HealthController,
     BatchesController,
+    MessagesController,
   ],
 })
 export class IngestionApiModule {}
