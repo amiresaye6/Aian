@@ -76,6 +76,7 @@ export class GithubClientService implements ProviderClient {
         `GitHub verifyConnection error: ${(error as Error).message}`,
       );
       if (this.isRateLimited(error)) {
+        this.logger.warn('GitHub API rate limit exceeded');
         await this.connectionRepo.update(connection.id, {
           lastErrorMessage: 'GitHub API rate limit exceeded',
         });
@@ -86,6 +87,9 @@ export class GithubClientService implements ProviderClient {
         };
       }
       if (this.isInstallationRevoked(error)) {
+        this.logger.warn(
+          `GitHub installation revoked for ${connection.externalAccountId}`,
+        );
         await this.connectionRepo.update(connection.id, {
           status: 'disconnected',
           lastErrorMessage: 'GitHub App installation revoked',
@@ -106,71 +110,75 @@ export class GithubClientService implements ProviderClient {
   async getResources(
     connection: ProviderConnection,
   ): Promise<ProviderResource[]> {
-   try {
-    const token = await this.getValidInstallationToken(connection);
-    const resources: ProviderResource[] = [];
+    try {
+      const token = await this.getValidInstallationToken(connection);
+      const resources: ProviderResource[] = [];
 
-    let page = 1;
-    let totalCount = Infinity;
+      let page = 1;
+      let totalCount = Infinity;
 
-    while (resources.length < totalCount) {
-      const response = await axios.get(
-        `${GithubApiUrls.BASE}/installation/repositories`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github+json',
+      while (resources.length < totalCount) {
+        const response = await axios.get(
+          `${GithubApiUrls.BASE}/installation/repositories`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github+json',
+            },
+            params: { per_page: 100, page },
           },
-          params: { per_page: 100, page },
-        },
-      );
+        );
 
-      totalCount = response.data.total_count;
+        totalCount = response.data.total_count;
 
-      for (const repo of response.data.repositories || []) {
-        resources.push({
-          externalResourceId: String(repo.id),
-          name: repo.full_name,
-          resourceType: GithubResourceType,
-          metadata: {
-            private: repo.private,
-            defaultBranch: repo.default_branch,
-            htmlUrl: repo.html_url,
-          },
-        });
+        for (const repo of response.data.repositories || []) {
+          resources.push({
+            externalResourceId: String(repo.id),
+            name: repo.full_name,
+            resourceType: GithubResourceType,
+            metadata: {
+              private: repo.private,
+              defaultBranch: repo.default_branch,
+              htmlUrl: repo.html_url,
+            },
+          });
+        }
+
+        page += 1;
+        if (!response.data.repositories?.length) break; // safety exit
       }
 
-      page += 1;
-      if (!response.data.repositories?.length) break; // safety exit
+      this.logger.log(`Fetched ${resources.length} GitHub repositories`);
+      return resources;
+    } catch (error) {
+      if (this.isRateLimited(error)) {
+        this.logger.warn('GitHub API rate limit exceeded');
+        await this.connectionRepo.update(connection.id, {
+          lastErrorMessage: 'GitHub API rate limit exceeded',
+        });
+
+        throw new InternalServerErrorException(
+          'GitHub API rate limit exceeded. Please try again later.',
+        );
+      }
+
+      if (this.isInstallationRevoked(error)) {
+        this.logger.warn(
+          `GitHub installation revoked for ${connection.externalAccountId}`,
+        );
+        await this.connectionRepo.update(connection.id, {
+          status: 'disconnected',
+          lastErrorMessage: 'GitHub App installation revoked',
+        });
+
+        throw new InternalServerErrorException(
+          'GitHub installation has been revoked.',
+        );
+      }
+
+      throw error;
     }
-
-    this.logger.log(`Fetched ${resources.length} GitHub repositories`);
-    return resources;
-   }catch (error) {
-    if (this.isRateLimited(error)) {
-      await this.connectionRepo.update(connection.id, {
-        lastErrorMessage: 'GitHub API rate limit exceeded',
-      });
-
-      throw new InternalServerErrorException(
-        'GitHub API rate limit exceeded. Please try again later.',
-      );
-    }
-
-    if (this.isInstallationRevoked(error)) {
-      await this.connectionRepo.update(connection.id, {
-        status: 'disconnected',
-        lastErrorMessage: 'GitHub App installation revoked',
-      });
-
-      throw new InternalServerErrorException(
-        'GitHub installation has been revoked.',
-      );
-    }
-
-    throw error;
   }
-}
 
   /**
    * Installation tokens expire hourly. This regenerates one if the
@@ -211,6 +219,17 @@ export class GithubClientService implements ProviderClient {
 
       return response.data.token;
     } catch (error) {
+      if (this.isRateLimited(error)) {
+        throw new InternalServerErrorException(
+          'GitHub API rate limit exceeded.',
+        );
+      }
+
+      if (this.isInstallationRevoked(error)) {
+        throw new InternalServerErrorException(
+          'GitHub App installation revoked.',
+        );
+      }
       throw new InternalServerErrorException(
         'PROVIDER_TOKEN_EXPIRED: could not refresh GitHub installation token',
       );
