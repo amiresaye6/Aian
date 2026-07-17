@@ -231,4 +231,63 @@ export class SlackClientService implements ProviderClient {
       };
     }
   }
+  /**
+   * Automatically join channels that were selected by the user,
+   * and send a welcome message so they know Aian is active.
+   */
+  async onResourcesSelected(
+    connection: ProviderConnection,
+    resources: any[],
+  ): Promise<void> {
+    const token = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    for (const resource of resources) {
+      if (resource.resourceType !== 'channel') continue;
+
+      try {
+        // 1. Join the channel
+        const joinResponse = await axios.post(
+          'https://slack.com/api/conversations.join',
+          { channel: resource.externalResourceId },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+
+        if (!joinResponse.data.ok) {
+          if (joinResponse.data.error === 'already_in_channel') {
+            this.logger.debug(
+              `Already in channel ${resource.name} (${resource.externalResourceId})`,
+            );
+          } else {
+            this.logger.warn(
+              `Failed to join channel ${resource.externalResourceId}: ${joinResponse.data.error}`,
+            );
+            continue; // Skip sending message if join failed
+          }
+        } else {
+          this.logger.log(
+            `Successfully joined channel ${resource.name} (${resource.externalResourceId})`,
+          );
+        }
+
+        // 2. Send welcome message
+        await this.sendMessage(connection, {
+          targetId: resource.externalResourceId,
+          text: "Hi everyone! I'm Aian. I'm here to help answer questions and assist with anything you need!",
+        });
+      } catch (error) {
+        this.logger.error(
+          `Error joining/welcoming in channel ${resource.externalResourceId}: ${
+            (error as Error).message
+          }`,
+        );
+      }
+    }
+  }
 }

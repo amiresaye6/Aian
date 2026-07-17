@@ -71,7 +71,7 @@ model ProviderResourceSelection {
   updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  connection ProviderConnection @relation(fields: [connectionId], references: [id])
+  connection ProviderConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
   @@unique([connectionId, externalResourceId])
   @@map("provider_resource_selections")
