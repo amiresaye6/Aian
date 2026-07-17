@@ -57,7 +57,7 @@ export class SlackAuthController {
 
     // We pass organizationEyeId in the `state` parameter so we get it back in the callback
     const scopes =
-      'channels:read,team:read,users:read,chat:write,chat:write.public';
+      'channels:read,channels:history,channels:join,groups:history,im:history,mpim:history,team:read,users:read,chat:write,chat:write.public';
     const slackAuthUrl =
       `https://slack.com/oauth/v2/authorize` +
       `?client_id=${this.clientId}` +
