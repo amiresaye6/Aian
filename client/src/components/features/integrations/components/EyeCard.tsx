@@ -21,8 +21,9 @@ export function EyeCard({ provider, index = 0 }: { provider: Provider; index?: n
       <Link
         href={href}
         className={cn(
-          "group relative block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition-all",
-          "hover:border-[color:var(--gold-soft)]/30 hover:bg-white/[0.04]",
+          "group relative block overflow-hidden rounded-2xl border p-5 transition-all",
+          "border-black/10 dark:border-white/10 bg-white dark:bg-white/[0.02] shadow-sm dark:shadow-none",
+          "hover:border-[color:var(--gold-soft)]/40 dark:hover:border-[color:var(--gold-soft)]/30 hover:bg-black/[0.02] dark:hover:bg-white/[0.04]",
         )}
       >
         <div
@@ -35,7 +36,7 @@ export function EyeCard({ provider, index = 0 }: { provider: Provider; index?: n
             <AnimatedEye status={provider.status} size={64} glyph={provider.glyph} />
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="font-display text-[16px] font-semibold tracking-tight">{provider.name}</h4>
+                <h4 className="font-display text-[16px] font-semibold tracking-tight text-foreground">{provider.name}</h4>
               </div>
               <div className="mt-0.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 {provider.category}
