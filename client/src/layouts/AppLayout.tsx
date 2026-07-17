@@ -33,13 +33,13 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dashboard", label: "Knowledge", icon: BookOpen },
-  { to: "/dashboard", label: "Meetings", icon: Video },
-  { to: "/dashboard", label: "Reports", icon: BarChart3 },
-  { to: "/dashboard", label: "Integrations", icon: Plug },
+  { to: "/dashboard/Knowledge", label: "Knowledge", icon: BookOpen },
+  { to: "/dashboard/Meetings", label: "Meetings", icon: Video },
+  { to: "/dashboard/Reports", label: "Reports", icon: BarChart3 },
+  { to: "/eyes", label: "Integrations", icon: Plug },
   { to: "/dashboard/members", label: "Members", icon: Users },
-  { to: "/dashboard", label: "Organization", icon: Building2 },
-  { to: "/dashboard", label: "Billing", icon: CreditCard },
+  { to: "/dashboard/Organization", label: "Organization", icon: Building2 },
+  { to: "/dashboard/Billing", label: "Billing", icon: CreditCard },
 ];
 
 const SECONDARY = [
@@ -100,7 +100,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
           </div>
         )}
         {NAV.map((item, i) => {
-          const active = i === 0 && pathname === "/dashboard";
+          const active = pathname === item.to;
           return (
             <Link
               key={item.label}
