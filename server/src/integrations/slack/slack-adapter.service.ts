@@ -28,14 +28,21 @@ export class SlackAdapterService implements ProviderAdapter {
   normalizeEvent(input: ProviderEventInput): KnowledgeItem[] {
     const payload = input.rawPayload as any;
 
+    let event: any;
+
     // Slack Events API wraps events inside an 'event' envelope:
     // { type: 'event_callback', event: { type: 'message', channel: 'C123', ... } }
-    if (payload.type !== 'event_callback' || !payload.event) {
-      this.logger.debug(`Ignoring non-event_callback payload: ${payload.type}`);
+    if (payload.type === 'event_callback' && payload.event) {
+      event = payload.event;
+    } 
+    // Slack Web API (conversations.history) returns messages directly
+    else if (payload.type === 'message') {
+      event = payload;
+    } 
+    else {
+      this.logger.debug(`Ignoring unhandled payload type: ${payload.type}`);
       return [];
     }
-
-    const event = payload.event;
 
     // Only handle 'message' events for now
     if (event.type !== 'message' || event.subtype) {
@@ -89,7 +96,8 @@ export class SlackAdapterService implements ProviderAdapter {
    * Extracts the channel ID from the raw payload.
    */
   getExternalResourceId(input: ProviderEventInput): string {
-    const event = (input.rawPayload as any)?.event;
+    const payload = input.rawPayload as any;
+    const event = payload?.event || payload;
     return event?.channel || 'unknown';
   }
 
@@ -97,7 +105,8 @@ export class SlackAdapterService implements ProviderAdapter {
    * Extracts the message timestamp from the raw payload.
    */
   getExternalEventId(input: ProviderEventInput): string | null {
-    const event = (input.rawPayload as any)?.event;
+    const payload = input.rawPayload as any;
+    const event = payload?.event || payload;
     return event?.ts || null;
   }
 }

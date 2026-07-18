@@ -1,0 +1,233 @@
+{
+  "info": {
+    "name": "Aian Global API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get All Connections",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes?organizationId={{organizationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes"],
+          "query": [
+            { "key": "organizationId", "value": "{{organizationId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Revoke/Delete Connection",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Available Resources",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/resources/available",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "resources", "available"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Selected Resources",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/resources/selected",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "resources", "selected"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Selected Resources",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resourceIds\": [\"C12345678\", \"C87654321\"]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/resources/selected",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "resources", "selected"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Connection Settings",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"historyBackfillDays\": 30,\n  \"retentionDays\": 90\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/settings",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "settings"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Start Historical Sync",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/sync/historical/start",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "sync", "historical", "start"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Check Historical Sync Status",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/sync/historical/status",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "sync", "historical", "status"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Organization Batches",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/batches?organizationId={{organizationId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "batches"],
+          "query": [
+            { "key": "organizationId", "value": "{{organizationId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Batch Details",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/batches/:batchId",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "batches", ":batchId"],
+          "variable": [
+            { "key": "batchId", "value": "{{batchId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Processing Settings",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/organizations/:organizationId/settings/processing",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "organizations", ":organizationId", "settings", "processing"],
+          "variable": [
+            { "key": "organizationId", "value": "{{organizationId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Processing Settings",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"timeIntervalHours\": 6,\n  \"pendingItemThreshold\": 100,\n  \"retentionDays\": 15,\n  \"isAutoProcessingEnabled\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/organizations/:organizationId/settings/processing",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "organizations", ":organizationId", "settings", "processing"],
+          "variable": [
+            { "key": "organizationId", "value": "{{organizationId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Trigger Sync Now",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sync/:organizationId/now",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sync", ":organizationId", "now"],
+          "variable": [
+            { "key": "organizationId", "value": "{{organizationId}}" }
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:1234",
+      "type": "string"
+    },
+    {
+      "key": "organizationId",
+      "value": "replace-with-org-uuid",
+      "type": "string"
+    },
+    {
+      "key": "connectionId",
+      "value": "replace-with-connection-uuid",
+      "type": "string"
+    },
+    {
+      "key": "batchId",
+      "value": "replace-with-batch-uuid",
+      "type": "string"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { HealthController } from './controllers/health.controller';
 import { BatchesController } from './controllers/batches.controller';
 import { MessagesController } from './controllers/messages.controller';
 import { SettingsController } from './controllers/settings.controller';
+import { HistoricalSyncController } from './controllers/historical-sync.controller';
 import { MessagesService } from '../../integrations/messages/messages.service';
 import { IntegrationsModule } from '../../integrations/integrations.module';
 
@@ -18,6 +19,7 @@ import { IntegrationsModule } from '../../integrations/integrations.module';
     BatchesController,
     MessagesController,
     SettingsController,
+    HistoricalSyncController,
   ],
 })
 export class IngestionApiModule {}

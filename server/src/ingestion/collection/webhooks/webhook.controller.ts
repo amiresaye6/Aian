@@ -15,7 +15,9 @@ import { WebhookService } from './webhook.service';
  */
 @Controller('webhooks')
 export class WebhookController {
-  constructor(private readonly webhookService: WebhookService) {}
+  constructor(
+    private readonly webhookService: WebhookService
+  ) {}
 
   @Post(':connectionId')
   @HttpCode(HttpStatus.OK)

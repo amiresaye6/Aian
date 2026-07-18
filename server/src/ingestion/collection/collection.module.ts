@@ -5,6 +5,8 @@ import { WebhookEventDispatcherService } from './webhooks/webhook-event-dispatch
 import { BaseCollectorService } from './base-collector.service';
 import { GithubWebhookController} from './webhooks/github-webhook.controller';
 import { IntegrationsModule } from '../../integrations/integrations.module';
+import { HistoricalSyncService } from './historical-sync.service';
+
 /**
  * Collection Module.
  * Manages webhook reception, signature validation, and routing to base collectors.
@@ -18,7 +20,8 @@ import { IntegrationsModule } from '../../integrations/integrations.module';
     WebhookEventDispatcherService,
     WebhookService,
     BaseCollectorService,
+    HistoricalSyncService,
   ],
-  exports: [BaseCollectorService, WebhookService],
+  exports: [BaseCollectorService, WebhookService, HistoricalSyncService],
 })
 export class CollectionModule {}

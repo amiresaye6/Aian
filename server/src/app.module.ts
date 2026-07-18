@@ -23,6 +23,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { CollectionModule } from './ingestion/collection/collection.module';
 import { SchedulerModule } from './ingestion/scheduler/scheduler.module';
 import { ProcessorModule } from './processor/processor.module';
+import { ZoomModule } from './integrations/zoom/zoom.module';
 
 @Module({
   imports: [
@@ -53,7 +54,7 @@ import { ProcessorModule } from './processor/processor.module';
     EyesModule,
     // DashboardModule,
     PaymobModule,
-    BillingModule,
+    BillingModule
   ],
 })
 export class AppModule {}

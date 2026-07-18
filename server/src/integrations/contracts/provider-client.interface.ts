@@ -64,4 +64,17 @@ export interface ProviderClient {
     connection: ProviderConnection,
     resources: any[], // Type loosely to avoid circular dependency for now, we'll map it to the selection payload
   ): Promise<void>;
+
+  /**
+   * Sync historical data for a specific resource (e.g., a Slack channel, a Jira project).
+   * The provider client is responsible for iterating through its own API pagination,
+   * handling rate limits, and calling the savePageCallback for every batch of items fetched.
+   */
+  syncHistoricalResource?(
+    connection: ProviderConnection,
+    resource: any, // ProviderResourceSelection
+    fromDate: Date,
+    cursor: string | undefined,
+    savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
+  ): Promise<void>;
 }
