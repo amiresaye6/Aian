@@ -174,7 +174,9 @@ export class SlackClientService implements ProviderClient {
     connection: ProviderConnection,
     payload: MessagePayload,
   ): Promise<MessageSendResult> {
-    const token = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+    const token = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
 
     const body: Record<string, unknown> = {
       channel: payload.targetId,
@@ -287,6 +289,183 @@ export class SlackClientService implements ProviderClient {
             (error as Error).message
           }`,
         );
+      }
+    }
+  }
+
+  /**
+   * Helper function to delay execution and respect rate limits.
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Fetch historical messages and their threaded replies from a Slack channel.
+   * Handles pagination and respects Tier 3 rate limits implicitly by looping and sleeping.
+   */
+  async syncHistoricalResource(
+    connection: ProviderConnection,
+    resource: any,
+    fromDate: Date,
+    cursor: string | undefined,
+    savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
+  ): Promise<void> {
+    const token = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    let currentCursor = cursor;
+    let hasMore = true;
+
+    // Convert fromDate to Unix timestamp string (seconds.microseconds) as Slack requires
+    const oldestTs = (fromDate.getTime() / 1000).toString();
+
+    while (hasMore) {
+      const params: Record<string, string> = {
+        channel: resource.externalResourceId,
+        oldest: oldestTs,
+        limit: '100', // Fetch 100 main channel messages at a time
+      };
+
+      if (currentCursor) {
+        params.cursor = currentCursor;
+      }
+
+      try {
+        const response = await axios.get(
+          'https://slack.com/api/conversations.history',
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params,
+          },
+        );
+
+        if (!response.data.ok) {
+          if (response.data.error === 'ratelimited') {
+            this.logger.warn(
+              `Rate limited by Slack on ${resource.name}. Waiting 5 seconds...`,
+            );
+            await this.sleep(5000);
+            continue;
+          }
+          this.logger.error(
+            `Slack conversations.history failed: ${response.data.error}`,
+          );
+          throw new Error(`Slack API error: ${response.data.error}`);
+        }
+
+        const messages: any[] = response.data.messages || [];
+        const nextCursor = response.data.response_metadata?.next_cursor;
+
+        // This array will hold channel messages AND threaded replies
+        const allDecoratedMessages: any[] = [];
+
+        // Add an artificial delay to stay under 50 req/min (Tier 3)
+        await this.sleep(1200);
+
+        // Process each channel message
+        for (const msg of messages) {
+          // Decorate the parent message
+          allDecoratedMessages.push({
+            ...msg,
+            channel: resource.externalResourceId,
+          });
+
+          // If the message has replies, fetch the thread history
+          if (msg.thread_ts && msg.reply_count && msg.reply_count > 0) {
+            let threadCursor: string | undefined;
+            let threadHasMore = true;
+
+            while (threadHasMore) {
+              const threadParams: Record<string, string> = {
+                channel: resource.externalResourceId,
+                ts: msg.thread_ts,
+                limit: '200', // Fetch up to 200 replies at a time
+              };
+              if (threadCursor) threadParams.cursor = threadCursor;
+
+              try {
+                const threadResponse = await axios.get(
+                  'https://slack.com/api/conversations.replies',
+                  {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: threadParams,
+                  },
+                );
+
+                if (!threadResponse.data.ok) {
+                  if (threadResponse.data.error === 'ratelimited') {
+                    this.logger.warn(
+                      `Rate limited on thread ${msg.thread_ts}. Waiting 5s...`,
+                    );
+                    await this.sleep(5000);
+                    continue;
+                  }
+                  this.logger.warn(
+                    `Failed to fetch thread ${msg.thread_ts}: ${threadResponse.data.error}`,
+                  );
+                  break; // Stop fetching this thread on error, but don't crash the whole sync
+                }
+
+                const replies = threadResponse.data.messages || [];
+
+                for (const reply of replies) {
+                  // Slack conversations.replies returns the parent message as the first item.
+                  // We skip it to avoid duplicating the parent message we already added above.
+                  if (reply.ts === msg.ts) continue;
+
+                  allDecoratedMessages.push({
+                    ...reply,
+                    channel: resource.externalResourceId,
+                  });
+                }
+
+                threadCursor =
+                  threadResponse.data.response_metadata?.next_cursor;
+                threadHasMore = !!threadCursor;
+
+                // Sleep to respect Tier 3 limits for thread fetches
+                await this.sleep(1200);
+              } catch (threadError: any) {
+                if (threadError.response?.status === 429) {
+                  const retryAfter =
+                    parseInt(threadError.response.headers['retry-after'], 10) ||
+                    5;
+                  this.logger.warn(
+                    `Axios 429 Rate limited on thread. Waiting ${retryAfter}s...`,
+                  );
+                  await this.sleep(retryAfter * 1000);
+                  continue; // retry thread page
+                }
+                this.logger.error(
+                  `Error fetching thread ${msg.thread_ts}: ${threadError.message}`,
+                );
+                break;
+              }
+            }
+          }
+        }
+
+        // Pass the combined array of channel messages AND threaded replies to the global engine
+        await savePageCallback(allDecoratedMessages, nextCursor);
+
+        // Advance the outer loop
+        currentCursor = nextCursor;
+        hasMore = !!currentCursor;
+      } catch (error: any) {
+        // If it's a 429 response from Axios
+        if (error.response?.status === 429) {
+          const retryAfter =
+            parseInt(error.response.headers['retry-after'], 10) || 5;
+          this.logger.warn(
+            `Axios 429 Rate limited. Waiting ${retryAfter} seconds...`,
+          );
+          await this.sleep(retryAfter * 1000);
+          continue; // retry
+        }
+
+        throw error;
       }
     }
   }
