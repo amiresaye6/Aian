@@ -24,7 +24,7 @@ const getBaseUrl = (provider: ProviderKey): string => {
     slack: '/slack',
     zoom: '/zoom',
   };
-  
+
   return ENDPOINTS[provider] || `/integrations/${provider}`;
 };
 
@@ -87,30 +87,29 @@ export const getGithubInstallUrl = (organizationEyeId: string): string => {
  * Matches the real Sprint 2 contract:
  * GET /organizations/:organizationId/eyes/:eyeType/resources
  */
-export const getAvailableResource = async (
-  organizationId: string,
-  provider: ProviderKey,
-) => {
-  const eyeType = PROVIDER_TO_EYE_TYPE[provider];
-  const response = await api.get(
-    `/organizations/${organizationId}/eyes/${eyeType}/resources`,
-  );
-  return response.data;
+/**
+ * 3. Resources — matches actual backend: ResourcesController
+ * GET /eyes/:connectionId/resources/available
+ */
+export const getAvailableResource = async (connectionId: string) => {
+  const response = await api.get(`/eyes/${connectionId}/resources/available`);
+  return response.data.data;
+};
+
+export const getSelectedResources = async (connectionId: string) => {
+  const response = await api.get(`/eyes/${connectionId}/resources/selected`);
+  return response.data.data;
 };
 
 export const saveSelectedResource = async (
-  organizationId: string,
-  provider: ProviderKey,
-  selectedIds: string[],
+  connectionId: string,
+  resourceIds: string[],
 ) => {
-  const eyeType = PROVIDER_TO_EYE_TYPE[provider];
-  const response = await api.put(
-    `/organizations/${organizationId}/eyes/${eyeType}/resources`,
-    { selectedIds },
-  );
-  return response.data;
+  const response = await api.post(`/eyes/${connectionId}/resources/selected`, {
+    resourceIds,
+  });
+  return response.data.data;
 };
-
 
 /**
  * 4. Sync Config Page (/eyes/[provider]/sync-config)
