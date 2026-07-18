@@ -1,0 +1,105 @@
+{
+  "info": {
+    "_postman_id": "2a97e7a4-3170-4516-85d7-614c2a628965",
+    "name": "zoom",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "51603291"
+  },
+  "item": [
+    {
+      "name": "connect",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjNkYmRiM2QyLTJjNzEtNDRhYy05Y2E0LWFmYWRhMTgwMmIzZiIsImVtYWlsIjoiYW1pci5hbHNheWVkQGV4YW1wbGUuY29tIiwiZnVsbE5hbWUiOiJBbWlyIEFsc2F5ZWQiLCJyb2xlSWQiOiJhYjJiZWI1Yy1iNmZlLTQyNGUtOTExZC1iMTgxYjYxNGRiZjEiLCJyb2xlIjoiT3duZXIiLCJvcmdhbml6YXRpb25JZCI6ImYyMzdmZTFmLWZjYmUtNDc4Yi04Yjk1LTZlOWJmNjE3YTMwYyIsIm9yZ2FuaXphdGlvbiI6IkFjbWUgQUkgU29sdXRpb25zIiwiaWF0IjoxNzg0MTU1MjE0LCJleHAiOjE3ODQxNTg4MTR9.uA2-iK3BCyYZojOna-hnJGo1OvsbHheB0Nlw-w2pK5Q",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:12345/api/v1/integrations/zoom/install?organizationEyeId=58aedcb5-f420-4f05-a9df-cd1055445061",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "12345",
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            "zoom",
+            "install"
+          ],
+          "query": [
+            {
+              "key": "organizationEyeId",
+              "value": "58aedcb5-f420-4f05-a9df-cd1055445061"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "zoom-client test",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImJiOTI0NTU4LTYxM2YtNDJmYy1hOTcyLTE5N2RkN2M5NzIzYiIsImVtYWlsIjoiYW1pci5hbHNheWVkQGV4YW1wbGUuY29tIiwiZnVsbE5hbWUiOiJBbWlyIEFsc2F5ZWQiLCJyb2xlSWQiOiJhNzY5M2E0ZC02NmNlLTRmMjMtOThjNC1kMjk4MGNiZjZlMjkiLCJyb2xlIjoiT3duZXIiLCJvcmdhbml6YXRpb25JZCI6IjAzZDJiOTg3LWU5OWUtNDFjOS1hNGExLWZjMjZkZWRjODVjOSIsIm9yZ2FuaXphdGlvbiI6IkFjbWUgQUkgU29sdXRpb25zIiwiaWF0IjoxNzg0MTY5NjE0LCJleHAiOjE3ODQxNzMyMTR9.HUk_gPDLi64fSM7xL4XmLGAn7IN5uIqq7S0L3iVq7_I",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:12345/api/v1/integrations/zoom/test-client/2c3b4a00-16e9-4290-84fb-79d7bc4b7fac",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "12345",
+          "path": [
+            "api",
+            "v1",
+            "integrations",
+            "zoom",
+            "test-client",
+            "2c3b4a00-16e9-4290-84fb-79d7bc4b7fac"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "delete connection",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:12345/api/v1/eyes/7177570a-9cce-4a8c-b8dc-6b7d817594ea",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "12345",
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            "7177570a-9cce-4a8c-b8dc-6b7d817594ea"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
