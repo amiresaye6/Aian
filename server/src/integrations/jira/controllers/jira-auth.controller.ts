@@ -26,9 +26,7 @@ export class JiraAuthController {
   ) {}
 
   @Get('install')
-  async install(
-    @Query('organizationEyeId') organizationEyeId: string,
-  ) {
+  async install(@Query('organizationEyeId') organizationEyeId: string) {
     if (!organizationEyeId) {
       throw new BadRequestException('organizationEyeId is required');
     }
@@ -89,9 +87,11 @@ export class JiraAuthController {
       // Decode state
       let stateObj: { orgEyeId?: string } | undefined;
       try {
-        const parsed = JSON.parse(Buffer.from(state, 'base64').toString('utf8')) as unknown;
+        const parsed = JSON.parse(
+          Buffer.from(state, 'base64').toString('utf8'),
+        ) as unknown;
         if (typeof parsed === 'object' && parsed !== null) {
-          stateObj = parsed as { orgEyeId?: string };
+          stateObj = parsed;
         }
       } catch {
         throw new BadRequestException('Invalid state format');
@@ -139,13 +139,15 @@ export class JiraAuthController {
       }
 
       // Fetch accessible resources to get site info
-      const resourcesResponse = await axios.get<{
-        id: string;
-        url: string;
-        name: string;
-        scopes: string[];
-        avatarUrl: string;
-      }[]>('https://api.atlassian.com/oauth/token/accessible-resources', {
+      const resourcesResponse = await axios.get<
+        {
+          id: string;
+          url: string;
+          name: string;
+          scopes: string[];
+          avatarUrl: string;
+        }[]
+      >('https://api.atlassian.com/oauth/token/accessible-resources', {
         headers: {
           Authorization: `Bearer ${access_token}`,
         },
@@ -232,9 +234,7 @@ export class JiraAuthController {
         data: { status: 'connected' },
       });
 
-      return res.redirect(
-        `${frontendUrl}/eyes/jira/redirect`,
-      );
+      return res.redirect(`${frontendUrl}/eyes/jira/redirect`);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         this.logger.error(
