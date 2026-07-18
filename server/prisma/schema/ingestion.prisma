@@ -133,6 +133,7 @@ model CollectionRun {
   itemsIgnored      Int                 @default(0) @map("items_ignored")
   errorCode         String?             @map("error_code") @db.VarChar(100)
   errorMessage      String?             @map("error_message") @db.Text
+  metadata          Json?
   createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
 
   organizationEye OrganizationEye     @relation(fields: [organizationEyeId], references: [id], onDelete: Cascade)

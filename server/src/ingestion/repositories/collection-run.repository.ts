@@ -16,8 +16,23 @@ export class CollectionRunRepository {
     eyeType: string;
     provider: string;
     collectionMethod: CollectionMethod;
+    metadata?: any;
   }) {
     return this.prisma.collectionRun.create({ data });
+  }
+
+  async updateProgress(
+    id: string,
+    stats: { itemsFetched: number; itemsStored: number; itemsIgnored: number },
+    metadata: any,
+  ) {
+    return this.prisma.collectionRun.update({
+      where: { id },
+      data: {
+        ...stats,
+        metadata,
+      },
+    });
   }
 
   async markCompleted(
