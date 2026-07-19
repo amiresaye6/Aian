@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderKeyDbMap } from './github-connection.constants';
 import { ConfigModule } from '@nestjs/config/dist/config.module';
 import { CollectionModule } from '../../ingestion/collection/collection.module';
+import { GithubWebhookController } from './github-webhook.controller';
 
 /**
  * The GitHub Integration Module.
@@ -24,7 +25,7 @@ import { CollectionModule } from '../../ingestion/collection/collection.module';
  */
 @Module({
   imports: [ConfigModule],
-  controllers: [GithubAuthController],
+  controllers: [GithubAuthController, GithubWebhookController],
   providers: [GithubClientService, GithubWebhookValidator, GitHubAdapterService],
   exports: [GithubClientService, GitHubAdapterService],
 })

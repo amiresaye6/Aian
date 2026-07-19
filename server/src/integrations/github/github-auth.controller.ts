@@ -116,6 +116,12 @@ export class GithubAuthController {
 
     // 6. Encrypt and save the connection using the shared repository.
     try {
+    const webhookSecret = this.configService.get<string>('GITHUB_APP_WEBHOOK_SECRET');
+    if (!webhookSecret) {
+    throw new InternalServerErrorException(
+      'GITHUB_WEBHOOK_SECRET is not configured on the server',
+    );
+  }
     const existingConnection = await this.connectionRepo.findByOrganizationEyeId(organizationEyeId);
     if (existingConnection) {
       await this.connectionRepo.update(existingConnection.id, {
@@ -126,6 +132,7 @@ export class GithubAuthController {
         tokenExpiresAt,
         scopes: ['contents:read', 'issues:read', 'pull_requests:read'],
         connectedAt: new Date(),
+        webhookSecret: this.encryptionService.encrypt(webhookSecret),
         lastErrorMessage: null,
       });
     } else {
@@ -138,6 +145,7 @@ export class GithubAuthController {
         tokenExpiresAt,
         scopes: ['contents:read', 'issues:read', 'pull_requests:read'],
         connectedAt: new Date(),
+        webhookSecret: this.encryptionService.encrypt(webhookSecret), 
       } as any);
     }
     } catch (error) {
