@@ -1,25 +1,36 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service'
-import { User, UserStatus } from '@prisma/client'
+import { PrismaService } from '../prisma/prisma.service';
+import { User, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prismaService: PrismaService) {}
 
-    async create(fullName:string, email:string, passwordHash:string,status:UserStatus,otpHash:string,otpExpiresAt:Date,roleName='owner'){
-        const role = await this.prismaService.role.findFirst({where:{key:roleName}});
-        const user = await this.prismaService.user.create({
-            data:{fullName,
-                    email,
-                    passwordHash,
-                    status,
-                    otpHash,
-                    otpExpiresAt,
-                    roleId: role?.id
-                }
-            });
-        return user;
-    }
+  async create(
+    fullName: string,
+    email: string,
+    passwordHash: string,
+    status: UserStatus,
+    otpHash: string,
+    otpExpiresAt: Date,
+    roleName = 'owner',
+  ) {
+    const role = await this.prismaService.role.findFirst({
+      where: { key: roleName },
+    });
+    const user = await this.prismaService.user.create({
+      data: {
+        fullName,
+        email,
+        passwordHash,
+        status,
+        otpHash,
+        otpExpiresAt,
+        roleId: role?.id,
+      },
+    });
+    return user;
+  }
 
   async findOneById(id: string) {
     const user = await this.prismaService.user.findUnique({

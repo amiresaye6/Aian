@@ -19,7 +19,7 @@ export class ProviderConnectionRepository {
       where: { id },
       include: {
         organizationEye: { include: { eyeType: true } },
-        provider: true
+        provider: true,
       },
     });
     if (!conn) return null;
@@ -45,7 +45,7 @@ export class ProviderConnectionRepository {
       where: { externalAccountId, providerId },
       include: {
         organizationEye: { include: { eyeType: true } },
-        provider: true
+        provider: true,
       },
     });
     if (!conn) return null;
@@ -57,7 +57,7 @@ export class ProviderConnectionRepository {
       where: { organizationEye: { organizationId } },
       include: {
         organizationEye: { include: { eyeType: true } },
-        provider: true
+        provider: true,
       },
     });
   }
@@ -68,7 +68,7 @@ export class ProviderConnectionRepository {
       organizationEyeId: conn.organizationEyeId,
       organizationId: conn.organizationEye?.organizationId || '',
       providerId: conn.providerId,
-      provider: conn.providerId as any, // Keep for backward compatibility
+      provider: conn.providerId, // Keep for backward compatibility
       providerKey: conn.provider?.key || '',
       eyeType: conn.organizationEye?.eyeType?.key || '',
       status: conn.status,

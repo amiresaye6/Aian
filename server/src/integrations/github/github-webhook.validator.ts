@@ -19,9 +19,8 @@ export class GithubWebhookValidator implements WebhookSignatureValidator {
     rawBody: Buffer,
     secret: string,
   ): Promise<boolean> {
-    const signatureHeader = request.headers[
-      GithubWebhookHeaders.SIGNATURE
-    ] as string | undefined;
+    const signatureHeader = request.headers[GithubWebhookHeaders.SIGNATURE] as
+      string | undefined;
 
     if (!signatureHeader) {
       this.logger.warn('Missing X-Hub-Signature-256 header on GitHub webhook');

@@ -37,12 +37,16 @@ export class GithubAuthController {
    * this installation belongs to once GitHub redirects back.
    */
   @Get('install')
-  install(@Query('organizationEyeId') organizationEyeId: string, @Res() res: Response) {
+  install(
+    @Query('organizationEyeId') organizationEyeId: string,
+    @Res() res: Response,
+  ) {
     if (!organizationEyeId) {
       throw new BadRequestException('organizationEyeId is required');
     }
 
-    const appName = this.configService.get<string>('GITHUB_APP_NAME') ?? 'aian-dev-donia';
+    const appName =
+      this.configService.get<string>('GITHUB_APP_NAME') ?? 'aian-dev-donia';
     const installUrl = `${GithubApiUrls.APP_INSTALL}/${appName}/installations/new?state=${organizationEyeId}`;
 
     return res.redirect(installUrl);

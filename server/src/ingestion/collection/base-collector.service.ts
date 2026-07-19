@@ -78,7 +78,7 @@ export class BaseCollectorService {
         };
 
         // Casting to any to bypass Prisma's strict JSON type checks for now
-        await this.knowledgeItemRepo.create(itemToStore as any);
+        await this.knowledgeItemRepo.create(itemToStore);
         itemsStored++;
       }
 

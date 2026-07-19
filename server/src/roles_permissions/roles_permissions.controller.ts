@@ -1,14 +1,14 @@
-import { 
-  Controller, 
-  UseGuards, 
-  Get, 
-  Post, 
-  Put, 
-  Body, 
-  Param, 
-  ParseUUIDPipe, 
+import {
+  Controller,
+  UseGuards,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  ParseUUIDPipe,
   Delete,
-  Patch
+  Patch,
 } from '@nestjs/common';
 import { RolesPermissionsService } from './roles_permissions.service';
 import { CurrentUser } from '../decorators/current-user.decorator';

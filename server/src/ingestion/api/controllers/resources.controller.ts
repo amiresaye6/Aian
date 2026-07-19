@@ -73,9 +73,7 @@ export class ResourcesController {
     // 2. Validate that every requested ID actually exists on the provider
     for (const id of body.resourceIds) {
       if (!resourceMap.has(id)) {
-        throw new BadRequestException(
-          `Invalid resource ID provided: ${id}`,
-        );
+        throw new BadRequestException(`Invalid resource ID provided: ${id}`);
       }
     }
 
@@ -99,17 +97,13 @@ export class ResourcesController {
     // Upsert the chosen resources
     for (const id of body.resourceIds) {
       const liveResource = resourceMap.get(id)!;
-      const updated = await this.selectionRepo.upsert(
-        connectionId,
-        id,
-        {
-          name: liveResource.name,
-          resourceType: liveResource.resourceType,
-          metadata: liveResource.metadata as any,
-          isSelected: true,
-          isActive: true,
-        },
-      );
+      const updated = await this.selectionRepo.upsert(connectionId, id, {
+        name: liveResource.name,
+        resourceType: liveResource.resourceType,
+        metadata: liveResource.metadata as any,
+        isSelected: true,
+        isActive: true,
+      });
       results.push(updated);
 
       if (newlySelectedIds.includes(id)) {
