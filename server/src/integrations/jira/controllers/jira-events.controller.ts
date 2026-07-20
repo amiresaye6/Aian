@@ -10,6 +10,7 @@ import {
 import type { RawBodyRequest } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { WebhookService } from '../../../ingestion/collection/webhooks/webhook.service';
+import { ProviderResourceSelectionRepository } from '../../../ingestion/repositories/provider-resource-selection.repository';
 
 @Controller('integrations/jira')
 export class JiraEventsController {
@@ -18,6 +19,7 @@ export class JiraEventsController {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly webhookService: WebhookService,
+    private readonly resourceSelectionRepo: ProviderResourceSelectionRepository,
   ) {}
 
   @Post('events')
@@ -47,6 +49,17 @@ export class JiraEventsController {
     this.logger.debug('connectionId:' + connectionId);
 
     if (connectionId !== 'null') {
+      const body = req.body as any;
+      if (body?.issue?.fields?.project?.id) {
+        const projectId = body.issue.fields.project.id.toString();
+        const selectedResources = await this.resourceSelectionRepo.findSelectedByConnectionId(connectionId);
+        const isSelected = selectedResources.some((r) => r.externalResourceId === projectId);
+        if (!isSelected) {
+          this.logger.debug(`Ignoring event for unselected project ID ${projectId}`);
+          return { received: true, ignored: true };
+        }
+      }
+
       await this.webhookService.processWebhook(connectionId, req as any);
     } else {
       this.logger.warn('Received Jira webhook but no connection could be found.');
