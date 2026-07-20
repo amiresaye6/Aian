@@ -87,7 +87,7 @@ export class SlackEventsController {
 
     // Delegate to the existing global webhook pipeline.
     // This reuses signature validation, dispatch, normalization — everything.
-    await this.webhookService.processWebhook(connection.id, req as any);
+    await this.webhookService.processWebhook(connection.id, req);
 
     return { received: true };
   }

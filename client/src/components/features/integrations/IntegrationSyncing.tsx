@@ -4,8 +4,9 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Cpu, FileText, MessageSquare, Users, Sparkles } from "lucide-react";
 import { AnimatedEye } from "./components/AnimatedEye";
-import { getProvider } from "./providers";
 import { useRouter } from "next/navigation";
+import { startHistoricalSync, getHistoricalSyncStatus, ProviderKey } from "@/api/integrations";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 
 const STAGES = [
   { label: "Discovering resources", icon: Cpu, share: 8 },
@@ -16,32 +17,64 @@ const STAGES = [
 ];
 
 export function IntegrationSyncing({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
+  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const provider = getProviderByKey(providerKey);
   const router = useRouter();
   const [progress, setProgress] = useState(0);
-  const [logs, setLogs] = useState<string[]>([
-    `[00:00] Handshake with ${provider.name} …`,
-    `[00:01] Verified scopes: ${provider.scopes.slice(0, 2).join(", ")} …`,
-  ]);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setProgress((p) => {
-        const next = Math.min(100, p + Math.random() * 2.6 + 0.6);
-        if (next >= 100) {
-          clearInterval(id);
-          setTimeout(
-            () => router.push(`/eyes/${providerKey}/details`),
-            900,
-          );
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
+  const connectionId = provider?.connectionId;
+
+  const [logs, setLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!connectionId) return;
+
+    let id: any;
+
+    const startAndPoll = async () => {
+      try {
+        await startHistoricalSync(providerKey as ProviderKey, connectionId);
+      } catch (err) {
+        console.log("Sync might already be running", err);
+      }
+
+      id = setInterval(async () => {
+        try {
+          const status = await getHistoricalSyncStatus(providerKey as ProviderKey, connectionId);
+          if (status?.progress) {
+            const current = status.progress.totalItemsSynced || 0;
+            const target = status.progress.totalItemsExpected || 100;
+            let percent = (current / target) * 100;
+            if (percent > 100) percent = 100;
+            
+            setProgress(percent);
+            
+            if (status.status === 'completed' || percent >= 100) {
+              clearInterval(id);
+              setTimeout(() => router.push(`/eyes/${providerKey}/details`), 900);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to check sync status", err);
         }
-        return next;
-      });
-    }, 220);
+      }, 2000);
+    };
+
+    startAndPoll();
+
     return () => clearInterval(id);
-  }, [providerKey, router]);
+  }, [connectionId, providerKey, router]);
 
   useEffect(() => {
+    if (!provider) return;
+    setLogs([
+      `[00:00] Handshake with ${provider.name} …`,
+      `[00:01] Verified scopes: ${provider.scopes.slice(0, 2).join(", ")} …`,
+    ]);
     const id = setInterval(() => {
       const t = new Date();
       const ts = `${String(t.getMinutes()).padStart(2, "0")}:${String(t.getSeconds()).padStart(2, "0")}`;
@@ -54,7 +87,9 @@ export function IntegrationSyncing({ providerKey }: { providerKey: string }) {
       setLogs((prev) => [samples[Math.floor(Math.random() * samples.length)], ...prev].slice(0, 40));
     }, 700);
     return () => clearInterval(id);
-  }, []);
+  }, [provider]);
+
+  if (!provider) return null;
 
   let acc = 0;
   const stageStates = STAGES.map((s) => {

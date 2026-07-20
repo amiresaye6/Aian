@@ -4,14 +4,11 @@ import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ArrowRight, Users, CheckCircle2, Hash, Lock, Loader2, AlertTriangle } from "lucide-react";
 import { ProviderHero } from "./components/ProviderHero";
-import { getProvider } from "./providers";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEyeConnection } from "@/hooks/useEyeConnection";
-import { useProviderResources } from "@/hooks/useProviderResources";
-import { saveSelectedResource, ProviderKey } from "@/api/integrations";
+import { getAvailableResources, getSelectedResources, saveSelectedResources, ProviderKey } from "@/api/integrations";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 
 const PROVIDER_EYE_TYPE: Record<string, string> = {
   github: "coding",
@@ -32,67 +29,72 @@ type NormalizedResource = {
 // };
 
 export function IntegrationResources({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
+  const { getProviderByKey, fetchIntegrations, isLoading } = useIntegrationsStore();
+  const provider = getProviderByKey(providerKey);
   const router = useRouter();
   const [q, setQ] = useState("");
-  const queryClient = useQueryClient();
+  const [availableResources, setAvailableResources] = useState<any[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  //   const [selected, setSelected] = useState<Set<string>>(
-  //     new Set(provider.sampleResources.slice(0, 4).map((r) => r.name)),
-  //   );
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
-  const eyeType = PROVIDER_EYE_TYPE[providerKey];
-  const { connectionId } = useEyeConnection(eyeType);
-  const {
-    data: rawResources,
-    isLoading,
-    isError,
-  } = useProviderResources(connectionId);
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
 
-  // Normalize backend shape (externalResourceId, metadata.private) into
-  // the shape this UI renders. No fabricated fields (members/activity
-  // removed — GitHub's API doesn't provide them).
-  const resources: NormalizedResource[] = useMemo(() => {
-    if (!rawResources) return [];
-    return rawResources.map((r: any) => ({
-      id: r.externalResourceId,
-      name: r.name,
-      kind: r.metadata?.private ? "private" : "public",
-    }));
-  }, [rawResources]);
+  const connectionId = provider?.connectionId;
+
+  useEffect(() => {
+    if (connectionId) {
+      Promise.all([
+        getAvailableResources(providerKey as ProviderKey, connectionId),
+        getSelectedResources(providerKey as ProviderKey, connectionId)
+      ]).then(([available, selectedRes]) => {
+        setAvailableResources(available);
+        setSelected(new Set(selectedRes.map((r: any) => r.externalResourceId || r.id)));
+        setLoading(false);
+      }).catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [connectionId, providerKey, isLoading]);
 
   const filtered = useMemo(
-    () => resources.filter((r) => r.name.toLowerCase().includes(q.toLowerCase())),
-    [resources, q],
+    () =>
+      availableResources.filter((r) =>
+        r.name.toLowerCase().includes(q.toLowerCase()),
+      ),
+    [availableResources, q],
   );
 
-  //   const filtered = useMemo(
-  //     () =>
-  //       provider.sampleResources.filter((r) =>
-  //         r.name.toLowerCase().includes(q.toLowerCase()),
-  //       ),
-  //     [provider, q],
-  //   );
-
-  //   const toggle = (n: string) => {
-  //     const s = new Set(selected);
-  //     s.has(n) ? s.delete(n) : s.add(n);
-  //     setSelected(s);
-  //   };
   const toggle = (id: string) => {
     const s = new Set(selected);
     s.has(id) ? s.delete(id) : s.add(id);
     setSelected(s);
   };
 
-  const saveMutation = useMutation({
-    mutationFn: () =>
-      saveSelectedResource(connectionId as string, Array.from(selected)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard", "owner"] });
-      router.push(`/eyes/${providerKey}/sync-config`);
-    },
-  });
+  const handleSave = async () => {
+    if (connectionId) {
+      setIsSaving(true);
+      setSaveError(false);
+      try {
+        await saveSelectedResources(providerKey as ProviderKey, connectionId, Array.from(selected));
+        router.push(`/eyes/${providerKey}/sync-config`);
+      } catch (err) {
+        console.error("Failed to save resources", err);
+        setSaveError(true);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
+
+  if (!provider) return null;
+
   return (
     <div className="w-full">
       <ProviderHero
@@ -122,8 +124,7 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setSelected(new Set(resources.map((r) => r.id)))}
-                  disabled={isLoading || resources.length === 0}
+                  onClick={() => setSelected(new Set(availableResources.map((r) => r.externalResourceId || r.id)))}
                   className="rounded-lg border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-2.5 py-1.5 text-[11.5px] text-muted-foreground hover:text-foreground"
                 >
 
@@ -149,42 +150,22 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
               />
             </div>
 
-            {isLoading && (
-              <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-[12.5px]">Fetching {provider.resourceLabel.toLowerCase()}…</span>
-              </div>
-            )}
-
-            {isError && !isLoading && (
-              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 py-10 text-center">
-                <AlertTriangle className="h-5 w-5 text-[color:var(--danger)]" />
-                <span className="text-[12.5px] text-foreground">
-                  Couldn't load your {provider.resourceLabel.toLowerCase()}. Please try again.
-                </span>
-              </div>
-            )}
-
-            {!isLoading && !isError && resources.length === 0 && (
-              <div className="flex flex-col items-center justify-center gap-2 py-16 text-center text-muted-foreground">
-                <span className="text-[12.5px]">
-                  No {provider.resourceLabel.toLowerCase()} found for this installation.
-                </span>
-              </div>
-            )}
-
-            {!isLoading && !isError && filtered.length > 0 && (
-              <div className="max-h-[520px] space-y-1.5 overflow-y-auto pr-1">
-                {filtered.map((r, i) => {
-                  const isPrivate = r.kind === "private";
-                  const on = selected.has(r.id);
+            <div className="max-h-[520px] space-y-1.5 overflow-y-auto pr-1">
+              {loading ? (
+                <div className="py-8 text-center text-[13px] text-muted-foreground">Loading resources...</div>
+              ) : filtered.length === 0 ? (
+                <div className="py-8 text-center text-[13px] text-muted-foreground">No resources found.</div>
+              ) : (
+                filtered.map((r, i) => {
+                  const isPrivate = r.isPrivate;
+                  const on = selected.has(r.externalResourceId || r.id);
                   return (
                     <motion.button
-                      key={r.id}
+                      key={r.externalResourceId || r.id}
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.02 }}
-                      onClick={() => toggle(r.id)}
+                      onClick={() => toggle(r.externalResourceId || r.id)}
                       className={cn(
                         "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all",
                         on
@@ -205,22 +186,24 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <div className="truncate text-[13.5px] font-medium text-foreground">{r.name}</div>
-                          <span className="rounded-md bg-black/[0.04] dark:bg-white/[0.04] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                            {r.kind}
-                          </span>
+                          {r.type && (
+                            <span className="rounded-md bg-black/[0.04] dark:bg-white/[0.04] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                              {r.type}
+                            </span>
+                          )}
                         </div>
-  {/* //                       <div className="mt-0.5 flex items-center gap-3 text-[11.5px] text-muted-foreground">
-  //                         {r.members !== undefined && (
-  //                           <span className="inline-flex items-center gap-1">
-  //                             <Users className="h-3 w-3" /> {r.members}
-  //                           </span>
-  //                         )}
-  //                         {r.activity && (
-  //                           <span className={cn("uppercase tracking-[0.12em]", ACT_TONE[r.activity] || "text-muted-foreground")}>
-  //                             {r.activity} activity
-  //                           </span>
-  //                         )}
-  //                       </div> */}
+                        <div className="mt-0.5 flex items-center gap-3 text-[11.5px] text-muted-foreground">
+                          {r.memberCount !== undefined && (
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="h-3 w-3" /> {r.memberCount}
+                            </span>
+                          )}
+                          {r.url && (
+                            <span className="truncate max-w-[200px]">
+                              {r.url}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div
                         className={cn(
@@ -234,9 +217,9 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
                       </div>
                     </motion.button>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </div>
         </div>
 
@@ -249,14 +232,13 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
             <div className="mt-1 font-display text-[32px] font-semibold text-foreground">
               {selected.size}
               <span className="ml-2 text-[14px] font-medium text-muted-foreground">
-                {/* //                 / {provider.sampleResources.length} */}
-                / {resources.length}
+                / {availableResources.length}
               </span>
             </div>
             <div className="mt-1 text-[12.5px] text-muted-foreground">
               {provider.resourceLabel.toLowerCase()} will feed this Eye.
             </div>
-            {saveMutation.isError && (
+            {saveError && (
               <div className="mt-4 flex items-start gap-2 rounded-xl border border-[color:var(--danger)]/30 bg-[color:var(--danger)]/10 p-3">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--danger)]" />
                 <span className="text-[11.5px] text-foreground">
@@ -275,12 +257,11 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
   //             </div> */}
 
             <button
-                          // onClick={() => router.push(`/eyes/${providerKey}/sync-config`)}
-              onClick={() => saveMutation.mutate()}
-              disabled={selected.size === 0 || saveMutation.isPending || isLoading}
+              onClick={handleSave}
+              disabled={selected.size === 0 || !connectionId}
               className="btn-gold btn-gold-hover mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none text-[#17130A]"
             >
-              {saveMutation.isPending ? (
+              {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>

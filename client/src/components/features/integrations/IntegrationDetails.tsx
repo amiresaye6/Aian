@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Activity,
   Settings2,
@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { ProviderHero } from "./components/ProviderHero";
 import { EyeHealthRing } from "./components/EyeHealthRing";
-import { getProvider, formatAgo, formatIn } from "./providers";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
+import { formatAgo, formatIn } from "./providers";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -28,7 +29,14 @@ const TABS = [
 ];
 
 export function IntegrationDetails({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
+  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const provider = getProviderByKey(providerKey);
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
+  if (!provider) return null;
   const [tab, setTab] = useState("overview");
 
   return (

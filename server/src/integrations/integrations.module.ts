@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ProviderClientFactory } from './provider-client.factory';
 import { SlackModule } from './slack/slack.module';
 import { GithubModule } from './github/github.module';
+import { JiraModule } from './jira/jira.module';
 import { ZoomModule } from './zoom/zoom.module';
 
 /**
@@ -13,7 +14,7 @@ import { ZoomModule } from './zoom/zoom.module';
  */
 @Global()
 @Module({
-  imports: [SlackModule, GithubModule, ZoomModule],
+  imports: [SlackModule, GithubModule, JiraModule, ZoomModule],
   providers: [ProviderClientFactory],
   exports: [ProviderClientFactory],
 })

@@ -27,7 +27,7 @@ export class WebhookController {
     @Req() req: RawBodyRequest<any>,
   ) {
     // Pass the request to the service for validation and dispatch
-    await this.webhookService.processWebhook(connectionId, req as any);
+    await this.webhookService.processWebhook(connectionId, req);
     // We always respond 200 OK immediately after validation
     // to prevent the provider from retrying and backing up their queues.
     return { received: true };

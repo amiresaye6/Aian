@@ -12,7 +12,7 @@ export const GithubApiUrls = {
 } as const;
 
 export const GithubWebhookHeaders = {
-  EVENT_TYPE: 'x-github-event',       
+  EVENT_TYPE: 'x-github-event',
   SIGNATURE: 'x-hub-signature-256',
   DELIVERY_ID: 'x-github-delivery',
 } as const;

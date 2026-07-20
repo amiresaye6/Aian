@@ -1,13 +1,16 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Clock, Bell, Trash2, ArrowRight, Zap, Calendar } from "lucide-react";
 import { ProviderHero } from "./components/ProviderHero";
-import { getProvider } from "./providers";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { updateProcessingSettings } from "@/api/integrations/processing-settings";
+import { updateSyncConfig, ProviderKey } from "@/api/integrations";
+import { useAuthStore } from "@/store/auth/auth.store";
 
 const FREQ = [
   { key: "realtime", label: "Real-time", desc: "Stream events as they happen.", icon: Zap, badge: "Recommended" },
@@ -31,14 +34,42 @@ const HISTORY = [
 ];
 
 export function IntegrationSyncConfig({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
+  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const provider = getProviderByKey(providerKey);
   const router = useRouter();
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
   const [freq, setFreq] = useState("realtime");
   const [retention, setRetention] = useState("365");
   const [history, setHistory] = useState("90");
   const [notify, setNotify] = useState(true);
   const [pii, setPii] = useState(true);
   const [ephemeral, setEphemeral] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { orgId } = useAuthStore();
+
+  if (!provider) return null;
+
+  const connectionId = provider?.connectionId;
+
+  const handleSave = async () => {
+    if (!connectionId || !orgId) return;
+    setSaving(true);
+    try {
+      await updateSyncConfig(providerKey as ProviderKey, connectionId, { historyBackfillDays: parseInt(history), retentionDays: parseInt(retention) });
+      await updateProcessingSettings(orgId, { 
+        isAutoProcessingEnabled: true,
+        // map other settings to whatever backend expects 
+      });
+      router.push(`/eyes/${providerKey}/syncing`);
+    } catch (e) {
+      console.error(e);
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="w-full">
@@ -160,10 +191,11 @@ export function IntegrationSyncConfig({ providerKey }: { providerKey: string }) 
             </div>
 
             <button
-              onClick={() => router.push(`/eyes/${providerKey}/syncing`)}
-              className="btn-gold btn-gold-hover mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-[#17130A]"
+              onClick={handleSave}
+              disabled={saving}
+              className="btn-gold btn-gold-hover mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold text-[#17130A] disabled:opacity-50"
             >
-              Start initial sync <ArrowRight className="h-4 w-4" />
+              {saving ? "Saving..." : "Start initial sync"} <ArrowRight className="h-4 w-4" />
             </button>
             <Link
               href={`/eyes/${providerKey}/resources`}

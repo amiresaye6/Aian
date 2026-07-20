@@ -42,7 +42,7 @@ export class CollectionRunRepository {
     return this.prisma.collectionRun.update({
       where: { id },
       data: {
-        status: 'completed' as CollectionRunStatus,
+        status: 'completed',
         finishedAt: new Date(),
         ...stats,
       },
@@ -53,7 +53,7 @@ export class CollectionRunRepository {
     return this.prisma.collectionRun.update({
       where: { id },
       data: {
-        status: 'failed' as CollectionRunStatus,
+        status: 'failed',
         finishedAt: new Date(),
         errorCode,
         errorMessage,

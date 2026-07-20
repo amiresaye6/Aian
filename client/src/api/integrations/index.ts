@@ -1,6 +1,6 @@
 import api from '../axios';
 
-export type ProviderKey = 'jira' | 'github' | 'slack' | 'zoom';
+export type ProviderKey = 'jira' | 'github' | 'slack' | 'zoom' | string;
 
 // eyeType values must match backend EyeType enum keys (lowercase, per DB seed)
 export type EyeType = 'chat' | 'meeting' | 'task' | 'coding';
@@ -12,10 +12,7 @@ const PROVIDER_TO_EYE_TYPE: Record<ProviderKey, EyeType> = {
   github: 'coding',
 };
 /**
-  API Mapping
- * If the backend team builds entirely separate controllers for each Eye 
- * (e.g. /api/jira/... vs /api/slack/...), we map the provider to its specific route prefix here.
- * This keeps the React components completely generic.
+ * Global endpoints that don't depend on a specific provider key
  */
 const getBaseUrl = (provider: ProviderKey): string => {
   const ENDPOINTS: Record<ProviderKey, string> = {
@@ -28,36 +25,37 @@ const getBaseUrl = (provider: ProviderKey): string => {
   return ENDPOINTS[provider] || `/integrations/${provider}`;
 };
 
+// Gets all connections for an organization
+export const getConnections = async (organizationId: string) => {
+  const response = await api.get(`/eyes?organizationId=${organizationId}`);
+  return response.data;
+};
 
-/**
- * 1. Connect Page (/eyes/[provider]/connect)
- * Gets the OAuth connection URL and initial scopes required.
- */
-export const getConnectUrl = async (provider: ProviderKey) => {
-  const response = await api.get(`${getBaseUrl(provider)}/connect-url`);
+// Gets details for a specific connection
+export const getConnection = async (connectionId: string) => {
+  const response = await api.get(`/eyes/${connectionId}`);
+  return response.data;
+};
+
+// Deletes/revokes a connection
+export const deleteConnection = async (connectionId: string) => {
+  const response = await api.delete(`/eyes/${connectionId}`);
   return response.data;
 };
 
 /**
- * 2. Redirect Page (/eyes/[provider]/redirect)
- * Exchanges the OAuth code for an access token to finalize authorization.
+ * Provider-specific endpoints
  */
-export const authorizeIntegration = async (provider: ProviderKey, code: string) => {
-  const response = await api.post(`${getBaseUrl(provider)}/authorize`, { code });
-  return response.data;
+
+// 1. Connect Page - Gets the install/OAuth redirect URL
+export const getInstallUrl = (provider: ProviderKey, organizationEyeId: string): string => {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1234/api/v1';
+  return `${API_URL}/integrations/${provider}/install?organizationEyeId=${organizationEyeId}`;
 };
 
-/**
- * 3. Resources Page (/eyes/[provider]/resources)
- * Fetches the available resources (repos, channels, projects) from the provider.
- */
-export const getAvailableResources = async (provider: ProviderKey) => {
-  const response = await api.get(`${getBaseUrl(provider)}/resources`);
-  return response.data;
-};
-
-export const saveSelectedResources = async (provider: ProviderKey, selectedIds: string[]) => {
-  const response = await api.post(`${getBaseUrl(provider)}/resources`, { selectedIds });
+// 2. Resources Page - Gets available resources
+export const getAvailableResources = async (provider: ProviderKey, connectionId: string) => {
+  const response = await api.get(`/eyes/${connectionId}/resources/available`);
   return response.data;
 };
 
@@ -117,51 +115,45 @@ export const saveSelectedResource = async (
  */
 export const getSyncConfig = async (provider: ProviderKey) => {
   const response = await api.get(`${getBaseUrl(provider)}/sync-config`);
+// Gets currently selected resources
+export const getSelectedResources = async (provider: ProviderKey, connectionId: string) => {
+  const response = await api.get(`/eyes/${connectionId}/resources/selected`);
   return response.data;
 };
 
-export const updateSyncConfig = async (provider: ProviderKey, config: any) => {
-  const response = await api.patch(`${getBaseUrl(provider)}/sync-config`, config);
+// Saves selected resources
+export const saveSelectedResources = async (provider: ProviderKey, connectionId: string, resourceIds: string[]) => {
+  const response = await api.post(`/eyes/${connectionId}/resources/selected`, { resourceIds });
   return response.data;
 };
 
-/**
- * 5. Syncing Page (/eyes/[provider]/syncing)
- * Starts the initial background sync and polls for progress.
- */
-export const startInitialSync = async (provider: ProviderKey) => {
-  const response = await api.post(`${getBaseUrl(provider)}/sync/start`);
+// 3. Sync Config Page - Updates settings
+export const updateSyncConfig = async (provider: ProviderKey, connectionId: string, config: any) => {
+  const response = await api.put(`/eyes/${connectionId}/settings`, config);
   return response.data;
 };
 
-export const getSyncProgress = async (provider: ProviderKey) => {
-  const response = await api.get(`${getBaseUrl(provider)}/sync/progress`);
+// 4. Syncing Page
+export const startHistoricalSync = async (provider: ProviderKey, connectionId: string) => {
+  const response = await api.post(`/eyes/${connectionId}/sync/historical/start`);
   return response.data;
 };
 
-/**
- * 6. Details Page (/eyes/[provider]/details)
- * Gets the high-level overview, metric counts, and recent knowledge captured.
- */
-export const getIntegrationDetails = async (provider: ProviderKey) => {
-  const response = await api.get(`${getBaseUrl(provider)}/details`);
+export const getHistoricalSyncStatus = async (provider: ProviderKey, connectionId: string) => {
+  const response = await api.get(`/eyes/${connectionId}/sync/historical/status`);
   return response.data;
 };
 
-/**
- * 7. Health Page (/eyes/[provider]/health)
- * Gets heartbeat, latency metrics, and recent sync event logs.
- */
-export const getIntegrationHealth = async (provider: ProviderKey) => {
-  const response = await api.get(`${getBaseUrl(provider)}/health`);
+// 5. Jira Specific - Site Selection
+export const getPendingSites = async (connectionId: string) => {
+  const response = await api.get(`/integrations/jira/pending-sites?connectionId=${connectionId}`);
   return response.data;
 };
 
-/**
- * General Action: Disconnect
- * Revokes the token and removes the integration.
- */
-export const disconnectIntegration = async (provider: ProviderKey) => {
-  const response = await api.delete(`${getBaseUrl(provider)}/disconnect`);
+export const selectJiraSite = async (connectionId: string, selectedCloudId: string) => {
+  const response = await api.post(`/integrations/jira/select-site`, {
+    providerConnectionId: connectionId,
+    selectedCloudId,
+  });
   return response.data;
 };

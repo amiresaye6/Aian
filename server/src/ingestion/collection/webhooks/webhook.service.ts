@@ -35,17 +35,13 @@ export class WebhookService {
       throw new NotFoundException('Connection not found');
     }
 
-    if (!connection.webhookSecret) {
-      throw new BadRequestException(
-        'No webhook secret configured for this connection',
-      );
-    }
-
-    // 2. Decrypt webhook secret
-    const secret = this.encryptionService.decrypt(connection.webhookSecret);
+    // 2. Decrypt webhook secret if it exists
+    const secret = connection.webhookSecret
+      ? this.encryptionService.decrypt(connection.webhookSecret)
+      : '';
 
     // 3. Validate signature using the provider-specific validator
-    const validator = this.validatorFactory.getValidator(connection.provider);
+    const validator = this.validatorFactory.getValidator(connection.providerId);
 
     // req.rawBody is populated by NestJS because we enabled rawBody: true in main.ts
     const rawBody = (req as any).rawBody;
