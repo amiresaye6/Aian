@@ -8,6 +8,7 @@ import { ProviderClientFactory } from '../provider-client.factory';
 import { Provider } from '../contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomEventsController } from './zoom-events.controller';
+import { MeetingBaasService } from './meeting-baas.service';
 
 @Module({
   controllers: [
@@ -17,7 +18,8 @@ import { ZoomEventsController } from './zoom-events.controller';
   providers: [
     ZoomClientService, 
     ZoomAdapterService, 
-    ZoomWebhookValidator
+    ZoomWebhookValidator,
+    MeetingBaasService
   ],
   exports: [
     ZoomClientService, 

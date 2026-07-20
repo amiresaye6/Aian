@@ -2,12 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ProviderClient, ProviderConnection, ProviderResource } from '../contracts';
 import { EncryptionService } from '../../common/encryption.service';
 import axios from 'axios';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ZoomClientService implements ProviderClient {
   private readonly logger = new Logger(ZoomClientService.name);
 
-  constructor(private readonly encryptionService: EncryptionService) {}
+  constructor(
+    private readonly encryptionService: EncryptionService,
+    private readonly prismaService: PrismaService
+  ) {}
 
   /**
    * Verifies if the active connection is healthy and authorized.
@@ -50,7 +54,7 @@ export class ZoomClientService implements ProviderClient {
           Authorization: `Bearer ${accessToken}`,
         },
         params: {
-          type: 'scheduled',
+          type: 'live',
           page_size: 30,
         },
       });

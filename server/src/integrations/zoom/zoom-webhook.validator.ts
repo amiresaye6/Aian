@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { WebhookSignatureValidator } from '../../ingestion/collection/webhooks/webhook-signature-validator.interface';
 import { Request } from 'express';
 import * as crypto from 'crypto';
+import { MeetingBaasService } from './meeting-baas.service';
 
 /**
  * Validates incoming Zoom webhook payloads and handles URL verification challenges.
@@ -14,6 +15,10 @@ import * as crypto from 'crypto';
 @Injectable()
 export class ZoomWebhookValidator implements WebhookSignatureValidator {
   private readonly logger = new Logger(ZoomWebhookValidator.name);
+
+  constructor(
+    private readonly meetingBaasService: MeetingBaasService
+  ){}
 
   async validate(
     req: Request,
@@ -45,10 +50,11 @@ export class ZoomWebhookValidator implements WebhookSignatureValidator {
       crypto.createHmac('sha256', secret).update(message).digest('hex');
       //console.log('zoom validator worked successfully');
     try {
-      return crypto.timingSafeEqual(
+       return crypto.timingSafeEqual(
         Buffer.from(expectedSignature, 'utf8'),
         Buffer.from(signature, 'utf8'),
       );
+
     } catch (error) {
       this.logger.error('Zoom Webhook Signature comparison mismatch.');
       return false;
