@@ -1,4 +1,5 @@
 import api from '../axios';
+import { useAuthStore } from '@/store/auth/auth.store';
 
 export type ProviderKey = 'jira' | 'github' | 'slack' | 'zoom' | string;
 
@@ -15,22 +16,28 @@ const PROVIDER_TO_EYE_TYPE: Record<ProviderKey, EyeType> = {
  * Global endpoints that don't depend on a specific provider key
  */
 
+// Gets provider metadata from backend
+export const getProvidersMetadata = async () => {
+  const response = await api.get('/providers/metadata');
+  return response.data.data;
+};
+
 // Gets all connections for an organization
 export const getConnections = async (organizationId: string) => {
   const response = await api.get(`/eyes?organizationId=${organizationId}`);
-  return response.data;
+  return response.data.data;
 };
 
 // Gets details for a specific connection
 export const getConnection = async (connectionId: string) => {
   const response = await api.get(`/eyes/${connectionId}`);
-  return response.data;
+  return response.data.data;
 };
 
 // Deletes/revokes a connection
 export const deleteConnection = async (connectionId: string) => {
   const response = await api.delete(`/eyes/${connectionId}`);
-  return response.data;
+  return response.data.data;
 };
 
 /**
@@ -46,42 +53,67 @@ export const getInstallUrl = (provider: ProviderKey, organizationEyeId: string):
 // 2. Resources Page - Gets available resources
 export const getAvailableResources = async (provider: ProviderKey, connectionId: string) => {
   const response = await api.get(`/eyes/${connectionId}/resources/available`);
-  return response.data;
+  return response.data.data;
 };
 
 // Gets currently selected resources
-export const getSelectedResources = async (provider: ProviderKey, connectionId: string) => {
-  const response = await api.get(`/eyes/${connectionId}/resources/selected`);
-  return response.data;
-};
+export async function getSelectedResources(providerKey: ProviderKey, connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.get(`/eyes/${connectionId}/resources/selected?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
+
+export async function revokeConnection(connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.delete(`/eyes/${connectionId}?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
+
+export async function getHealth(connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.get(`/eyes/${connectionId}/health?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
+
+export async function getRecentKnowledge(connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.get(`/eyes/${connectionId}/knowledge/recent?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
+
+export async function getKnowledgeStats(connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.get(`/eyes/${connectionId}/knowledge/stats?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
 
 // Saves selected resources
 export const saveSelectedResources = async (provider: ProviderKey, connectionId: string, resourceIds: string[]) => {
   const response = await api.post(`/eyes/${connectionId}/resources/selected`, { resourceIds });
-  return response.data;
+  return response.data.data;
 };
 
 // 3. Sync Config Page - Updates settings
 export const updateSyncConfig = async (provider: ProviderKey, connectionId: string, config: any) => {
   const response = await api.put(`/eyes/${connectionId}/settings`, config);
-  return response.data;
+  return response.data.data;
 };
 
 // 4. Syncing Page
 export const startHistoricalSync = async (provider: ProviderKey, connectionId: string) => {
   const response = await api.post(`/eyes/${connectionId}/sync/historical/start`);
-  return response.data;
+  return response.data.data;
 };
 
 export const getHistoricalSyncStatus = async (provider: ProviderKey, connectionId: string) => {
   const response = await api.get(`/eyes/${connectionId}/sync/historical/status`);
-  return response.data;
+  return response.data.data;
 };
 
 // 5. Jira Specific - Site Selection
 export const getPendingSites = async (connectionId: string) => {
   const response = await api.get(`/integrations/jira/pending-sites?connectionId=${connectionId}`);
-  return response.data;
+  return response.data.data;
 };
 
 export const selectJiraSite = async (connectionId: string, selectedCloudId: string) => {
@@ -89,5 +121,5 @@ export const selectJiraSite = async (connectionId: string, selectedCloudId: stri
     providerConnectionId: connectionId,
     selectedCloudId,
   });
-  return response.data;
+  return response.data.data;
 };
