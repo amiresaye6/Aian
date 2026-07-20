@@ -56,10 +56,14 @@ export class GithubModule implements OnModuleInit {
     }
 
     const providerId = githubProvider.id;
+    const GITHUB_ENUM_KEY = 'GITHUB';
 
     this.clientFactory.registerClient(providerId, this.githubClient);
+    this.clientFactory.registerClient(GITHUB_ENUM_KEY, this.githubClient);
     this.clientFactory.registerAdapter(providerId, this.githubAdapter);
+    this.clientFactory.registerAdapter(GITHUB_ENUM_KEY, this.githubAdapter);
     this.validatorFactory.registerValidator(providerId, this.githubValidator);
+    this.validatorFactory.registerValidator(GITHUB_ENUM_KEY, this.githubValidator);
 
     this.logger.log(`GitHub module registered with provider ID: ${providerId}`);
   }
