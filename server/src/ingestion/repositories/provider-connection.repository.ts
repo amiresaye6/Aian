@@ -68,7 +68,7 @@ export class ProviderConnectionRepository {
       organizationEyeId: conn.organizationEyeId,
       organizationId: conn.organizationEye?.organizationId || '',
       providerId: conn.providerId,
-      provider: conn.providerId, // Keep for backward compatibility
+      provider: conn.provider?.key ? conn.provider.key.toUpperCase() : conn.providerId, // Mapped to Provider enum value (e.g. 'JIRA')
       providerKey: conn.provider?.key || '',
       eyeType: conn.organizationEye?.eyeType?.key || '',
       status: conn.status,

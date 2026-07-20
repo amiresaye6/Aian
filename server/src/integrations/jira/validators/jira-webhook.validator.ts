@@ -16,8 +16,10 @@ export class JiraWebhookValidator implements WebhookSignatureValidator {
       this.logger.debug('Received Jira webhook validation request');
 
       if (!secret) {
-        this.logger.error('Missing Jira webhook secret for validation');
-        return false;
+        // Jira Cloud OAuth 2.0 (3LO) dynamic webhooks do not support secrets or signatures.
+        // We rely on the unguessable connectionId in the URL for security in this case.
+        this.logger.debug('Jira webhook has no secret configured. Trusting connectionId.');
+        return true;
       }
 
       if (!rawBody || rawBody.length === 0) {

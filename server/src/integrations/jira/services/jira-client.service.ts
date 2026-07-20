@@ -23,6 +23,23 @@ export class JiraClientService implements ProviderClient {
     private readonly configService: ConfigService,
   ) {}
 
+  private async getValidToken(connection: ProviderConnection): Promise<string> {
+    if (
+      connection.tokenExpiresAt &&
+      new Date().getTime() >= connection.tokenExpiresAt.getTime() - 5 * 60000 // 5 min buffer
+    ) {
+      try {
+        const refreshed = await this.refreshCredentials(connection);
+        connection.accessTokenEncrypted = refreshed.accessTokenEncrypted;
+        connection.refreshTokenEncrypted = refreshed.refreshTokenEncrypted || connection.refreshTokenEncrypted;
+        connection.tokenExpiresAt = refreshed.tokenExpiresAt;
+      } catch (err) {
+        this.logger.warn(`Proactive token refresh failed for connection ${connection.id}`);
+      }
+    }
+    return this.encryptionService.decrypt(connection.accessTokenEncrypted);
+  }
+
   private decryptToken(connection: ProviderConnection): string {
     return this.encryptionService.decrypt(connection.accessTokenEncrypted);
   }
@@ -42,18 +59,19 @@ export class JiraClientService implements ProviderClient {
     return `https://api.atlassian.com/ex/jira/${connection.externalAccountId}/rest/api/3`;
   }
 
-  private getAgileBaseUrl(connection: ProviderConnection): string {
-    if (!connection.externalAccountId) {
-      throw new Error('Jira connection is missing externalAccountId (cloudId)');
-    }
-    return `https://api.atlassian.com/ex/jira/${connection.externalAccountId}/rest/agile/1.0`;
-  }
+  // Deprecated since we only track Projects now
+  // private getAgileBaseUrl(connection: ProviderConnection): string {
+  //   if (!connection.externalAccountId) {
+  //     throw new Error('Jira connection is missing externalAccountId (cloudId)');
+  //   }
+  //   return `https://api.atlassian.com/ex/jira/${connection.externalAccountId}/rest/agile/1.0`;
+  // }
 
   async verifyConnection(
     connection: ProviderConnection,
   ): Promise<ConnectionVerificationResult> {
     try {
-      const token = this.decryptToken(connection);
+      const token = await this.getValidToken(connection);
       const baseUrl = this.getBaseUrl(connection);
 
       const response = await axios.get<{
@@ -99,7 +117,7 @@ export class JiraClientService implements ProviderClient {
     const resources: ProviderResource[] = [];
 
     try {
-      const token = this.decryptToken(connection);
+      const token = await this.getValidToken(connection);
       const baseUrl = this.getBaseUrl(connection);
       const headers = this.buildHeaders(token);
 
@@ -128,69 +146,69 @@ export class JiraClientService implements ProviderClient {
         });
       }
 
-      // Fetch Boards
-      const agileBaseUrl = this.getAgileBaseUrl(connection);
+      // // Fetch Boards
+      // const agileBaseUrl = this.getAgileBaseUrl(connection);
 
-      try {
-        const boardsResponse = await axios.get<{
-          values: {
-            id: number;
-            name: string;
-            type: string;
-            location?: { projectId: number };
-          }[];
-        }>(`${agileBaseUrl}/board`, { headers });
+      // try {
+      //   const boardsResponse = await axios.get<{
+      //     values: {
+      //       id: number;
+      //       name: string;
+      //       type: string;
+      //       location?: { projectId: number };
+      //     }[];
+      //   }>(`${agileBaseUrl}/board`, { headers });
 
-        const boards = boardsResponse.data.values || [];
-        for (const board of boards) {
-          resources.push({
-            externalResourceId: board.id.toString(),
-            name: board.name,
-            resourceType: 'board',
-            metadata: {
-              type: board.type,
-              projectId: board.location?.projectId,
-            },
-          });
-        }
-      } catch (boardError: unknown) {
-        this.logger.warn(
-          `Could not fetch Jira boards for connection ${connection.id}`,
-          boardError instanceof AxiosError
-            ? boardError.response?.data
-            : boardError,
-        );
-      }
+      //   const boards = boardsResponse.data.values || [];
+      //   for (const board of boards) {
+      //     resources.push({
+      //       externalResourceId: board.id.toString(),
+      //       name: board.name,
+      //       resourceType: 'board',
+      //       metadata: {
+      //         type: board.type,
+      //         projectId: board.location?.projectId,
+      //       },
+      //     });
+      //   }
+      // } catch (boardError: unknown) {
+      //   this.logger.warn(
+      //     `Could not fetch Jira boards for connection ${connection.id}`,
+      //     boardError instanceof AxiosError
+      //       ? boardError.response?.data
+      //       : boardError,
+      //   );
+      // }
 
-      // Fetch Users
-      try {
-        const usersResponse = await axios.get<{
-          accountId: string;
-          displayName: string;
-          accountType: string;
-          avatarUrls?: Record<string, string>;
-        }[]>(`${baseUrl}/users/search`, { headers });
+      // // Fetch Users
+      // try {
+      //   const usersResponse = await axios.get<{
+      //     accountId: string;
+      //     displayName: string;
+      //     accountType: string;
+      //     avatarUrls?: Record<string, string>;
+      //   }[]>(`${baseUrl}/users/search`, { headers });
 
-        const users = usersResponse.data || [];
-        for (const user of users) {
-          if (user.accountType === 'atlassian') {
-            resources.push({
-              externalResourceId: user.accountId,
-              name: user.displayName,
-              resourceType: 'user',
-              metadata: {
-                accountType: user.accountType,
-                avatarUrls: user.avatarUrls,
-              },
-            });
-          }
-        }
-      } catch (userError: unknown) {
-        this.logger.warn(
-          `Could not fetch Jira users for connection ${connection.id}`,
-          userError instanceof AxiosError ? userError.response?.data : userError,
-        );
-      }
+      //   const users = usersResponse.data || [];
+      //   for (const user of users) {
+      //     if (user.accountType === 'atlassian') {
+      //       resources.push({
+      //         externalResourceId: user.accountId,
+      //         name: user.displayName,
+      //         resourceType: 'user',
+      //         metadata: {
+      //           accountType: user.accountType,
+      //           avatarUrls: user.avatarUrls,
+      //         },
+      //       });
+      //     }
+      //   }
+      // } catch (userError: unknown) {
+      //   this.logger.warn(
+      //     `Could not fetch Jira users for connection ${connection.id}`,
+      //     userError instanceof AxiosError ? userError.response?.data : userError,
+      //   );
+      // }
 
       return resources;
     } catch (error: unknown) {
@@ -199,6 +217,98 @@ export class JiraClientService implements ProviderClient {
         error instanceof AxiosError ? error.response?.data : error,
       );
       throw new Error('Failed to fetch Jira resources.');
+    }
+  }
+
+  async onResourcesSelected(
+    connection: ProviderConnection,
+    selectedResources: any[],
+  ): Promise<void> {
+    const token = await this.getValidToken(connection);
+    const baseUrl = this.getBaseUrl(connection);
+    const headers = this.buildHeaders(token);
+    const apiUrl = this.configService.get<string>('JIRA_API_URL');
+    if (!apiUrl) {
+      this.logger.error('JIRA_API_URL is missing, cannot register webhooks');
+      return;
+    }
+
+    const webhookUrl = `${apiUrl}/integrations/jira/events?connectionId=${connection.id}`;
+
+    // Prepare a dynamic webhook creation payload for each selected project
+    const webhooks: any[] = selectedResources.map((res) => {
+      const projectKey = res.metadata?.key;
+      return {
+        jqlFilter: `project = ${projectKey || res.externalResourceId}`,
+        events: [
+          'jira:issue_created',
+          'jira:issue_updated',
+          'jira:issue_deleted',
+          'comment_created',
+          'comment_updated',
+          // 'comment_deleted',
+          // 'worklog_created',
+          // 'worklog_updated',
+          // 'worklog_deleted',
+          // 'issuelink_created',
+          // 'issuelink_deleted',
+          // 'attachment_created',
+          // 'attachment_deleted'
+          'comment_deleted'
+        ],
+      };
+    });
+
+    // // Sprint events DO NOT support JQL filtering in Atlassian's API.
+    // // They must be registered globally without a filter.
+    // webhooks.push({
+    //   events: [
+    //     'sprint_created',
+    //     'sprint_updated',
+    //     'sprint_deleted',
+    //     'sprint_started',
+    //     'sprint_closed'
+    //   ]
+    // });
+
+    try {
+      const response = await axios.post(
+        `${baseUrl}/webhook`,
+        {
+          url: webhookUrl,
+          webhooks,
+        },
+        { headers }
+      );
+
+      const createdWebhookIds: number[] = [];
+      const registrationErrors: string[] = [];
+
+      response.data.webhookRegistrationResult?.forEach((r: any) => {
+        if (r.createdWebhookId) {
+          createdWebhookIds.push(r.createdWebhookId);
+        } else if (r.errors) {
+          registrationErrors.push(...r.errors);
+        }
+      });
+
+      if (registrationErrors.length > 0) {
+        this.logger.warn(`Jira rejected some webhook registrations: ${registrationErrors.join(', ')}`);
+      }
+      const currentMetadata = connection.connectionMetadata as any;
+      const existingWebhooks = currentMetadata?.webhookIds || [];
+
+      await this.providerConnectionRepo.updateConnectionMetadata(connection.id, {
+        ...currentMetadata,
+        webhookIds: [...existingWebhooks, ...createdWebhookIds],
+      });
+
+      this.logger.log(`Registered ${createdWebhookIds.length} webhooks for Jira connection ${connection.id}`);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to register Jira webhooks for connection ${connection.id}`,
+        error instanceof AxiosError ? error.response?.data : error,
+      );
     }
   }
 
@@ -259,7 +369,24 @@ export class JiraClientService implements ProviderClient {
       const clientSecret = this.configService.get<string>('JIRA_CLIENT_SECRET');
 
       if (clientId && clientSecret && connection.accessTokenEncrypted) {
-        const token = this.decryptToken(connection);
+        const token = await this.getValidToken(connection);
+
+        // Delete all registered webhooks
+        const metadata = connection.connectionMetadata as any;
+        const webhookIds: number[] = metadata?.webhookIds || [];
+        if (webhookIds.length > 0) {
+          const baseUrl = this.getBaseUrl(connection);
+          try {
+            await axios.delete(`${baseUrl}/webhook`, {
+              headers: this.buildHeaders(token),
+              data: { webhookIds },
+            });
+            this.logger.log(`Deleted ${webhookIds.length} webhooks for Jira connection ${connection.id}`);
+          } catch (webhookErr) {
+            this.logger.warn(`Failed to delete Jira webhooks during revoke: ${webhookErr}`);
+          }
+        }
+
         await axios.post(
           'https://auth.atlassian.com/oauth/token/revoke',
           {
@@ -268,7 +395,9 @@ export class JiraClientService implements ProviderClient {
             token,
           },
         ).catch((err: unknown) => {
-          if (err instanceof Error) {
+          if (axios.isAxiosError(err) && err.response?.status === 404) {
+            this.logger.debug('Jira token revocation endpoint returned 404 (may not be supported).');
+          } else if (err instanceof Error) {
             this.logger.warn(`Failed to revoke Jira token on Atlassian side: ${err.message}`);
           }
         });
@@ -305,7 +434,7 @@ export class JiraClientService implements ProviderClient {
   ): Promise<void> {
     this.logger.log(`Starting historical sync for Jira resource ${resource.externalResourceId}`);
 
-    const token = this.decryptToken(connection);
+    const token = await this.getValidToken(connection);
     const baseUrl = this.getBaseUrl(connection);
     const headers = this.buildHeaders(token);
 
@@ -324,39 +453,20 @@ export class JiraClientService implements ProviderClient {
     const jql = `project = ${resourceId} AND updated >= "${updatedStr}" ORDER BY updated ASC`;
 
     while (hasMore) {
-      let response;
-      try {
-        response = await axios.post<{
-          issues: any[];
-          total: number;
-          maxResults: number;
-        }>(
-          `${baseUrl}/search`,
-          {
-            jql,
-            startAt,
-            maxResults,
-            expand: ['changelog', 'renderedFields'],
-          },
-          { headers },
-        );
-      } catch (err: unknown) {
-        if (axios.isAxiosError(err) && err.response?.status === 400) {
-          this.logger.debug(`Resource ${resourceId} is not a valid project JQL, attempting Board sync.`);
-          
-          const agileBaseUrl = this.getAgileBaseUrl(connection);
-          response = await axios.get<{
-            issues: any[];
-            total: number;
-            maxResults: number;
-          }>(`${agileBaseUrl}/board/${resourceId}/issue?startAt=${startAt}&maxResults=${maxResults}`, {
-            headers,
-          });
-        } else {
-          // It's a real error (401, 429, 500, etc)
-          throw err;
-        }
-      }
+      const response = await axios.post<{
+        issues: any[];
+        total: number;
+        maxResults: number;
+      }>(
+        `${baseUrl}/search`,
+        {
+          jql,
+          startAt,
+          maxResults,
+          expand: ['changelog', 'renderedFields'],
+        },
+        { headers },
+      );
 
       const issues = response.data.issues || [];
       if (issues.length === 0) {

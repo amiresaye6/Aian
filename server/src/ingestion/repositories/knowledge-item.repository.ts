@@ -42,6 +42,14 @@ export class KnowledgeItemRepository {
       where: { organizationId, ingestionStatus: 'pending' },
     });
   }
+  async countPendingByOrganizationAndProvider(
+    organizationId: string,
+    provider: string,
+  ): Promise<number> {
+    return this.prisma.knowledgeItem.count({
+      where: { organizationId, provider, ingestionStatus: 'pending' },
+    });
+  }
 
   async lockItems(itemIds: string[]) {
     return this.prisma.knowledgeItem.updateMany({

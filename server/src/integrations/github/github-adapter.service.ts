@@ -58,6 +58,9 @@ export class GitHubAdapterService implements ProviderAdapter {
 
   normalizeEvent(input: ProviderEventInput): KnowledgeItem[] {
     const payload = input.rawPayload as any;
+    if (payload?._syncSource === 'historical') {
+      return this.normalizeHistoricalItem(input, payload);
+    }
     const kind = this.resolveEventKind(input);
 
     switch (kind) {
@@ -80,13 +83,272 @@ export class GitHubAdapterService implements ProviderAdapter {
         return [];
     }
   }
+  /**
+   * Handles direct GitHub REST API objects produced by Historical Sync
+   * (tagged with _syncSource/_phase/_repository by GithubClientService).
+   * These have a different shape than webhook envelopes — the resource
+   * itself is the top-level object, with no `action`/`repository` wrapper.
+   */
+  private normalizeHistoricalItem(
+    input: ProviderEventInput,
+    payload: any,
+  ): KnowledgeItem[] {
+    const phase = payload._phase;
+    const repo = payload._repository;
+
+    switch (phase) {
+      case 'commits':
+        return this.normalizeHistoricalCommit(input, payload, repo);
+      case 'issues':
+        return this.normalizeHistoricalIssue(input, payload, repo);
+      case 'pull_requests':
+        return this.normalizeHistoricalPullRequest(input, payload, repo);
+      case 'issue_comments':
+        return this.normalizeHistoricalIssueComment(input, payload, repo);
+      case 'pr_review_comments':
+        return this.normalizeHistoricalReviewComment(input, payload, repo);
+      case 'pr_reviews':
+        return this.normalizeHistoricalReview(input, payload, repo);
+      default:
+        this.logger.debug(`Unrecognized historical phase "${phase}"`);
+        return [];
+    }
+  }
+
+  private normalizeHistoricalCommit(
+    input: ProviderEventInput,
+    commit: any,
+    repo: { id: string; full_name: string },
+  ): KnowledgeItem[] {
+    this.assertRequiredFields(commit, 'historical_commit', ['sha']);
+
+    return [
+      this.buildBaseItem(input, {
+        eyeType: EyeType.CODING,
+        sourceType: 'github_commit',
+        eventType: 'commit_pushed',
+        externalResourceId: `repo:${repo.id}`,
+        externalEventId: `commit:${commit.sha}`,
+        parentExternalResourceId: null,
+        title: null,
+        content: commit.commit?.message ?? '',
+        author: commit.commit?.author
+          ? {
+              name: commit.commit.author.name,
+              email: commit.commit.author.email,
+            }
+          : null,
+        participants: [],
+        contextLocation: repo.full_name,
+        sourceUrl: commit.html_url ?? null,
+        occurredAt: new Date(
+          commit.commit?.author?.date ?? commit.commit?.committer?.date ?? Date.now(),
+        ),
+        metadata: {
+          repositoryId: repo.id,
+          sha: commit.sha,
+          syncSource: 'historical',
+        },
+      }),
+    ];
+  }
+
+  private normalizeHistoricalIssue(
+    input: ProviderEventInput,
+    issue: any,
+    repo: { id: string; full_name: string },
+  ): KnowledgeItem[] {
+    this.assertRequiredFields(issue, 'historical_issue', ['number']);
+
+    return [
+      this.buildBaseItem(input, {
+        eyeType: EyeType.CODING,
+        sourceType: 'github_issue',
+        eventType: 'issue_synced',
+        externalResourceId: `repo:${repo.id}`,
+        externalEventId: `issue:${issue.number}:synced:${issue.updated_at}`,
+        parentExternalResourceId: null,
+        title: issue.title ?? null,
+        content: issue.body ?? '',
+        author: issue.user
+          ? { externalId: String(issue.user.id), name: issue.user.login }
+          : null,
+        participants: (issue.assignees ?? []).map((a: any) => ({
+          externalId: String(a.id),
+          name: a.login,
+        })),
+        contextLocation: `${repo.full_name} #${issue.number}`,
+        sourceUrl: issue.html_url ?? null,
+        occurredAt: new Date(issue.updated_at ?? issue.created_at ?? Date.now()),
+        metadata: {
+          repositoryId: repo.id,
+          issueNumber: issue.number,
+          state: issue.state,
+          labels: (issue.labels ?? []).map((l: any) => l.name),
+          syncSource: 'historical',
+        },
+      }),
+    ];
+  }
+
+  private normalizeHistoricalPullRequest(
+    input: ProviderEventInput,
+    pr: any,
+    repo: { id: string; full_name: string },
+  ): KnowledgeItem[] {
+    this.assertRequiredFields(pr, 'historical_pull_request', ['number']);
+
+    return [
+      this.buildBaseItem(input, {
+        eyeType: EyeType.CODING,
+        sourceType: 'github_pull_request',
+        eventType: 'pr_synced',
+        externalResourceId: `repo:${repo.id}`,
+        externalEventId: `pr:${pr.number}:synced:${pr.updated_at}`,
+        parentExternalResourceId: null,
+        title: pr.title ?? null,
+        content: pr.body ?? '',
+        author: pr.user
+          ? { externalId: String(pr.user.id), name: pr.user.login }
+          : null,
+        participants: this.extractPrParticipants(pr),
+        contextLocation: `${repo.full_name} #${pr.number}`,
+        sourceUrl: pr.html_url ?? null,
+        occurredAt: new Date(pr.updated_at ?? pr.created_at ?? Date.now()),
+        metadata: {
+          repositoryId: repo.id,
+          prNumber: pr.number,
+          state: pr.state,
+          merged: pr.merged ?? false,
+          syncSource: 'historical',
+        },
+      }),
+    ];
+  }
+
+  private normalizeHistoricalIssueComment(
+    input: ProviderEventInput,
+    comment: any,
+    repo: { id: string; full_name: string },
+  ): KnowledgeItem[] {
+    this.assertRequiredFields(comment, 'historical_issue_comment', ['id', 'issue_url']);
+
+    const issueNumber = comment.issue_url.split('/').pop();
+    const isOnPr = (comment.html_url ?? '').includes('/pull/');
+
+    return [
+      this.buildBaseItem(input, {
+        eyeType: EyeType.CODING,
+        sourceType: isOnPr ? 'github_pull_request_comment' : 'github_issue_comment',
+        eventType: 'comment_synced',
+        externalResourceId: `repo:${repo.id}`,
+        externalEventId: `comment:${comment.id}`,
+        parentExternalResourceId: isOnPr ? `pr:${issueNumber}` : `issue:${issueNumber}`,
+        title: null,
+        content: comment.body ?? '',
+        author: comment.user
+          ? { externalId: String(comment.user.id), name: comment.user.login }
+          : null,
+        participants: [],
+        contextLocation: `${repo.full_name} #${issueNumber}`,
+        sourceUrl: comment.html_url ?? null,
+        occurredAt: new Date(comment.updated_at ?? comment.created_at ?? Date.now()),
+        metadata: {
+          repositoryId: repo.id,
+          issueNumber,
+          syncSource: 'historical',
+        },
+      }),
+    ];
+  }
+
+  private normalizeHistoricalReviewComment(
+    input: ProviderEventInput,
+    comment: any,
+    repo: { id: string; full_name: string },
+  ): KnowledgeItem[] {
+    this.assertRequiredFields(comment, 'historical_review_comment', [
+      'id',
+      'pull_request_url',
+    ]);
+
+    const prNumber = comment.pull_request_url.split('/').pop();
+
+    return [
+      this.buildBaseItem(input, {
+        eyeType: EyeType.CODING,
+        sourceType: 'github_pull_request_review_comment',
+        eventType: 'pr_review_comment_synced',
+        externalResourceId: `repo:${repo.id}`,
+        externalEventId: `pr_review_comment:${comment.id}`,
+        parentExternalResourceId: `pr:${prNumber}`,
+        title: null,
+        content: comment.body ?? '',
+        author: comment.user
+          ? { externalId: String(comment.user.id), name: comment.user.login }
+          : null,
+        participants: [],
+        contextLocation: `${repo.full_name} #${prNumber}`,
+        sourceUrl: comment.html_url ?? null,
+        occurredAt: new Date(comment.updated_at ?? comment.created_at ?? Date.now()),
+        metadata: {
+          repositoryId: repo.id,
+          prNumber,
+          path: comment.path,
+          diffHunk: comment.diff_hunk,
+          syncSource: 'historical',
+        },
+      }),
+    ];
+  }
+  private normalizeHistoricalReview(
+    input: ProviderEventInput,
+    review: any,
+    repo: { id: string; full_name: string },
+  ): KnowledgeItem[] {
+    this.assertRequiredFields(review, 'historical_review', ['id', '_prNumber']);
+
+    return [
+      this.buildBaseItem(input, {
+        eyeType: EyeType.CODING,
+        sourceType: 'github_pull_request_review',
+        eventType: 'pr_review_synced',
+        externalResourceId: `repo:${repo.id}`,
+        externalEventId: `pr_review:${review.id}`,
+        parentExternalResourceId: `pr:${review._prNumber}`,
+        title: null,
+        content: review.body ?? `Review state: ${review.state}`,
+        author: review.user
+          ? { externalId: String(review.user.id), name: review.user.login }
+          : null,
+        participants: [],
+        contextLocation: `${repo.full_name} #${review._prNumber}`,
+        sourceUrl: review.html_url ?? null,
+        occurredAt: new Date(review.submitted_at ?? Date.now()),
+        metadata: {
+          repositoryId: repo.id,
+          prNumber: review._prNumber,
+          reviewState: review.state,
+          syncSource: 'historical',
+        },
+      }),
+    ];
+  }
 
   getIdempotencyKey(item: KnowledgeItem): string {
     return `github:${item.organizationId}:${item.sourceType}:${item.externalResourceId}:${item.externalEventId}`;
   }
 
+  // getExternalResourceId(input: ProviderEventInput): string {
+  //   const payload = input.rawPayload as any;
+  //   const repo = payload?.repository;
+  //   return repo?.id ? `repo:${repo.id}` : 'unknown';
+  // }
   getExternalResourceId(input: ProviderEventInput): string {
     const payload = input.rawPayload as any;
+    if (payload?._syncSource === 'historical') {
+      return payload._repository?.id ? `repo:${payload._repository.id}` : 'unknown';
+    }
     const repo = payload?.repository;
     return repo?.id ? `repo:${repo.id}` : 'unknown';
   }

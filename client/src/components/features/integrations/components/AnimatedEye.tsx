@@ -117,10 +117,10 @@ export function AnimatedEye({
         {/* iris ticks */}
         {Array.from({ length: 12 }).map((_, i) => {
           const angle = (i / 12) * Math.PI * 2;
-          const x1 = 50 + Math.cos(angle) * 15;
-          const y1 = 50 + Math.sin(angle) * 15;
-          const x2 = 50 + Math.cos(angle) * 20;
-          const y2 = 50 + Math.sin(angle) * 20;
+          const x1 = +(50 + Math.cos(angle) * 15).toFixed(3);
+          const y1 = +(50 + Math.sin(angle) * 15).toFixed(3);
+          const x2 = +(50 + Math.cos(angle) * 20).toFixed(3);
+          const y2 = +(50 + Math.sin(angle) * 20).toFixed(3);
           return (
             <line
               key={i}

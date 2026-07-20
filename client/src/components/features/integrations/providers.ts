@@ -19,6 +19,8 @@ export interface Provider {
   scopes: string[];
   workspace?: string;
   sampleResources: { name: string; kind: string; members?: number; activity: string }[];
+  connectionId?: string; // dynamically added from backend
+  organizationEyeId?: string; // dynamically added from backend
 }
 
 export const PROVIDER_LIST: Provider[] = [
@@ -52,14 +54,13 @@ export const PROVIDER_LIST: Provider[] = [
     category: "Engineering",
     tagline: "Ingest repositories, PRs, and commit history for deep codebase understanding.",
     brand: "#24292e",
-    status: "connected",
+    status: "disconnected",
     glyph: FileText,
-    health: 98,
-    knowledgeItems: 1450,
-    lastSyncMin: 5,
-    nextSyncMin: 55,
+    health: 0,
+    knowledgeItems: 0,
+    lastSyncMin: 0,
     resourceLabel: "Repositories",
-    resources: 24,
+    resources: 0,
     permissions: [
       { title: "Read repository contents", description: "Access to code, commits, and pull requests." },
       { title: "Read metadata", description: "Access to repository configurations and webhooks." }
@@ -77,14 +78,13 @@ export const PROVIDER_LIST: Provider[] = [
     category: "Communication",
     tagline: "Index messages and threads to keep AIAN updated on team conversations.",
     brand: "#E01E5A",
-    status: "unhealthy",
+    status: "disconnected",
     glyph: MessageSquare,
-    health: 65,
-    knowledgeItems: 45200,
-    lastSyncMin: 120,
-    nextSyncMin: 0,
+    health: 0,
+    knowledgeItems: 0,
+    lastSyncMin: 0,
     resourceLabel: "Channels",
-    resources: 142,
+    resources: 0,
     permissions: [
       { title: "Read messages", description: "Access to messages and threads in public and private channels." },
       { title: "Read channel metadata", description: "Access to channel lists and user directories." }

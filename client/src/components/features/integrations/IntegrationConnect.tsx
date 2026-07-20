@@ -4,51 +4,35 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { ShieldCheck, Lock, ArrowRight, ExternalLink, Check } from "lucide-react";
 import { ProviderHero } from "./components/ProviderHero";
-import { getProvider } from "./providers";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEyeConnection } from "@/hooks/useEyeConnection";
-import { getGithubInstallUrl } from "@/api/integrations";
-
-const PROVIDER_EYE_TYPE: Record<string, string> = {
-  github: "coding",
-  slack: "chat",
-  zoom: "meeting",
-  jira: "task",
-};
-
-const ERROR_MESSAGES: Record<string, string> = {
-  connection_failed: "GitHub didn't confirm the installation. Please try again.",
-  provider_not_found: "Something went wrong on our end. Please contact support.",
-  token_exchange_failed: "We couldn't finish connecting to GitHub. Please try again.",
-  save_connection_failed: "Your GitHub connection couldn't be saved. Please try again.",
-};
+import { getInstallUrl, ProviderKey } from "@/api/integrations";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
+import { useEffect } from "react";
 
 export function IntegrationConnect({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
+  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const provider = getProviderByKey(providerKey);
   const [accepted, setAccepted] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
 
-  const eyeType = PROVIDER_EYE_TYPE[providerKey];
-  const { organizationEyeId, isLoading, isError } = useEyeConnection(eyeType);
+  const organizationEyeId = provider?.organizationEyeId;
 
-  const errorCode = searchParams.get("error");
-  const isGithub = providerKey === "github";
-
-  const handleContinue = () => {
-    if (isGithub) {
-      if (!organizationEyeId) return;
-      window.location.href = getGithubInstallUrl(organizationEyeId);
-      return;
+  const handleConnect = () => {
+    if (organizationEyeId) {
+      const url = getInstallUrl(providerKey as ProviderKey, organizationEyeId);
+      window.location.href = url;
+    } else {
+      console.error("Organization Eye not found for provider");
     }
-    // TODO: other providers (Slack/Zoom/Jira) still use the classic
-    // redirect page until their install/OAuth flow is wired up.
-    router.push(`/eyes/${providerKey}/redirect`);
   };
 
-  const continueDisabled =
-    !accepted || (isGithub && (isLoading || isError || !organizationEyeId));
+  if (!provider) return null;
+
   return (
     <div className="w-full">
       <ProviderHero provider={provider} step="Connect" />
@@ -151,14 +135,9 @@ export function IntegrationConnect({ providerKey }: { providerKey: string }) {
               </span>
             </label>
 
-            {/* <button
-              disabled={!accepted}
-              onClick={() => router.push(`/eyes/${providerKey}/redirect`)}
-              className="btn-gold btn-gold-hover mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none text-[#17130A]"
-            > */}
             <button
-              disabled={continueDisabled}
-              onClick={handleContinue}
+              disabled={!accepted || !organizationEyeId}
+              onClick={handleConnect}
               className="btn-gold btn-gold-hover mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none text-[#17130A]"
             >
               <ExternalLink className="h-4 w-4" />

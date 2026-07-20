@@ -1,25 +1,50 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useState } from "react";
 import { Search, Filter, Sparkles, Eye, Plug } from "lucide-react";
 import { EyeCard } from "./components/EyeCard";
-import { PROVIDER_LIST } from "./providers";
 import { cn } from "@/lib/utils";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
+import { syncAllConnections } from "@/api/integrations/sync";
+import { useAuthStore } from "@/store/auth/auth.store";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 const CATEGORIES = ["All", "Communication", "Engineering", "Documents", "Meetings", "Delivery"];
 
 export function IntegrationIndex() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  
+  const { providers, fetchIntegrations, isLoading } = useIntegrationsStore();
+  const { orgId } = useAuthStore();
 
-  const filtered = PROVIDER_LIST.filter(
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
+  const handleSyncAll = async () => {
+    if (!orgId) return;
+    setIsSyncingAll(true);
+    try {
+      await syncAllConnections(orgId);
+      // Optional: show a toast success
+    } catch (error) {
+      console.error("Failed to sync all connections", error);
+    } finally {
+      setIsSyncingAll(false);
+      fetchIntegrations();
+    }
+  };
+
+  const filtered = providers.filter(
     (p) =>
       (cat === "All" || p.category === cat) &&
       (q === "" || p.name.toLowerCase().includes(q.toLowerCase())),
   );
 
-  const connected = PROVIDER_LIST.filter((p) => p.status === "connected" || p.status === "unhealthy");
+  const connected = providers.filter((p) => p.status === "connected" || p.status === "unhealthy");
   const totalHealth = Math.round(
     connected.reduce((acc, p) => acc + p.health, 0) / Math.max(connected.length, 1),
   );
@@ -43,12 +68,20 @@ export function IntegrationIndex() {
             Every connection is a living Eye — a real-time sensor that lets AIAN see, listen and
             understand a slice of your company. Connect an Eye to feed it knowledge.
           </p>
+          <button
+            onClick={handleSyncAll}
+            disabled={isSyncingAll || connected.length === 0}
+            className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/90 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
+          >
+            {isSyncingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Sync All Now
+          </button>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Eyes online", value: connected.length },
             { label: "Health", value: `${totalHealth || 0}%` },
-            { label: "Available", value: PROVIDER_LIST.length },
+            { label: "Available", value: providers.length },
           ].map((s) => (
             <div key={s.label} className="glass rounded-2xl p-3 text-center bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
               <div className="font-display text-[20px] font-semibold text-foreground">{s.value}</div>

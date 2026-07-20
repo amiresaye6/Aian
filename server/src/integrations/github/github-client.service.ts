@@ -1,3 +1,8 @@
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 import {
   Injectable,
   Logger,
@@ -14,8 +19,21 @@ import {
   ProviderResource,
 } from '../contracts';
 import { EncryptionService } from '../../common/encryption.service';
-import { GithubAppEnvKeys, GithubApiUrls, GithubResourceType } from './github-connection.constants';
+import {
+  GithubAppEnvKeys,
+  GithubApiUrls,
+  GithubResourceType,
+} from './github-connection.constants';
 import { ProviderConnectionRepository } from '../../ingestion/repositories/provider-connection.repository';
+
+type HistoricalPhase =
+  | 'commits'
+  | 'issues'
+  | 'issue_comments'
+  | 'pr_review_comments'
+  | 'pull_requests'
+  | 'pr_reviews'
+  | 'done';
 
 /**
  * GitHub-specific implementation of ProviderClient.
@@ -32,7 +50,7 @@ export class GithubClientService implements ProviderClient {
     private readonly configService: ConfigService,
     private readonly encryptionService: EncryptionService,
     private readonly connectionRepo: ProviderConnectionRepository,
-  ) { }
+  ) {}
   private isInstallationRevoked(error: any): boolean {
     const status = error?.response?.status;
 
@@ -74,7 +92,6 @@ export class GithubClientService implements ProviderClient {
         accountName: connection.externalAccountId ?? undefined,
         accountId: connection.externalAccountId ?? undefined,
       };
-
     } catch (error) {
       this.logger.error(
         `GitHub verifyConnection error: ${(error as Error).message}`,
@@ -103,7 +120,6 @@ export class GithubClientService implements ProviderClient {
         isValid: false,
         message: `Failed to verify GitHub installation: ${(error as Error).message}`,
       };
-
     }
   }
 
@@ -182,6 +198,364 @@ export class GithubClientService implements ProviderClient {
 
       throw error;
     }
+  }
+  /**
+   * Historical Sync — backfills PRs, issues, comments, and commits for a
+   * single repository, page by page, resuming safely from `cursor` if the
+   * process was interrupted.
+   *
+   * Phases run in order: commits -> issues -> issue_comments (covers both
+   * issue comments and PR conversation-tab comments) -> pr_review_comments
+   * (diff/code comments) -> pull_requests.
+   *
+   * NOTE: PR reviews (github_pull_request_review) are deferred to a future
+   * enhancement — GitHub has no repo-wide "list all reviews" endpoint, only
+   * a per-PR one, which needs a nested loop per PR.
+   */
+  async syncHistoricalResource(
+    connection: ProviderConnection,
+    resource: any,
+    fromDate: Date,
+    cursor: string | undefined,
+    savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
+  ): Promise<void> {
+    const [owner, repo] = (resource.name as string).split('/');
+    if (!owner || !repo) {
+      throw new InternalServerErrorException(
+        `Invalid GitHub resource name "${resource.name}", expected "owner/repo"`,
+      );
+    }
+
+    const phases: HistoricalPhase[] = [
+      'commits',
+      'issues',
+      'issue_comments',
+      'pr_review_comments',
+      'pull_requests',
+      'pr_reviews',
+    ];
+
+    let state = this.parseHistoricalCursor(cursor, phases[0]);
+
+    while (state.phase !== 'done') {
+      const token = await this.getValidInstallationToken(connection);
+      if (state.phase === 'pr_reviews') {
+        const step = await this.fetchPrReviewsStep(
+          owner,
+          repo,
+          token,
+          state as any,
+          fromDate,
+          resource.externalResourceId,
+        );
+        if (step.items.length > 0) {
+          await savePageCallback(step.items, step.nextCursor);
+        }
+        state = step.nextState;
+        continue;
+      }
+      const page = await this.fetchHistoricalPage(
+        state.phase,
+        owner,
+        repo,
+        token,
+        state.page,
+        fromDate,
+        resource.externalResourceId,
+      );
+
+      if (page.items.length > 0) {
+        const nextCursorForThisPage = page.hasMorePages
+          ? this.buildHistoricalCursor(state.phase, state.page + 1)
+          : this.buildHistoricalCursor(this.nextPhase(phases, state.phase), 1);
+
+        await savePageCallback(page.items, nextCursorForThisPage);
+      }
+
+      if (page.hasMorePages) {
+        state = { phase: state.phase, page: state.page + 1, prIndex: 0, reviewPage: 1 };
+      } else {
+        const next = this.nextPhase(phases, state.phase);
+        state = { phase: next, page: 1, prIndex: 0, reviewPage: 1 };
+      }
+    }
+
+    await savePageCallback([], undefined);
+  }
+
+  private nextPhase(
+    phases: HistoricalPhase[],
+    current: HistoricalPhase,
+  ): HistoricalPhase {
+    const idx = phases.indexOf(current);
+    return idx === -1 || idx === phases.length - 1 ? 'done' : phases[idx + 1];
+  }
+
+  private parseHistoricalCursor(
+    cursor: string | undefined,
+    defaultPhase: HistoricalPhase,
+  ): { phase: HistoricalPhase; page: number; prIndex: number; reviewPage: number } {
+    if (!cursor) return { phase: defaultPhase, page: 1, prIndex: 0, reviewPage: 1 };
+    try {
+      const parsed = JSON.parse(cursor);
+      return {
+        phase: parsed.phase ?? defaultPhase,
+        page: parsed.page ?? 1,
+        prIndex: parsed.prIndex ?? 0,
+        reviewPage: parsed.reviewPage ?? 1,
+      };
+    } catch {
+      return { phase: defaultPhase, page: 1, prIndex: 0, reviewPage: 1 };
+    }
+  }
+
+  private buildHistoricalCursor(
+    phase: HistoricalPhase,
+    page: number,
+    prIndex = 0,
+    reviewPage = 1,
+  ): string {
+    return JSON.stringify({ phase, page, prIndex, reviewPage });
+  }
+
+  private async fetchHistoricalPage(
+    phase: HistoricalPhase,
+    owner: string,
+    repo: string,
+    token: string,
+    page: number,
+    fromDate: Date,
+    repositoryId: string,
+  ): Promise<{ items: any[]; hasMorePages: boolean }> {
+    const perPage = 100;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+    };
+
+    let url: string;
+    let params: Record<string, any>;
+
+    switch (phase) {
+      case 'commits':
+        url = `${GithubApiUrls.BASE}/repos/${owner}/${repo}/commits`;
+        params = { since: fromDate.toISOString(), per_page: perPage, page };
+        break;
+      case 'issues':
+        url = `${GithubApiUrls.BASE}/repos/${owner}/${repo}/issues`;
+        params = {
+          since: fromDate.toISOString(),
+          state: 'all',
+          per_page: perPage,
+          page,
+        };
+        break;
+      case 'issue_comments':
+        url = `${GithubApiUrls.BASE}/repos/${owner}/${repo}/issues/comments`;
+        params = {
+          since: fromDate.toISOString(),
+          sort: 'created',
+          direction: 'asc',
+          per_page: perPage,
+          page,
+        };
+        break;
+      case 'pr_review_comments':
+        url = `${GithubApiUrls.BASE}/repos/${owner}/${repo}/pulls/comments`;
+        params = {
+          since: fromDate.toISOString(),
+          sort: 'created',
+          direction: 'asc',
+          per_page: perPage,
+          page,
+        };
+        break;
+      case 'pull_requests':
+        url = `${GithubApiUrls.BASE}/repos/${owner}/${repo}/pulls`;
+        params = {
+          state: 'all',
+          sort: 'updated',
+          direction: 'desc',
+          per_page: perPage,
+          page,
+        };
+        break;
+      default:
+        return { items: [], hasMorePages: false };
+    }
+
+    try {
+      const response = await axios.get(url, { headers, params });
+      await this.respectRateLimit(response);
+
+      let items: any[] = response.data ?? [];
+
+      if (phase === 'issues') {
+        items = items.filter((i: any) => !i.pull_request);
+      }
+
+      let hasMorePages = items.length === perPage;
+
+      if (phase === 'pull_requests') {
+        const beforeFilter = items.length;
+        items = items.filter((pr: any) => new Date(pr.updated_at) >= fromDate);
+        if (items.length < beforeFilter) hasMorePages = false;
+      }
+
+      const taggedItems = items.map((item) => ({
+        ...item,
+        _syncSource: 'historical',
+        _phase: phase,
+        _repository: { id: repositoryId, full_name: `${owner}/${repo}` },
+      }));
+
+      return { items: taggedItems, hasMorePages };
+    } catch (error) {
+      if (this.isRateLimited(error)) {
+        await this.sleepUntilRateLimitReset(error);
+        return this.fetchHistoricalPage(
+          phase,
+          owner,
+          repo,
+          token,
+          page,
+          fromDate,
+          repositoryId
+        );
+      }
+      if (this.isInstallationRevoked(error)) {
+        throw new InternalServerErrorException(
+          'GitHub installation has been revoked during historical sync.',
+        );
+      }
+      throw error;
+    }
+  }
+  /**
+   * Handles one "step" of PR Reviews backfill. Unlike other phases, reviews
+   * have no repo-wide listing endpoint — we must list PRs page by page, and
+   * for each PR, page through its reviews individually. State tracks the
+   * PR list page, the index within that page, and the review sub-page.
+   */
+  private async fetchPrReviewsStep(
+    owner: string,
+    repo: string,
+    token: string,
+    state: { page: number; prIndex: number; reviewPage: number },
+    fromDate: Date,
+    repositoryId: string,
+  ): Promise<{
+    items: any[];
+    nextCursor?: string;
+    nextState: { phase: HistoricalPhase; page: number; prIndex: number; reviewPage: number };
+  }> {
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+    };
+    const perPage = 100;
+
+    let prList: any[];
+    try {
+      const prResponse = await axios.get(
+        `${GithubApiUrls.BASE}/repos/${owner}/${repo}/pulls`,
+        {
+          headers,
+          params: {
+            state: 'all',
+            sort: 'updated',
+            direction: 'desc',
+            per_page: perPage,
+            page: state.page,
+          },
+        },
+      );
+      await this.respectRateLimit(prResponse);
+      prList = (prResponse.data ?? []).filter(
+        (pr: any) => new Date(pr.updated_at) >= fromDate,
+      );
+    } catch (error) {
+      if (this.isRateLimited(error)) {
+        await this.sleepUntilRateLimitReset(error);
+        return this.fetchPrReviewsStep(owner, repo, token, state, fromDate, repositoryId);
+      }
+      throw error;
+    }
+
+    // No PRs left on this page (or we've crossed the date boundary) — done.
+    if (prList.length === 0 || state.prIndex >= prList.length) {
+      if (prList.length < perPage) {
+        return { items: [], nextState: { phase: 'done', page: 1, prIndex: 0, reviewPage: 1 } };
+      }
+      return {
+        items: [],
+        nextState: { phase: 'pr_reviews', page: state.page + 1, prIndex: 0, reviewPage: 1 },
+      };
+    }
+
+    const pr = prList[state.prIndex];
+
+    let reviews: any[];
+    try {
+      const reviewResponse = await axios.get(
+        `${GithubApiUrls.BASE}/repos/${owner}/${repo}/pulls/${pr.number}/reviews`,
+        { headers, params: { per_page: perPage, page: state.reviewPage } },
+      );
+      await this.respectRateLimit(reviewResponse);
+      reviews = reviewResponse.data ?? [];
+    } catch (error) {
+      if (this.isRateLimited(error)) {
+        await this.sleepUntilRateLimitReset(error);
+        return this.fetchPrReviewsStep(owner, repo, token, state, fromDate, repositoryId);
+      }
+      throw error;
+    }
+
+    const taggedReviews = reviews.map((review) => ({
+      ...review,
+      _syncSource: 'historical',
+      _phase: 'pr_reviews',
+      _prNumber: pr.number,
+      _repository: { id: repositoryId, full_name: `${owner}/${repo}` },
+    }));
+
+    const hasMoreReviewPages = reviews.length === perPage;
+
+    const nextState = hasMoreReviewPages
+      ? { phase: 'pr_reviews' as HistoricalPhase, page: state.page, prIndex: state.prIndex, reviewPage: state.reviewPage + 1 }
+      : { phase: 'pr_reviews' as HistoricalPhase, page: state.page, prIndex: state.prIndex + 1, reviewPage: 1 };
+
+    const nextCursor = this.buildHistoricalCursor(
+      nextState.phase,
+      nextState.page,
+      nextState.prIndex,
+      nextState.reviewPage,
+    );
+
+    return { items: taggedReviews, nextCursor, nextState };
+  }
+
+  private async respectRateLimit(response: any): Promise<void> {
+    const remaining = Number(response.headers?.['x-ratelimit-remaining']);
+    if (!Number.isNaN(remaining) && remaining <= 1) {
+      this.logger.warn(
+        'GitHub rate limit nearly exhausted during historical sync',
+      );
+    }
+  }
+
+  private async sleepUntilRateLimitReset(error: any): Promise<void> {
+    const resetHeader = error?.response?.headers?.['x-ratelimit-reset'];
+    const resetAtSeconds = resetHeader ? Number(resetHeader) : null;
+
+    const waitMs = resetAtSeconds
+      ? Math.max(resetAtSeconds * 1000 - Date.now(), 1000)
+      : 60_000;
+
+    this.logger.warn(
+      `GitHub rate limit hit during historical sync. Sleeping ${Math.round(waitMs / 1000)}s.`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
 
   /**

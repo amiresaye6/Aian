@@ -1,13 +1,17 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Query,
   Res,
   BadRequestException,
   Logger,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { IntegrationStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProviderConnectionRepository } from '../../../ingestion/repositories/provider-connection.repository';
 import { EncryptionService } from '../../../common/encryption.service';
@@ -26,7 +30,7 @@ export class JiraAuthController {
   ) {}
 
   @Get('install')
-  async install(@Query('organizationEyeId') organizationEyeId: string) {
+  async install(@Query('organizationEyeId') organizationEyeId: string , @Res() res: Response) {
     if (!organizationEyeId) {
       throw new BadRequestException('organizationEyeId is required');
     }
@@ -66,9 +70,7 @@ export class JiraAuthController {
     url.searchParams.append('response_type', 'code');
     url.searchParams.append('prompt', 'consent');
 
-    return {
-      url: url.toString(),
-    };
+    return res.redirect(url.toString());
   }
 
   @Get('callback')
@@ -159,18 +161,33 @@ export class JiraAuthController {
         );
       }
 
-      const primaryResource = resourcesResponse.data[0];
-      const externalAccountId = primaryResource.id;
-      const externalAccountName = primaryResource.name;
-      const connectionMetadata = {
-        url: primaryResource.url,
-        avatarUrl: primaryResource.avatarUrl,
-        allResources: resourcesResponse.data.map((r) => ({
-          id: r.id,
-          name: r.name,
-          url: r.url,
-        })),
-      };
+      const hasMultipleSites = resourcesResponse.data.length > 1;
+
+      let externalAccountId: string | null = null;
+      let externalAccountName: string | null = null;
+      let connectionMetadata: any = {};
+      let status: IntegrationStatus = IntegrationStatus.connected;
+      let redirectUrl = `${frontendUrl}/eyes/jira/redirect`;
+
+      if (hasMultipleSites) {
+        status = IntegrationStatus.pending;
+        connectionMetadata = {
+          availableSites: resourcesResponse.data.map((r) => ({
+            id: r.id,
+            name: r.name,
+            url: r.url,
+            avatarUrl: r.avatarUrl,
+          })),
+        };
+      } else {
+        const primaryResource = resourcesResponse.data[0];
+        externalAccountId = primaryResource.id;
+        externalAccountName = primaryResource.name;
+        connectionMetadata = {
+          url: primaryResource.url,
+          avatarUrl: primaryResource.avatarUrl,
+        };
+      }
 
       // Encrypt tokens
       const encryptedAccessToken = this.encryptionService.encrypt(access_token);
@@ -201,7 +218,9 @@ export class JiraAuthController {
           organizationEyeId,
         );
 
+      let connectionId;
       if (existingConn) {
+        connectionId = existingConn.id;
         await this.providerConnectionRepo.update(existingConn.id, {
           externalAccountId,
           externalAccountName,
@@ -210,10 +229,10 @@ export class JiraAuthController {
           refreshTokenEncrypted: encryptedRefreshToken,
           tokenExpiresAt,
           scopes: scopesArray,
-          status: 'connected',
+          status,
         });
       } else {
-        await this.providerConnectionRepo.create({
+        const newConn = await this.providerConnectionRepo.create({
           organizationEyeId,
           providerId: provider.id,
           externalAccountId,
@@ -223,18 +242,23 @@ export class JiraAuthController {
           refreshTokenEncrypted: encryptedRefreshToken,
           tokenExpiresAt,
           scopes: scopesArray,
-          status: 'connected',
+          status,
           connectedAt: new Date(),
+        });
+        connectionId = newConn.id;
+      }
+
+      if (hasMultipleSites) {
+        redirectUrl = `${frontendUrl}/eyes/jira/select-site?connectionId=${connectionId}`;
+      } else {
+        // Update the OrganizationEye status to 'connected'
+        await this.prisma.organizationEye.update({
+          where: { id: organizationEyeId },
+          data: { status: 'connected' },
         });
       }
 
-      // Update the OrganizationEye status to 'connected'
-      await this.prisma.organizationEye.update({
-        where: { id: organizationEyeId },
-        data: { status: 'connected' },
-      });
-
-      return res.redirect(`${frontendUrl}/eyes/jira/redirect`);
+      return res.redirect(redirectUrl);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         this.logger.error(
@@ -250,5 +274,68 @@ export class JiraAuthController {
         `${frontendUrl}/eyes/jira/error?provider=jira&error=oauth_failed`,
       );
     }
+  }
+
+  @Post('select-site')
+  async selectSite(
+    @Body() body: { connectionId: string; siteId: string },
+  ) {
+    const { connectionId, siteId } = body;
+    if (!connectionId || !siteId) {
+      throw new BadRequestException('connectionId and siteId are required');
+    }
+
+    const connection = await this.providerConnectionRepo.findById(connectionId);
+    if (!connection) {
+      throw new NotFoundException('Connection not found');
+    }
+
+    const metadata = connection.connectionMetadata as any;
+    if (!metadata || !metadata.availableSites) {
+      throw new BadRequestException('No available sites pending for selection');
+    }
+
+    const selectedSite = metadata.availableSites.find((s: any) => s.id === siteId);
+    if (!selectedSite) {
+      throw new BadRequestException('Invalid siteId provided');
+    }
+
+    const newMetadata = {
+      url: selectedSite.url,
+      avatarUrl: selectedSite.avatarUrl,
+    };
+
+    await this.providerConnectionRepo.update(connectionId, {
+      externalAccountId: selectedSite.id,
+      externalAccountName: selectedSite.name,
+      connectionMetadata: newMetadata as any,
+      status: 'connected',
+    });
+
+    await this.prisma.organizationEye.update({
+      where: { id: connection.organizationEyeId },
+      data: { status: 'connected' },
+    });
+
+    return { success: true, message: 'Site selected successfully' };
+  }
+
+  @Get('pending-sites')
+  async getPendingSites(@Query('connectionId') connectionId: string) {
+    if (!connectionId) {
+      throw new BadRequestException('connectionId is required');
+    }
+
+    const connection = await this.providerConnectionRepo.findById(connectionId);
+    if (!connection) {
+      throw new NotFoundException('Connection not found');
+    }
+
+    const metadata = connection.connectionMetadata as any;
+    if (!metadata || !metadata.availableSites) {
+      return { sites: [] };
+    }
+
+    return { sites: metadata.availableSites };
   }
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Activity, Zap, AlertTriangle, RefreshCw, Server, HeartPulse } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShieldCheck, ServerCrash, Cpu, Activity, Zap, AlertTriangle, RefreshCw, Server, HeartPulse, CheckCircle2 } from "lucide-react";
 import { ProviderHero } from "./components/ProviderHero";
 import { EyeHealthRing } from "./components/EyeHealthRing";
-import { getProvider, formatAgo, formatIn } from "./providers";
+import { formatAgo, formatIn } from "./providers";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 import Link from "next/link";
 
 function seed(str: string) {
@@ -17,7 +19,14 @@ function seed(str: string) {
 }
 
 export function IntegrationHealth({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
+  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const provider = getProviderByKey(providerKey);
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
+  if (!provider) return null;
   const rand = seed(provider.key);
 
   const heartbeat = Array.from({ length: 60 }, () => 0.3 + rand() * 0.7);

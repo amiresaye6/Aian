@@ -3,31 +3,45 @@
 import { motion } from "motion/react";
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { AnimatedEye } from "./components/AnimatedEye";
-import { getProvider } from "./providers";
 import Link from "next/link";
-import { useEyeConnection } from "@/hooks/useEyeConnection";
-import { useProviderResources } from "@/hooks/useProviderResources";
-
-const PROVIDER_EYE_TYPE: Record<string, string> = {
-  github: "coding",
-  slack: "chat",
-  zoom: "meeting",
-  jira: "task",
-};
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
+import { useEffect, useState } from "react";
+import { getAvailableResources, ProviderKey } from "@/api/integrations";
 
 export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
-  const eyeType = PROVIDER_EYE_TYPE[providerKey];
+  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const provider = getProviderByKey(providerKey);
+  const [resources, setResources] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { connectionId } = useEyeConnection(eyeType);
-  const { data: resources, isLoading } = useProviderResources(
-    connectionId
-  );
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
 
-  // Real counts derived from actual GitHub API data — no fabricated numbers.
+  const connectionId = provider?.connectionId;
+
+  useEffect(() => {
+    if (connectionId) {
+      setIsLoading(true);
+      getAvailableResources(providerKey as ProviderKey, connectionId)
+        .then((res) => {
+          setResources(res);
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          console.error(err);
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
+    }
+  }, [connectionId, providerKey]);
+
+  if (!provider) return null;
+
   const total = resources?.length ?? 0;
   const privateCount =
-    resources?.filter((r: any) => r.metadata?.private === true).length ?? 0;
+    resources?.filter((r: any) => r.isPrivate === true || r.metadata?.private === true).length ?? 0;
   const publicCount = total - privateCount;
 
   return (
@@ -119,9 +133,9 @@ export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
           className="glass mt-10 grid w-full max-w-lg grid-cols-3 gap-3 rounded-2xl p-4 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10"
         >
           {[
-            { label: "Detected", value: `${provider.sampleResources.length * 12}` },
-            { label: resourceUnit(provider.resourceLabel), value: `${provider.sampleResources.length}+` },
-            { label: "Members", value: `${sumMembers(provider.sampleResources)}` },
+            { label: "Detected", value: resources.length > 0 ? `${resources.length * 12}` : "..." },
+            { label: resourceUnit(provider.resourceLabel), value: resources.length > 0 ? `${resources.length}` : "..." },
+            { label: "Members", value: resources.length > 0 ? `${sumMembers(resources)}` : "..." },
           ].map((s) => (
             <div key={s.label} className="text-center">
               <div className="font-display text-[20px] font-semibold text-foreground">{s.value}</div>
@@ -158,9 +172,9 @@ export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
   );
 }
 
-// function resourceUnit(label: string) {
-//   return label;
-// }
-// function sumMembers(list: { members?: number }[]) {
-//   return list.reduce((a, b) => a + (b.members ?? 0), 0);
-// }
+function resourceUnit(label: string) {
+  return label;
+}
+function sumMembers(list: any[]) {
+  return list.reduce((a, b) => a + (b.memberCount ?? b.members ?? 0), 0);
+}
