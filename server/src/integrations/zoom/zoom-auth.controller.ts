@@ -67,6 +67,7 @@ export class ZoomAuthController {
     @Query('code') code: string,
     @Query('state') state: string,
     @Query('error') error: string,
+    @Res() res: Response
   ) {
     if (error) {
       this.logger.warn(`Zoom OAuth denied: ${error}`);
@@ -161,14 +162,8 @@ export class ZoomAuthController {
         `Zoom connected successfully: connection=${connection.id}, owner=${data.owner_id}`,
       );
 
-      return {
-        success: true,
-        message: 'Successfully connected to Zoom!',
-        data: {
-          connectionId: connection.id,
-          externalAccountId: data.owner_id,
-        },
-      };
+      const frontendSuccessUrl = `${process.env.FRONTEND_URL}/eyes/zoom/redirect`;
+      return res.redirect(frontendSuccessUrl);
 
     } catch (err) {
       this.logger.error(

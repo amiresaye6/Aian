@@ -54,7 +54,7 @@ export class ZoomClientService implements ProviderClient {
           Authorization: `Bearer ${accessToken}`,
         },
         params: {
-          type: 'live',
+          type: 'scheduled',
           page_size: 30,
         },
       });

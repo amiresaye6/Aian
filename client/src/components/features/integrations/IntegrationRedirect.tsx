@@ -27,6 +27,14 @@ export function IntegrationRedirect({ providerKey }: { providerKey: string }) {
 
   useEffect(() => {
     if (providerKey === "github") return; 
+    if (providerKey === "zoom") {
+      const t = setTimeout(
+        () => router.push(`/eyes`),
+        400,
+      );
+      return () => clearTimeout(t);
+    }
+    
     if (stage >= STAGES.length) {
       const t = setTimeout(
         () => router.push(`/eyes/${providerKey}/success`),
