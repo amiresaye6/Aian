@@ -17,6 +17,7 @@ import { ZoomClientService } from "./zoom-client.service";
 import axios from "axios";
 import * as crypto from 'crypto';
 import { ZoomAdapterService } from "./zoom-adapter.service";
+import { WebhookEventDispatcherService } from "../../ingestion/collection/webhooks/webhook-event-dispatcher.service";
 
 @Controller('events')
 export class ZoomEventsController {
@@ -26,7 +27,8 @@ export class ZoomEventsController {
         private readonly webhookService:WebhookService,
         private readonly meetingBaasService:MeetingBaasService,
         private readonly zoomClientService:ZoomClientService,
-        private readonly zoomAdapterService:ZoomAdapterService
+        private readonly zoomAdapterService:ZoomAdapterService,
+        //private readonly disbatcher:WebhookEventDispatcherService
     ){}
 
     @Post('zoom')
@@ -239,7 +241,19 @@ export class ZoomEventsController {
             const knowledgeItems = this.zoomAdapterService.normalizeEvent(eventInput);
 
             //console.log('knowledge Item: ',knowledgeItems)
-            }
+            /*
+            this.disbatcher.dispatch(
+                connectionId,
+                meetingProvider.id,
+                meetingProvider.key,
+                organizationEye.id,
+                organizationEye.organizationId,
+                'meeting',
+                'bot.completed',
+                knowledgeItems
+            )
+                */
+        }
 
             
             
