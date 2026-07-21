@@ -31,7 +31,7 @@ export class ResourcesController {
     const connection = await this.connectionRepo.findByIdMapped(connectionId);
     if (!connection) throw new NotFoundException('Connection not found');
 
-    const client = this.providerFactory.getClient(connection.provider);
+    const client = this.providerFactory.getClient(connection.providerId);
     if (!client)
       throw new BadRequestException(
         `No client implemented for ${connection.provider}`,
@@ -57,7 +57,7 @@ export class ResourcesController {
       throw new NotFoundException('Connection not found');
     }
 
-    const client = this.providerFactory.getClient(connection.provider);
+    const client = this.providerFactory.getClient(connection.providerId);
     if (!client) {
       throw new BadRequestException(
         `No client implemented for ${connection.provider}`,

@@ -4,6 +4,8 @@ import { SlackModule } from './slack/slack.module';
 import { GithubModule } from './github/github.module';
 import { JiraModule } from './jira/jira.module';
 import { ZoomModule } from './zoom/zoom.module';
+import { ProvidersController } from './providers.controller';
+import { ConfigModule } from '@nestjs/config';
 
 /**
  * Global Integrations Module.
@@ -14,7 +16,8 @@ import { ZoomModule } from './zoom/zoom.module';
  */
 @Global()
 @Module({
-  imports: [SlackModule, GithubModule, JiraModule, ZoomModule],
+  imports: [SlackModule, GithubModule, JiraModule, ZoomModule, ConfigModule],
+  controllers: [ProvidersController],
   providers: [ProviderClientFactory],
   exports: [ProviderClientFactory],
 })

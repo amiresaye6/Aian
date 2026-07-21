@@ -8,6 +8,9 @@ import { EyeHealthRing } from "./components/EyeHealthRing";
 import { formatAgo, formatIn } from "./providers";
 import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getHealth } from "@/api/integrations";
+import { formatDistanceToNow } from "date-fns";
 
 function seed(str: string) {
   let h = 0;
@@ -19,14 +22,35 @@ function seed(str: string) {
 }
 
 export function IntegrationHealth({ providerKey }: { providerKey: string }) {
-  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
-  const provider = getProviderByKey(providerKey);
+  const providers = useIntegrationsStore(state => state.providers);
+  const fetchIntegrations = useIntegrationsStore(state => state.fetchIntegrations);
+  const isLoading = useIntegrationsStore(state => state.isLoading);
+  const provider = providers.find((p) => p.key.toLowerCase() === providerKey.toLowerCase());
+
+  const router = useRouter();
+  const [healthData, setHealthData] = useState<any>(null);
 
   useEffect(() => {
     fetchIntegrations();
   }, [fetchIntegrations]);
 
-  if (!provider) return null;
+  useEffect(() => {
+    if (!provider?.connectionId) return;
+    getHealth(provider.connectionId).then((res) => {
+      setHealthData(res.data || res);
+    }).catch(() => {});
+  }, [provider?.connectionId]);
+
+  if (!provider) {
+    if (isLoading) {
+      return (
+        <div className="flex h-[40vh] w-full items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[color:var(--gold)] border-t-transparent"></div>
+        </div>
+      );
+    }
+    return null;
+  }
   const rand = seed(provider.key);
 
   const heartbeat = Array.from({ length: 60 }, () => 0.3 + rand() * 0.7);
@@ -49,8 +73,10 @@ export function IntegrationHealth({ providerKey }: { providerKey: string }) {
         provider={provider}
         step="Health"
         actions={
-          <button className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-3.5 py-2 text-[12.5px] font-medium hover:bg-black/[0.06] dark:hover:bg-white/[0.06] text-foreground">
-            <RefreshCw className="h-3.5 w-3.5" /> Force sync
+          <button 
+            onClick={() => router.push(`/eyes/${providerKey}/syncing`)}
+            className="inline-flex items-center gap-2 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-3.5 py-2 text-[12.5px] font-medium hover:bg-black/[0.06] dark:hover:bg-white/[0.06] text-foreground">
+            <RefreshCw className="h-3.5 w-3.5" /> Historic sync
           </button>
         }
       />
@@ -58,19 +84,19 @@ export function IntegrationHealth({ providerKey }: { providerKey: string }) {
       {/* Top cards */}
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <div className="glass flex items-center gap-4 rounded-2xl p-5 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
-          <EyeHealthRing value={provider.health} size={56} label="" />
+          <EyeHealthRing value={healthData?.status === 'connected' ? 100 : healthData?.status === 'pending' ? 60 : 20} size={56} label="" />
           <div>
             <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Overall</div>
             <div className="font-display text-[18px] font-semibold text-foreground">Eye health</div>
             <div className="mt-0.5 text-[11.5px] text-muted-foreground">
-              Last check {formatAgo(provider.lastSyncMin ?? 2)}
+              Last check {healthData?.lastVerifiedAt ? formatDistanceToNow(new Date(healthData.lastVerifiedAt), { addSuffix: true }) : 'Never'}
             </div>
           </div>
         </div>
         {[
-          { icon: Zap, label: "Uptime (30d)", value: "99.94%", tone: "text-[color:var(--success)]" },
-          { icon: Activity, label: "Last sync", value: formatAgo(provider.lastSyncMin ?? 2) },
-          { icon: HeartPulse, label: "Next sync", value: formatIn(provider.nextSyncMin ?? 5) },
+          { icon: Zap, label: "Status", value: healthData?.status === 'connected' ? "Connected" : healthData?.status === 'pending' ? "Pending" : "Error", tone: healthData?.status === 'connected' ? "text-[color:var(--success)]" : "text-[color:var(--gold-soft)]" },
+          { icon: Activity, label: "Last sync", value: healthData?.lastSyncAt ? formatDistanceToNow(new Date(healthData.lastSyncAt), { addSuffix: true }) : 'Never' },
+          { icon: HeartPulse, label: "Next sync", value: "Auto" },
         ].map((s) => (
           <div key={s.label} className="glass rounded-2xl p-5 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -197,28 +223,27 @@ export function IntegrationHealth({ providerKey }: { providerKey: string }) {
               <Server className="h-4 w-4 text-[color:var(--gold-soft)]" /> Connection
             </h3>
             <div className="space-y-2.5 text-[12.5px]">
-              <Row label="Workspace" value={provider.workspace ?? "—"} mono />
+              <Row label="Workspace" value={healthData?.connection?.accountName ?? "—"} mono />
               <Row label="Region" value="eu-west-1" />
-              <Row label="Token expires" value="in 42 days" />
-              <Row label="Webhook" value="Verified" tone="text-[color:var(--success)]" />
+              <Row label="Connection ID" value={healthData?.connection?.accountId ?? "—"} mono />
+              <Row label="Webhook" value={healthData?.isValid ? "Verified" : "Error"} tone={healthData?.isValid ? "text-[color:var(--success)]" : "text-[color:var(--danger)]"} />
             </div>
           </div>
 
-          {provider.status === "unhealthy" && (
+          {healthData?.status === "error" && (
             <div className="rounded-2xl border border-[color:var(--gold-soft)]/30 bg-[color:var(--gold-soft)]/[0.06] p-4">
               <div className="mb-1 flex items-center gap-2 text-[13px] font-semibold text-[color:var(--gold-soft)]">
                 <AlertTriangle className="h-4 w-4" /> Attention needed
               </div>
               <p className="text-[12px] text-foreground/80">
-                Rate limit hit twice in the last hour. Consider lowering sync frequency or contacting
-                your {provider.name} admin to raise limits.
+                {healthData.message || `An error occurred with your ${provider.name} connection. Please try reconnecting.`}
               </p>
-              <Link
-                href={`/eyes/${providerKey}/sync-config`}
+              <button
+                onClick={() => router.push(`/eyes/${providerKey}/connect`)}
                 className="mt-3 inline-flex text-[12px] font-semibold text-foreground underline decoration-black/30 dark:decoration-white/30 underline-offset-2"
               >
-                Adjust sync config →
-              </Link>
+                Reconnect Eye →
+              </button>
             </div>
           )}
         </div>

@@ -29,8 +29,10 @@ type NormalizedResource = {
 // };
 
 export function IntegrationResources({ providerKey }: { providerKey: string }) {
-  const { getProviderByKey, fetchIntegrations, isLoading } = useIntegrationsStore();
-  const provider = getProviderByKey(providerKey);
+  const providers = useIntegrationsStore(state => state.providers);
+  const fetchIntegrations = useIntegrationsStore(state => state.fetchIntegrations);
+  const isLoadingStore = useIntegrationsStore(state => state.isLoading);
+  const provider = providers.find((p) => p.key.toLowerCase() === providerKey.toLowerCase());
   const router = useRouter();
   const [q, setQ] = useState("");
   const [availableResources, setAvailableResources] = useState<any[]>([]);
@@ -58,10 +60,10 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
         console.error(err);
         setLoading(false);
       });
-    } else if (!isLoading) {
+    } else if (!isLoadingStore) {
       setLoading(false);
     }
-  }, [connectionId, providerKey, isLoading]);
+  }, [connectionId, providerKey, isLoadingStore]);
 
   const filtered = useMemo(
     () =>
@@ -83,7 +85,7 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
       setSaveError(false);
       try {
         await saveSelectedResources(providerKey as ProviderKey, connectionId, Array.from(selected));
-        router.push(`/eyes/${providerKey}/sync-config`);
+        router.push(`/eyes/${providerKey}/syncing`);
       } catch (err) {
         console.error("Failed to save resources", err);
         setSaveError(true);
@@ -93,7 +95,32 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
     }
   };
 
-  if (!provider) return null;
+  const handleSkipSync = async () => {
+    if (connectionId) {
+      setIsSaving(true);
+      setSaveError(false);
+      try {
+        await saveSelectedResources(providerKey as ProviderKey, connectionId, Array.from(selected));
+        router.push(`/eyes/${providerKey}/details`);
+      } catch (err) {
+        console.error("Failed to save resources", err);
+        setSaveError(true);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
+
+  if (!provider) {
+    if (isLoadingStore) {
+      return (
+        <div className="flex h-[40vh] w-full items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[color:var(--gold)] border-t-transparent"></div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="w-full">
@@ -132,7 +159,7 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
                 </button>
                 <button
                   onClick={() => setSelected(new Set())}
-                  disabled={isLoading || selected.size === 0}
+                  disabled={isLoadingStore || selected.size === 0}
                   className="rounded-lg border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] px-2.5 py-1.5 text-[11.5px] text-muted-foreground hover:text-foreground"
                 >
                   Clear
@@ -157,7 +184,7 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
                 <div className="py-8 text-center text-[13px] text-muted-foreground">No resources found.</div>
               ) : (
                 filtered.map((r, i) => {
-                  const isPrivate = r.isPrivate;
+                  const isPrivate = r.isPrivate === true || r.metadata?.private === true || r.metadata?.is_private === true;
                   const on = selected.has(r.externalResourceId || r.id);
                   return (
                     <motion.button
@@ -265,10 +292,17 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Configure sync <ArrowRight className="h-4 w-4" />
+                  Start historical sync <ArrowRight className="h-4 w-4" />
                 </>
                 )}
              </button>
+             <button
+              onClick={handleSkipSync}
+              disabled={selected.size === 0 || !connectionId || isSaving}
+              className="mt-2 block w-full text-center text-[12px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+            >
+              Skip historical sync (track new only)
+            </button>
           </div>
 
           <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] p-4 text-[12px] text-muted-foreground">

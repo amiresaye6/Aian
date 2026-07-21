@@ -34,7 +34,7 @@ export class HistoricalSyncService {
         throw new Error(`Connection ${connectionId} not found`);
       }
 
-      const client = this.providerFactory.getClient(connection.provider);
+      const client = this.providerFactory.getClient(connection.providerId);
       if (!client || !client.syncHistoricalResource) {
         throw new Error(
           `Provider ${connection.provider} does not support historical sync`,
@@ -187,6 +187,9 @@ export class HistoricalSyncService {
           percentage: 100,
         },
       );
+
+      // Update connection's lastSyncAt
+      await this.connectionRepo.updateLastSync(connectionId);
 
       this.logger.log(`Historical sync completed for run ${runId}`);
     } catch (error: any) {

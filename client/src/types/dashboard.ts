@@ -37,6 +37,7 @@ export interface DashboardIntegration {
   externalAccountName: string | null;
   lastSyncAt: string | null;
   connectedAt: string;
+  knowledgeItems: number;
 }
 
 export interface DashboardSyncJob {
@@ -63,4 +64,7 @@ export interface DashboardOwnerData {
   knowledgeFiles: DashboardKnowledgeFile[];
   memberCount: number;
   roleCount: number;
+  processingSettings?: {
+    timeIntervalHours: number;
+  };
 }

@@ -23,111 +23,21 @@ export interface Provider {
   organizationEyeId?: string; // dynamically added from backend
 }
 
-export const PROVIDER_LIST: Provider[] = [
-  {
-    key: "jira",
-    name: "Jira",
-    category: "Engineering",
-    tagline: "Sync issues, epics, and comments to provide context on ongoing engineering tasks.",
-    brand: "#0052CC",
-    status: "disconnected",
-    glyph: Briefcase,
-    health: 0,
-    knowledgeItems: 0,
-    lastSyncMin: 0,
-    resourceLabel: "Projects",
-    resources: 0,
-    permissions: [
-      { title: "Read issues & comments", description: "Read-only access to all issues, epics, and comments." },
-      { title: "Read project metadata", description: "Access to project names, keys, and configurations." }
-    ],
-    scopes: ["read:jira-work", "read:jira-user"],
-    workspace: "Acme Corp Jira",
-    sampleResources: [
-      { name: "Frontend Architecture", kind: "public", activity: "High" },
-      { name: "Backend APIs", kind: "private", members: 12, activity: "Medium" }
-    ]
-  },
-  {
-    key: "github",
-    name: "GitHub",
-    category: "Engineering",
-    tagline: "Ingest repositories, PRs, and commit history for deep codebase understanding.",
-    brand: "#24292e",
-    status: "disconnected",
-    glyph: FileText,
-    health: 0,
-    knowledgeItems: 0,
-    lastSyncMin: 0,
-    resourceLabel: "Repositories",
-    resources: 0,
-    permissions: [
-      { title: "Read repository contents", description: "Access to code, commits, and pull requests." },
-      { title: "Read metadata", description: "Access to repository configurations and webhooks." }
-    ],
-    scopes: ["repo", "read:user"],
-    workspace: "AcmeCorp GitHub Organization",
-    sampleResources: [
-      { name: "aian-core", kind: "private", members: 45, activity: "Very High" },
-      { name: "aian-frontend", kind: "public", activity: "High" }
-    ]
-  },
-  {
-    key: "slack",
-    name: "Slack",
-    category: "Communication",
-    tagline: "Index messages and threads to keep AIAN updated on team conversations.",
-    brand: "#E01E5A",
-    status: "disconnected",
-    glyph: MessageSquare,
-    health: 0,
-    knowledgeItems: 0,
-    lastSyncMin: 0,
-    resourceLabel: "Channels",
-    resources: 0,
-    permissions: [
-      { title: "Read messages", description: "Access to messages and threads in public and private channels." },
-      { title: "Read channel metadata", description: "Access to channel lists and user directories." }
-    ],
-    scopes: ["channels:history", "groups:history", "im:history", "mpim:history"],
-    workspace: "Acme Corp Workspace",
-    sampleResources: [
-      { name: "#engineering", kind: "public", members: 89, activity: "Very High" },
-      { name: "#leadership", kind: "private", members: 8, activity: "Low" }
-    ]
-  },
-  {
-    key: "zoom",
-    name: "Zoom",
-    category: "Meetings",
-    tagline: "Transcribe and analyze meetings to capture verbal decisions and knowledge.",
-    brand: "#2D8CFF",
-    status: "disconnected",
-    glyph: Video,
-    health: 0,
-    knowledgeItems: 0,
-    lastSyncMin: 0,
-    resourceLabel: "Recordings",
-    resources: 0,
-    permissions: [
-      { title: "Read meeting recordings", description: "Access to cloud recordings and transcripts." },
-      { title: "Read meeting metadata", description: "Access to meeting schedules and participant lists." }
-    ],
-    scopes: ["recording:read", "meeting:read"],
-    workspace: "Acme Corp Zoom Account",
-    sampleResources: [
-      { name: "Weekly All Hands", kind: "public", members: 120, activity: "Weekly" },
-      { name: "Exec Sync", kind: "private", members: 5, activity: "Bi-weekly" }
-    ]
-  }
-];
+export const PROVIDER_GLYPHS: Record<string, LucideIcon> = {
+  jira: Briefcase,
+  github: FileText,
+  slack: MessageSquare,
+  zoom: Video,
+};
 
-export function getProvider(key: string): Provider {
-  const provider = PROVIDER_LIST.find((p) => p.key === key);
-  if (!provider) {
-    return PROVIDER_LIST[0]; 
-  }
-  return provider;
+export function getProviderName(key: string): string {
+  const names: Record<string, string> = {
+    jira: "Jira",
+    github: "GitHub",
+    slack: "Slack",
+    zoom: "Zoom",
+  };
+  return names[key] || key.charAt(0).toUpperCase() + key.slice(1);
 }
 
 export function formatAgo(minutes: number): string {

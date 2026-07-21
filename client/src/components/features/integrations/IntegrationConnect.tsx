@@ -11,7 +11,7 @@ import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 import { useEffect } from "react";
 
 export function IntegrationConnect({ providerKey }: { providerKey: string }) {
-  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const { providers, getProviderByKey, fetchIntegrations, isLoading } = useIntegrationsStore();
   const provider = getProviderByKey(providerKey);
   const [accepted, setAccepted] = useState(false);
   const router = useRouter();
@@ -30,6 +30,14 @@ export function IntegrationConnect({ providerKey }: { providerKey: string }) {
       console.error("Organization Eye not found for provider");
     }
   };
+
+  if (isLoading && !provider) {
+    return (
+      <div className="flex h-[40vh] w-full items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[color:var(--gold)] border-t-transparent"></div>
+      </div>
+    );
+  }
 
   if (!provider) return null;
 

@@ -42,6 +42,8 @@ export class DashboardService {
       knowledgeFiles,
       memberCount,
       roleCount,
+      knowledgeItemCounts,
+      processingSettings,
     ] = await Promise.all([
       this.prisma.subscription.findFirst({
         where: { organizationId },
@@ -82,6 +84,16 @@ export class DashboardService {
         where: {
           OR: [{ organizationId: null }, { organizationId }],
         },
+      }),
+
+      this.prisma.knowledgeItem.groupBy({
+        by: ['provider'],
+        where: { organizationId },
+        _count: { _all: true },
+      }),
+
+      this.prisma.organizationProcessingSettings.findUnique({
+        where: { organizationId },
       }),
     ]);
 
@@ -126,15 +138,20 @@ export class DashboardService {
         };
       }),
 
-      integrations: integrations.map((integration) => ({
-        id: integration.id,
-        organizationEyeId: integration.organizationEyeId,
-        providerId: integration.providerId,
-        status: integration.status,
-        externalAccountName: integration.externalAccountName,
-        lastSyncAt: integration.lastSyncAt?.toISOString() ?? null,
-        connectedAt: integration.connectedAt.toISOString(),
-      })),
+      integrations: integrations.map((integration) => {
+        const providerName = providers.find(p => p.id === integration.providerId)?.key?.toUpperCase();
+        const itemCount = knowledgeItemCounts.find(k => k.provider.toUpperCase() === providerName)?._count?._all || 0;
+        return {
+          id: integration.id,
+          organizationEyeId: integration.organizationEyeId,
+          providerId: integration.providerId,
+          status: integration.status,
+          externalAccountName: integration.externalAccountName,
+          lastSyncAt: integration.lastSyncAt?.toISOString() ?? null,
+          connectedAt: integration.connectedAt.toISOString(),
+          knowledgeItems: itemCount,
+        };
+      }),
 
       syncJobs: syncJobs.map((job) => ({
         id: job.id,
@@ -149,6 +166,10 @@ export class DashboardService {
         status: file.status,
         uploadedAt: file.createdAt.toISOString(),
       })),
+
+      processingSettings: processingSettings ? {
+        timeIntervalHours: processingSettings.timeIntervalHours,
+      } : { timeIntervalHours: 6 },
 
       memberCount,
 

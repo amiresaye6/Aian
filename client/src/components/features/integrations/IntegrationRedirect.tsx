@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Shield, Loader2 } from "lucide-react";
 import { AnimatedEye } from "./components/AnimatedEye";
-import { getProvider } from "./providers";
+import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 import { useRouter } from "next/navigation";
 
 const STAGES = [
@@ -16,17 +16,21 @@ const STAGES = [
 ];
 
 export function IntegrationRedirect({ providerKey }: { providerKey: string }) {
-  const provider = getProvider(providerKey);
+  const providers = useIntegrationsStore(state => state.providers);
+  const fetchIntegrations = useIntegrationsStore(state => state.fetchIntegrations);
+  const provider = providers.find(p => p.key.toLowerCase() === providerKey.toLowerCase());
+  
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
   const router = useRouter();
   const [stage, setStage] = useState(0);
-  useEffect(() => {
-    if (providerKey === "github") {
-      router.replace(`/eyes/github/connect`);
-    }
-  }, [providerKey, router]);
+
 
   useEffect(() => {
-    if (providerKey === "github") return; 
+
+    if (!provider) return; // Wait until provider is loaded
+    
     if (stage >= STAGES.length) {
       const t = setTimeout(
         () => router.push(`/eyes/${providerKey}/success`),
@@ -36,9 +40,15 @@ export function IntegrationRedirect({ providerKey }: { providerKey: string }) {
     }
     const t = setTimeout(() => setStage((s) => s + 1), 900 + Math.random() * 500);
     return () => clearTimeout(t);
-  }, [stage, providerKey, router]);
-  if (providerKey === "github") {
-    return null; // brief flash before redirect effect fires
+  }, [stage, providerKey, router, provider]);
+
+
+  if (!provider) {
+    return (
+      <div className="flex h-[40vh] w-full items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[color:var(--gold)] border-t-transparent"></div>
+      </div>
+    );
   }
 
   return (

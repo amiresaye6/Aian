@@ -6,8 +6,10 @@ import { BatchesController } from './controllers/batches.controller';
 import { MessagesController } from './controllers/messages.controller';
 import { SettingsController } from './controllers/settings.controller';
 import { HistoricalSyncController } from './controllers/historical-sync.controller';
-import { MessagesService } from '../../integrations/messages/messages.service';
+import { KnowledgeController } from './controllers/knowledge.controller';
 import { IntegrationsModule } from '../../integrations/integrations.module';
+import { MessagesService } from '../../integrations/messages/messages.service';
+
 import { GithubStatsController } from './controllers/github-stats.controller';
 @Module({
   imports: [IntegrationsModule], // Needs access to ProviderClientFactory
@@ -20,7 +22,8 @@ import { GithubStatsController } from './controllers/github-stats.controller';
     MessagesController,
     SettingsController,
     HistoricalSyncController,
+    KnowledgeController,
     GithubStatsController,
   ],
 })
-export class IngestionApiModule {}
+export class IngestionApiModule { }

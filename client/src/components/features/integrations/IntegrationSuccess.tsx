@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { getAvailableResources, ProviderKey } from "@/api/integrations";
 
 export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
-  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const { providers, getProviderByKey, fetchIntegrations } = useIntegrationsStore();
   const provider = getProviderByKey(providerKey);
   const [resources, setResources] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,9 +40,39 @@ export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
   if (!provider) return null;
 
   const total = resources?.length ?? 0;
-  const privateCount =
-    resources?.filter((r: any) => r.isPrivate === true || r.metadata?.private === true).length ?? 0;
-  const publicCount = total - privateCount;
+  
+  let stats = [];
+
+  if (providerKey === "github") {
+    const privateCount = resources?.filter((r: any) => r.isPrivate === true || r.metadata?.private === true).length ?? 0;
+    const publicCount = total - privateCount;
+    stats = [
+      { label: "Repositories", value: `${total}` },
+      { label: "Private", value: `${privateCount}` },
+      { label: "Public", value: `${publicCount}` },
+    ];
+  } else if (providerKey === "slack") {
+    const privateCount = resources?.filter((r: any) => r.isPrivate === true || r.metadata?.is_private === true).length ?? 0;
+    const publicCount = total - privateCount;
+    stats = [
+      { label: "Channels", value: `${total}` },
+      { label: "Private", value: `${privateCount}` },
+      { label: "Public", value: `${publicCount}` },
+    ];
+  } else if (providerKey === "jira") {
+    stats = [
+      { label: "Projects", value: `${total}` },
+      { label: "Active", value: `${total}` },
+    ];
+  } else if (providerKey === "zoom") {
+    stats = [
+      { label: "Recordings", value: `${total}` },
+    ];
+  } else {
+    stats = [
+      { label: `${provider.resourceLabel} detected`, value: `${total}` }
+    ];
+  }
 
   return (
     <div className="w-full">
@@ -112,10 +142,10 @@ export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
           className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
         >
           <Link
-            href={`/eyes/${providerKey}/resources`}
+            href={`/eyes/${providerKey}/sync-config`}
             className="btn-gold btn-gold-hover inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-[14px] font-semibold text-[#17130A]"
           >
-            Select resources <ArrowRight className="h-4 w-4" />
+            Configure sync <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             href="/eyes"
@@ -155,16 +185,12 @@ export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           ) : (
-            [
-              { label: `${provider.resourceLabel} detected`, value: `${total}` },
-              { label: "Private", value: `${privateCount}` },
-              { label: "Public", value: `${publicCount}` },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="font-display text-[20px] font-semibold text-foreground">{s.value}</div>
-                <div className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">{s.label}</div>
-              </div>
-            ))
+              stats.map((s) => (
+                <div key={s.label} className="text-center">
+                  <div className="font-display text-[20px] font-semibold text-foreground">{s.value}</div>
+                  <div className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">{s.label}</div>
+                </div>
+              ))
           )}
         </motion.div>
       </div>

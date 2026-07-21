@@ -50,7 +50,7 @@ export class MessagesService {
     }
 
     // 2. Resolve the correct provider client
-    const client = this.providerFactory.getClient(connection.provider);
+    const client = this.providerFactory.getClient(connection.providerId);
     if (!client) {
       throw new BadRequestException(
         `No client registered for provider: ${connection.provider}`,

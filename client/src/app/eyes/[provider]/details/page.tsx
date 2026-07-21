@@ -1,11 +1,11 @@
 import { IntegrationDetails } from "@/components/features/integrations/IntegrationDetails";
-import { getProvider } from "@/components/features/integrations/providers";
+import { getProviderName } from "@/components/features/integrations/providers";
 import { Metadata } from "next";
 
 export async function generateMetadata({ params }: { params: Promise<{ provider: string }> }): Promise<Metadata> {
   const resolvedParams = await params;
   return {
-    title: `details ${getProvider(resolvedParams.provider).name} — AIAN`,
+    title: `details ${getProviderName(resolvedParams.provider)} — AIAN`,
   };
 }
 

@@ -15,7 +15,7 @@ import { HistoricalSyncService } from './historical-sync.service';
 @Global()
 @Module({
   imports: [IntegrationsModule], // We need ProviderClientFactory from this
-  controllers: [WebhookController,GithubWebhookController,],
+  controllers: [WebhookController, GithubWebhookController,],
   providers: [
     WebhookEventDispatcherService,
     WebhookService,
@@ -24,4 +24,4 @@ import { HistoricalSyncService } from './historical-sync.service';
   ],
   exports: [BaseCollectorService, WebhookService, HistoricalSyncService],
 })
-export class CollectionModule {}
+export class CollectionModule { }

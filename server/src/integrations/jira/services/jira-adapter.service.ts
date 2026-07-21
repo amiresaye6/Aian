@@ -80,16 +80,57 @@ export class JiraAdapterService implements ProviderAdapter {
       }
     }
 
-    // Transitions (extracted from changelog in issue_updated)
-    if (eventTypeStr.includes('issue_updated') && payload.changelog && payload.issue) {
+    // Transitions (extracted from changelog in issue_updated or historical sync)
+    if (
+      (eventTypeStr.includes('issue_updated') || eventTypeStr === 'jira_historical_issue') &&
+      payload.changelog &&
+      payload.issue
+    ) {
       const changelogObj = payload.changelog as Record<string, unknown>;
-      const itemsArr = (changelogObj.items as unknown[]) || [];
-      const transitionItem = itemsArr.find((i: unknown) => {
-        const itemObj = i as Record<string, unknown>;
-        return itemObj.field === 'status';
-      });
-      if (transitionItem) {
-        items.push(this.mapTransition(input, payload.issue as Record<string, unknown>, transitionItem as Record<string, unknown>, 'issue_transitioned'));
+      // Historical sync returns histories in .histories instead of .items, but some webhook payloads use .items. 
+      // Actually Jira API /search returns changelog.histories array.
+      const historiesArr = (changelogObj.histories as unknown[]) || (changelogObj.items ? [{ items: changelogObj.items }] : []);
+      
+      for (const history of historiesArr) {
+        const historyObj = history as Record<string, unknown>;
+        const itemsArr = (historyObj.items as unknown[]) || [];
+        const transitionItem = itemsArr.find((i: unknown) => {
+          const itemObj = i as Record<string, unknown>;
+          return itemObj.field === 'status';
+        });
+        if (transitionItem) {
+          // Pass the history author as the user who made the transition
+          const author = historyObj.author || (input.rawPayload as Record<string, unknown>)?.user;
+          const fakeInput = { ...input, rawPayload: { ...payload, user: author } };
+          items.push(
+            this.mapTransition(
+              fakeInput,
+              payload.issue as Record<string, unknown>,
+              transitionItem as Record<string, unknown>,
+              'issue_transitioned',
+            ),
+          );
+        }
+      }
+    }
+
+    // Historical Worklogs
+    if (eventTypeStr === 'jira_historical_issue' && payload.issue) {
+      const issueObj = payload.issue as Record<string, unknown>;
+      const fieldsObj = issueObj.fields as Record<string, unknown> | undefined;
+      const worklogObj = fieldsObj?.worklog as Record<string, unknown> | undefined;
+      const worklogsArr = worklogObj?.worklogs as unknown[] | undefined;
+      if (worklogsArr && Array.isArray(worklogsArr)) {
+        for (const wl of worklogsArr) {
+          items.push(
+            this.mapWorklog(
+              input,
+              payload.issue as Record<string, unknown>,
+              wl as Record<string, unknown>,
+              'worklog_created',
+            ),
+          );
+        }
       }
     }
 

@@ -41,7 +41,7 @@ export class EyesController {
 
     try {
       // 1. Resolve the provider client and invoke revokeCredentials if implemented
-      const client = this.providerFactory.getClient(conn.provider);
+      const client = this.providerFactory.getClient(conn.providerId);
       if (client && client.revokeCredentials) {
         await client.revokeCredentials(conn);
       }

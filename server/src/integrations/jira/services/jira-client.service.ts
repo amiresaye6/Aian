@@ -21,12 +21,13 @@ export class JiraClientService implements ProviderClient {
     private readonly prisma: PrismaService,
     private readonly providerConnectionRepo: ProviderConnectionRepository,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
-  private async getValidToken(connection: ProviderConnection): Promise<string> {
+  private async getValidToken(connection: ProviderConnection, forceRefresh = false): Promise<string> {
     if (
-      connection.tokenExpiresAt &&
-      new Date().getTime() >= connection.tokenExpiresAt.getTime() - 5 * 60000 // 5 min buffer
+      forceRefresh ||
+      (connection.tokenExpiresAt &&
+        new Date().getTime() >= connection.tokenExpiresAt.getTime() - 5 * 60000) // 5 min buffer
     ) {
       try {
         const refreshed = await this.refreshCredentials(connection);
@@ -272,6 +273,23 @@ export class JiraClientService implements ProviderClient {
     // });
 
     try {
+      // 1. Fetch all existing webhooks for this app on this site to clean up orphans
+      const getWebhooksResponse = await axios.get(`${baseUrl}/webhook`, { headers });
+      const existingWebhooksFromJira = getWebhooksResponse.data.values || [];
+      const idsToDelete = existingWebhooksFromJira.map((w: any) => w.id);
+
+      if (idsToDelete.length > 0) {
+        this.logger.log(`Deleting ${idsToDelete.length} existing orphaned Jira webhooks before re-registering...`);
+        await axios.delete(`${baseUrl}/webhook`, {
+          headers,
+          data: { webhookIds: idsToDelete },
+        });
+      }
+    } catch (cleanupError: unknown) {
+      this.logger.warn(`Failed to cleanup orphaned Jira webhooks: ${cleanupError}`);
+    }
+
+    try {
       const response = await axios.post(
         `${baseUrl}/webhook`,
         {
@@ -438,14 +456,14 @@ export class JiraClientService implements ProviderClient {
     const baseUrl = this.getBaseUrl(connection);
     const headers = this.buildHeaders(token);
 
-    // Jira primarily uses Offset Pagination. The cursor will just be the 'startAt' stringified integer.
-    let startAt = cursor ? parseInt(cursor, 10) : 0;
+    // Jira now uses cursor-based pagination with search/jql
+    let nextPageToken: string | undefined = cursor;
     const maxResults = 50;
     let hasMore = true;
 
     // Use Jira's string format: 'YYYY-MM-DD HH:mm'
     const updatedStr = fromDate.toISOString().replace('T', ' ').substring(0, 16);
-    
+
     // Fallback: If it's a Board, we would hit the Agile API, but for historical backfill,
     // we assume the resource is primarily an Issue container. For simplicity and robust fetching,
     // we will rely on Project JQL first. If it's a board, the Agile API does not support standard JQL search directly.
@@ -453,20 +471,43 @@ export class JiraClientService implements ProviderClient {
     const jql = `project = ${resourceId} AND updated >= "${updatedStr}" ORDER BY updated ASC`;
 
     while (hasMore) {
-      const response = await axios.post<{
-        issues: any[];
-        total: number;
-        maxResults: number;
-      }>(
-        `${baseUrl}/search`,
-        {
-          jql,
-          startAt,
-          maxResults,
-          expand: ['changelog', 'renderedFields'],
-        },
-        { headers },
-      );
+      let response;
+      const payload: any = {
+        jql,
+        maxResults,
+        expand: ['changelog', 'renderedFields'],
+      };
+      if (nextPageToken && nextPageToken !== '0') {
+        payload.nextPageToken = nextPageToken;
+      }
+
+      try {
+        response = await axios.post<{
+          issues: any[];
+          nextPageToken?: string;
+        }>(
+          `${baseUrl}/search/jql`,
+          payload,
+          { headers },
+        );
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          this.logger.warn(`401 Unauthorized in syncHistoricalResource. Forcing token refresh...`);
+          const newToken = await this.getValidToken(connection, true);
+          headers.Authorization = `Bearer ${newToken}`;
+          response = await axios.post<{
+            issues: any[];
+            nextPageToken?: string;
+          }>(
+            `${baseUrl}/search/jql`,
+            payload,
+            { headers },
+          );
+        } else {
+          this.logger.error(`Jira search failed. Status: ${axios.isAxiosError(err) ? err.response?.status : 'unknown'}, Data: ${axios.isAxiosError(err) ? JSON.stringify(err.response?.data) : 'none'}`);
+          throw err;
+        }
+      }
 
       const issues = response.data.issues || [];
       if (issues.length === 0) {
@@ -480,17 +521,11 @@ export class JiraClientService implements ProviderClient {
         issue,
       }));
 
-      const total = response.data.total;
-      const nextStartAt = startAt + issues.length;
-      
-      hasMore = nextStartAt < total;
-      const nextCursor = hasMore ? nextStartAt.toString() : undefined;
+      nextPageToken = response.data.nextPageToken;
+      hasMore = !!nextPageToken;
 
       // Yield the page to the global engine
-      await savePageCallback(rawEvents, nextCursor);
-
-      // Advance
-      startAt = nextStartAt;
+      await savePageCallback(rawEvents, nextPageToken);
     }
 
     this.logger.log(`Finished historical sync for Jira resource ${resource.externalResourceId}`);

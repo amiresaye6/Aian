@@ -13,6 +13,7 @@ export interface IntegrationItem {
   externalAccountName: string | null;
   lastSyncAt: string | null;
   connectedAt: string;
+  knowledgeItems: number;
 }
 
 export interface SyncJobItem {
@@ -55,4 +56,7 @@ export interface DashboardOwnerData {
   knowledgeFiles: KnowledgeFileItem[];
   memberCount: number;
   roleCount: number;
+  processingSettings?: {
+    timeIntervalHours: number;
+  };
 }

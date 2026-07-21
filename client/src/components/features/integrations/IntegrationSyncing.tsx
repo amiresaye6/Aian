@@ -17,7 +17,7 @@ const STAGES = [
 ];
 
 export function IntegrationSyncing({ providerKey }: { providerKey: string }) {
-  const { getProviderByKey, fetchIntegrations } = useIntegrationsStore();
+  const { providers, getProviderByKey, fetchIntegrations, isLoading } = useIntegrationsStore();
   const provider = getProviderByKey(providerKey);
   const router = useRouter();
   const [progress, setProgress] = useState(0);
