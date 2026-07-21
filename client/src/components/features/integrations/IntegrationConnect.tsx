@@ -33,6 +33,19 @@ export function IntegrationConnect({ providerKey }: { providerKey: string }) {
 
   if (!provider) return null;
 
+  const handleContinue = () => {
+    if (isGithub) {
+      if (!organizationEyeId) return;
+      window.location.href = getGithubInstallUrl(organizationEyeId);
+      return;
+    }
+    // TODO: other providers (Slack/Zoom/Jira) still use the classic
+    // redirect page until their install/OAuth flow is wired up.
+    router.push(`/eyes/${providerKey}/redirect`);
+  };
+
+  const continueDisabled =
+    !accepted || (isGithub && (isLoading || isError || !organizationEyeId));
   return (
     <div className="w-full">
       <ProviderHero provider={provider} step="Connect" />
@@ -138,6 +151,11 @@ export function IntegrationConnect({ providerKey }: { providerKey: string }) {
             <button
               disabled={!accepted || !organizationEyeId}
               onClick={handleConnect}
+              className="btn-gold btn-gold-hover mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none text-[#17130A]"
+            > */}
+            <button
+              disabled={continueDisabled}
+              onClick={handleContinue}
               className="btn-gold btn-gold-hover mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none text-[#17130A]"
             >
               <ExternalLink className="h-4 w-4" />
