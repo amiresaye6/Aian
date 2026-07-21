@@ -114,3 +114,15 @@ enum CollectionRunStatus {
 
   @@map("collection_run_status")
 }
+
+// ---------------- Sprint 3 Enums ----------------
+
+enum ArtifactType {
+  conversation
+  ticket_lifecycle
+  implementation_story
+  meeting_outcome
+  document
+
+  @@map("artifact_type")
+}

@@ -35,3 +35,27 @@ model OnboardingProgress {
 
   @@map("onboarding_progress")
 }
+
+// ---------------- Sprint 3 Models ----------------
+
+model KnowledgeArtifact {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  type           ArtifactType
+  provider       String       @db.VarChar(20)
+  title          String?      @db.VarChar(500)
+  content        String       @db.Text
+  participants   Json         @default("[]")
+  metadata       Json         @default("{}")
+  extractedAt    DateTime?    @map("extracted_at") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // One artifact is made of many raw items
+  sourceItems KnowledgeItem[]
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, type])
+  @@map("knowledge_artifacts")
+}
