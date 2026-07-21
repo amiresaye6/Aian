@@ -24,6 +24,7 @@ import { CollectionModule } from './ingestion/collection/collection.module';
 import { SchedulerModule } from './ingestion/scheduler/scheduler.module';
 import { ProcessorModule } from './processor/processor.module';
 import { ZoomModule } from './integrations/zoom/zoom.module';
+import { AiGatewayModule } from './ai/ai-gateway.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ZoomModule } from './integrations/zoom/zoom.module';
     CollectionModule,
     SchedulerModule,
     ProcessorModule,
+    AiGatewayModule,
     HealthModule,
     UploadModule,
     EmailModule,
