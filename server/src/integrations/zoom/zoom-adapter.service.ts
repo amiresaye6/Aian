@@ -8,12 +8,57 @@ export class ZoomAdapterService implements ProviderAdapter {
    * Normalizes raw webhook payloads received from Zoom into the unified KnowledgeItem schema.
    */
   normalizeEvent(input: ProviderEventInput): KnowledgeItem[] {
-    const event = input.rawPayload as any;
-    
-      const meetingObject = event.payload.object;
+    const raw = input.rawPayload as any;
 
-      const normalizedItem: KnowledgeItem = {
-        id: undefined as any, // Generated automatically by the database (UUID)
+    // meeting baas event
+    if (raw.botId !== undefined) {
+        const normalizedItem: KnowledgeItem = {
+            id: undefined as any,
+            organizationId: input.organizationId,
+            eyeType: EyeType.MEETING,
+            provider: Provider.ZOOM,
+            sourceType: 'Meeting Data',
+            eventType: 'bot.completed',
+            externalResourceId: raw.botId,
+            externalEventId: raw.botId,
+            parentExternalResourceId: null,
+            title: 'Zoom Meeting Transcript',
+
+            content: raw.transcriptionText || raw.full_transcription || raw.summarization,
+
+            author: {
+                externalId: raw.externalAccountId,
+                name: raw.externalAccountName,
+                email: undefined,
+            },
+
+            participants: raw.participants || [],
+            contextLocation: 'Zoom Meeting Room',
+            sourceUrl: raw.videoUrl || null,
+            occurredAt: raw.joinedAt ? new Date(raw.joinedAt) : new Date(),
+            receivedAt: new Date(),
+            visibility: 'ORGANIZATION',
+            rawPayloadReference: input.rawEventReference,
+            metadata: {
+                durationSeconds: raw.durationSeconds,
+                exitedAt: raw.exitedAt,
+                speakers: raw.speakers || [],
+                summarization: raw.summarization,
+                full_transcription: raw.full_transcription,
+                audioUrl: raw.audioUrl,
+            },
+            version: '1.0',
+        };
+
+        return [normalizedItem];
+    }
+
+    // zoom event
+    const event = raw;
+    const meetingObject = event.payload.object;
+
+    const normalizedItem: KnowledgeItem = {
+        id: undefined as any,
         organizationId: input.organizationId,
         eyeType: EyeType.MEETING,
         provider: Provider.ZOOM,
@@ -23,15 +68,12 @@ export class ZoomAdapterService implements ProviderAdapter {
         externalEventId: meetingObject.uuid,
         parentExternalResourceId: null,
         title: meetingObject.topic || 'Zoom Meeting',
-        
-        content: meetingObject.transcript_text || 'Transcript will be fetched via Zoom API.', 
-        
+        content: meetingObject.transcript_text || 'Transcript will be fetched via Zoom API.',
         author: {
-          externalId: meetingObject.host_id || 'unknown_host',
-          name: meetingObject.host_user_name || 'Zoom Host',
-          email: meetingObject.host_email || undefined,
+            externalId: meetingObject.host_id || 'unknown_host',
+            name: meetingObject.host_user_name || 'Zoom Host',
+            email: meetingObject.host_email || undefined,
         },
-        
         participants: [],
         contextLocation: meetingObject.topic ? `Meeting: ${meetingObject.topic}` : 'Zoom Meeting Room',
         sourceUrl: meetingObject.join_url || null,
@@ -39,17 +81,17 @@ export class ZoomAdapterService implements ProviderAdapter {
         receivedAt: new Date(),
         visibility: 'ORGANIZATION',
         rawPayloadReference: input.rawEventReference,
-        metadata: { 
-          host_id: meetingObject.host_id,
-          topic: meetingObject.topic,
-          duration: meetingObject.duration,
-          recording_files: meetingObject.recording_files || [],
+        metadata: {
+            host_id: meetingObject.host_id,
+            topic: meetingObject.topic,
+            duration: meetingObject.duration,
+            recording_files: meetingObject.recording_files || [],
         },
         version: '1.0',
-      };
+    };
 
-      return [normalizedItem];
-  }
+    return [normalizedItem];
+}
 
   /**
    * Generates a unique idempotency key to prevent processing duplicate meeting transcripts.
