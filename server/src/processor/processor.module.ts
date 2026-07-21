@@ -1,19 +1,20 @@
 import { Global, Module } from '@nestjs/common';
-import { MockProcessorGateway } from './processor-gateway.mock';
+import { KnowledgeProcessorService } from './knowledge-processor.service';
+import { AssemblerFactory } from './assemblers/assembler.factory';
 
 /**
  * Global Processor Module.
  * Provides the KnowledgeProcessorGateway interface.
- * Using a Mock implementation for Sprint 2.
  */
 @Global()
 @Module({
   providers: [
+    AssemblerFactory,
     {
       provide: 'KNOWLEDGE_PROCESSOR_GATEWAY',
-      useClass: MockProcessorGateway,
+      useClass: KnowledgeProcessorService,
     },
   ],
-  exports: ['KNOWLEDGE_PROCESSOR_GATEWAY'],
+  exports: ['KNOWLEDGE_PROCESSOR_GATEWAY', AssemblerFactory],
 })
 export class ProcessorModule {}
