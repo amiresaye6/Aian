@@ -64,4 +64,25 @@ export class EyesController {
       message: 'Connection revoked and disconnected successfully',
     };
   }
+
+  @Get(':id/members')
+  async getMembers(@Param('id') id: string) {
+    const connection = await this.connectionRepo.findByIdMapped(id);
+    if (!connection) {
+      return { success: false, message: 'Connection not found' };
+    }
+
+    const client = this.providerFactory.getClient(connection.providerId);
+    // Specifically support Jira for now
+    if (connection.provider === 'JIRA' && client && 'getMembers' in client) {
+      try {
+        const members = await (client as any).getMembers(connection);
+        return { success: true, data: members };
+      } catch (err) {
+        return { success: false, message: 'Failed to fetch members' };
+      }
+    }
+    
+    return { success: true, data: [] };
+  }
 }
