@@ -126,3 +126,12 @@ enum ArtifactType {
 
   @@map("artifact_type")
 }
+
+enum ExtractionStatus {
+  pending
+  processing
+  completed
+  failed
+
+  @@map("extraction_status")
+}

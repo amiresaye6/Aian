@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AssemblerFactory } from './assemblers/assembler.factory';
 import { BatchStatus, IngestionStatus } from '@prisma/client';
+import { KnowledgeExtractionService } from '../extraction/extraction.service';
 
 @Injectable()
 export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
@@ -14,6 +15,7 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
   constructor(
     private readonly prisma: PrismaService,
     private readonly assemblerFactory: AssemblerFactory,
+    private readonly extractionService: KnowledgeExtractionService,
   ) {}
 
   async handoffBatch(batchId: string): Promise<ProcessorHandoffResult> {
@@ -81,6 +83,18 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
             // Create the artifact
             const artifact = await tx.knowledgeArtifact.create({
               data: artifactData as any,
+            });
+
+            // --- Stage 2 Hook ---
+            // Trigger Knowledge Extraction asynchronously after the transaction completes.
+            // We do NOT await here inside the tx — extraction is non-blocking.
+            // A failed extraction never rolls back the assembly transaction.
+            setImmediate(() => {
+              this.extractionService.extractFromArtifact(artifact.id).catch(
+                (err) => this.logger.error(
+                  `Unexpected error dispatching extraction for artifact ${artifact.id}: ${err.message}`,
+                ),
+              );
             });
 
             // Find all items that belong to this artifact (this assumes the assembler grouped them correctly,

@@ -25,6 +25,7 @@ import { SchedulerModule } from './ingestion/scheduler/scheduler.module';
 import { ProcessorModule } from './processor/processor.module';
 import { ZoomModule } from './integrations/zoom/zoom.module';
 import { AiGatewayModule } from './ai/ai-gateway.module';
+import { KnowledgeExtractionModule } from './extraction/extraction.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AiGatewayModule } from './ai/ai-gateway.module';
     SchedulerModule,
     ProcessorModule,
     AiGatewayModule,
+    KnowledgeExtractionModule,
     HealthModule,
     UploadModule,
     EmailModule,
@@ -56,7 +58,7 @@ import { AiGatewayModule } from './ai/ai-gateway.module';
     EyesModule,
     // DashboardModule,
     PaymobModule,
-    BillingModule
+    BillingModule,
   ],
 })
 export class AppModule {}
