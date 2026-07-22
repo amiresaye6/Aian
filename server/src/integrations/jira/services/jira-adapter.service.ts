@@ -14,7 +14,11 @@ export class JiraAdapterService implements ProviderAdapter {
     const payload = input.rawPayload as Record<string, unknown>;
     
     // Support BOTH Webhook payloads (webhookEvent) AND direct API sync objects
-    const eventType = input.providerEventType || payload.webhookEvent || payload.type;
+    let eventType = input.providerEventType || payload.webhookEvent || payload.type;
+    
+    if (eventType === 'historical' && payload.type) {
+      eventType = payload.type;
+    }
 
     const eventTypeStr = eventType as string | undefined;
 
@@ -158,11 +162,8 @@ export class JiraAdapterService implements ProviderAdapter {
 
     let content = `Title: ${summary || ''}\n`;
     if (fields.description) {
-      if (typeof fields.description === 'string') {
-        content += `\nDescription: ${fields.description}`;
-      } else {
-        content += `\nDescription: [Rich Text Content]`;
-      }
+      const descStr = this.extractAdfText(fields.description);
+      content += `\nDescription: ${descStr || '[Empty Description]'}`;
     }
 
     const assignee = fields.assignee as Record<string, unknown> | undefined;
@@ -223,7 +224,7 @@ export class JiraAdapterService implements ProviderAdapter {
     const author = (comment.author || comment.updateAuthor || {}) as Record<string, unknown>;
     const created = (comment.updated || comment.created || new Date().toISOString()) as string;
 
-    const bodyStr = typeof comment.body === 'string' && comment.body ? comment.body : '[Rich Text Content]';
+    const bodyStr = this.extractAdfText(comment.body) || '[Empty Comment]';
 
     return {
       id: crypto.randomUUID(),
@@ -267,7 +268,7 @@ export class JiraAdapterService implements ProviderAdapter {
     const author = (worklog.author || worklog.updateAuthor || {}) as Record<string, unknown>;
     const created = (worklog.updated || worklog.started || new Date().toISOString()) as string;
 
-    const commentStr = typeof worklog.comment === 'string' && worklog.comment ? worklog.comment : '[Rich Text Content]';
+    const commentStr = this.extractAdfText(worklog.comment) || '[Empty Worklog]';
 
     return {
       id: crypto.randomUUID(),
@@ -522,5 +523,37 @@ export class JiraAdapterService implements ProviderAdapter {
     }
 
     return null;
+  }
+
+  /**
+   * Helper to recursively extract plain text from Atlassian Document Format (ADF) JSON.
+   */
+  private extractAdfText(obj: any): string {
+    if (!obj) return '';
+    if (typeof obj === 'string') return obj;
+    if (typeof obj !== 'object') return '';
+
+    let text = '';
+    
+    // Base case: text node
+    if (obj.type === 'text' && obj.text) {
+      return obj.text;
+    }
+
+    // Traverse children
+    if (Array.isArray(obj.content)) {
+      for (const child of obj.content) {
+        const childText = this.extractAdfText(child);
+        if (childText) {
+          text += childText + (child.type === 'paragraph' ? '\n' : ' ');
+        }
+      }
+    } else if (Array.isArray(obj)) {
+      for (const item of obj) {
+        text += this.extractAdfText(item) + ' ';
+      }
+    }
+
+    return text.trim();
   }
 }

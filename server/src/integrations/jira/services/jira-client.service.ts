@@ -503,7 +503,8 @@ export class JiraClientService implements ProviderClient {
       const payload: any = {
         jql,
         maxResults,
-        expand: ['changelog', 'renderedFields'],
+        fields: ['*all'],
+        expand: 'changelog,renderedFields',
       };
       if (nextPageToken && nextPageToken !== '0') {
         payload.nextPageToken = nextPageToken;
