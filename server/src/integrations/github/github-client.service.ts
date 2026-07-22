@@ -643,4 +643,43 @@ export class GithubClientService implements ProviderClient {
       { algorithm: 'RS256' },
     );
   }
+  /**
+ * Uninstalls the GitHub App from the account, revoking all repository access.
+ * Unlike Slack's per-token revoke, this removes the entire installation —
+ * signed with the App's JWT (not the installation token, which may already
+ * be stale/expired by the time revoke is called).
+ */
+  async revokeCredentials(connection: ProviderConnection): Promise<void> {
+    const appJwt = this.generateAppJwt();
+    const installationId = connection.externalAccountId;
+
+    try {
+      await axios.delete(
+        `${GithubApiUrls.BASE}/app/installations/${installationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${appJwt}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      );
+      this.logger.log(
+        `GitHub installation ${installationId} uninstalled successfully for connection ${connection.id}`,
+      );
+    } catch (error) {
+      if (this.isInstallationRevoked(error)) {
+        // Already uninstalled on GitHub's side (e.g. owner removed it manually
+        // from GitHub settings) — nothing more to do, not a real failure.
+        this.logger.warn(
+          `GitHub installation ${installationId} was already revoked or missing`,
+        );
+      } else {
+        this.logger.error(
+          `Failed to reach GitHub API for revocation: ${(error as Error).message}`,
+        );
+      }
+      // Same principle as Slack: log and swallow — don't throw, so the DB
+      // cleanup in eyes.controller.ts still proceeds even if GitHub's side fails.
+    }
+  }
 }

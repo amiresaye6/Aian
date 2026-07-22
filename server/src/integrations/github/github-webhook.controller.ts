@@ -7,8 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
-import { WebhookService } from './webhook.service';
-import { ProviderConnectionRepository } from '../../repositories/provider-connection.repository';
+import { WebhookService } from '../../ingestion/collection/webhooks/webhook.service';
+import { ProviderConnectionRepository } from '../../ingestion/repositories/provider-connection.repository';
 
 /**
  * GitHub App sends ALL webhook deliveries to a single fixed URL
