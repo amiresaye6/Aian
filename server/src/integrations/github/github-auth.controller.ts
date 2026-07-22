@@ -158,8 +158,13 @@ export class GithubAuthController {
       );
     }
 
-    return res.redirect(`${frontendUrl}/eyes/github/success?organizationEyeId=${organizationEyeId}`,);
-    // return res.send('GitHub App connected successfully. You can close this window.');
+    // Update the OrganizationEye status to 'connected'
+    await this.prisma.organizationEye.update({
+      where: { id: organizationEyeId },
+      data: { status: 'connected' },
+    });
+
+    return res.redirect(`${frontendUrl}/eyes/github/redirect`);
   }
 
   /**
