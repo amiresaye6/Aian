@@ -63,7 +63,7 @@ export class KnowledgeController {
     
     grouped.forEach(g => {
       const type = g.sourceType.toLowerCase();
-      if (type.includes('message') || type.includes('chat')) {
+      if (type.includes('message') || type.includes('chat') || type.includes('comment')) {
         breakdown.messages += g._count;
       } else if (type.includes('issue') || type.includes('task') || type.includes('repo')) {
         breakdown.entities += g._count;
