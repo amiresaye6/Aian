@@ -33,6 +33,21 @@ export class ZoomClientService implements ProviderClient {
         message: `Connected as ${response.data.first_name} ${response.data.last_name} (${response.data.email})`,
       };
     } catch (error: any) {
+      if (error.response?.status === 401) {
+        this.logger.warn(`Access token expired for connection ${connection.id}. Trying to refresh...`);
+        try {
+          const newAccessToken = await this.refreshAccessToken(connection);
+          
+          const retryResponse = await axios.get('https://api.zoom.us/v2/users/me', {
+            headers: {
+              Authorization: `Bearer ${newAccessToken}`,
+            },
+          });
+          return retryResponse.data;
+        } catch (refreshError: any) {
+          throw new Error(`Token refresh failed or retry failed: ${refreshError.message}`);
+        }
+      }
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Zoom connection verification failed: ${errorMsg}`);
       return {
@@ -47,6 +62,7 @@ export class ZoomClientService implements ProviderClient {
    */
   async getResources(connection: ProviderConnection): Promise<ProviderResource[]> {
     try {
+      await this.verifyConnection(connection)
       const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
 
       const response = await axios.get('https://api.zoom.us/v2/users/me/meetings', {
@@ -74,6 +90,7 @@ export class ZoomClientService implements ProviderClient {
         },
       }));
     } catch (error: any) {
+      
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Failed to fetch Zoom meetings/resources: ${errorMsg}`);
       throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);
@@ -189,25 +206,12 @@ export class ZoomClientService implements ProviderClient {
     let accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
 
     try {
+      await this.verifyConnection(connection);
       const response = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       return response.data;
     } catch (error: any) {
-      if (error.response?.status === 401) {
-        this.logger.warn(`Access token expired for connection ${connection.id}. Trying to refresh...`);
-        try {
-          accessToken = await this.refreshAccessToken(connection);
-          
-          const retryResponse = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-          return retryResponse.data;
-        } catch (refreshError: any) {
-          throw new Error(`Token refresh failed or retry failed: ${refreshError.message}`);
-        }
-      }
-
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Failed to fetch Zoom meeting details: ${errorMsg}`);
       throw new Error(`Failed to fetch Zoom meeting: ${errorMsg}`);

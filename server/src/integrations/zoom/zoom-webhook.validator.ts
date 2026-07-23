@@ -25,6 +25,61 @@ export class ZoomWebhookValidator implements WebhookSignatureValidator {
     rawBody: Buffer,
     secret: string,
   ): Promise<boolean> {
+    const eventType = req.body?.event;
+    const eventData = req.body?.data;
+    const botId = eventData?.bot_id;
+
+    //console.log('webhook reached with req:', req)
+    if (!botId) {
+      this.logger.warn("Missing important data 'bot_id' in webhook request");
+      return false;
+    }
+      this.logger.debug('Webhook reached at meetingbaas events');
+      
+              const svixId = req.headers['svix-id'] as string;
+              const svixTimestamp = req.headers['svix-timestamp'] as string;
+              const svixSignature = req.headers['svix-signature'] as string;
+              const webhookSecret = process.env.MEETING_BAAS_WEBHOOK_SECRET;
+              
+              if (webhookSecret && svixId && svixTimestamp && svixSignature) {
+                  if (!rawBody) {
+                      throw new UnauthorizedException('Raw body is missing. Ensure { rawBody: true } is enabled in main.ts');
+                  }
+      
+                  const secretKey = webhookSecret.startsWith('whsec_') 
+                      ? Buffer.from(webhookSecret.split('_')[1], 'base64') 
+                      : webhookSecret;
+      
+                  const signedContent = `${svixId}.${svixTimestamp}.${rawBody.toString('utf-8')}`;
+                  const computedSignature = crypto
+                      .createHmac('sha256', secretKey)
+                      .update(signedContent)
+                      .digest('base64');
+      
+                  const passedSignatures = svixSignature.split(' ').flatMap(s => s.split(','));
+                  const isValid = passedSignatures.some(sig => sig === computedSignature || sig === `v1,${computedSignature}`);
+      
+                  if (!isValid) {
+                      this.logger.error('Svix signature verification failed!');
+                      return false
+                  }
+                  this.logger.log('Webhook signature verified successfully via Svix.');
+                  return true;
+              }
+              console.log(req.body)
+              this.logger.warn('Missing MeetingBaas webhook secret or Svix headers.');
+              return false;
+      
+
+        
+}
+
+
+async validate_Zoom(
+    req: Request,
+    rawBody: Buffer,
+    secret: string,
+  ): Promise<boolean> {
     const signature = req.headers['x-zm-signature'] as string;
     const timestamp = req.headers['x-zm-request-timestamp'] as string;
     //console.log('webhook reached with req.body:', req.body)
@@ -61,6 +116,7 @@ export class ZoomWebhookValidator implements WebhookSignatureValidator {
     }
   }
 
+  
   /**
    * Helper to handle Zoom URL Validation Challenge (endpoint.url_validation).
    * When configuring webhooks, Zoom sends a test token. We must encrypt it and return it.

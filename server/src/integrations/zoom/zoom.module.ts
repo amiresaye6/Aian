@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomEventsController } from './zoom-events.controller';
 import { MeetingBaasService } from './meeting-baas.service';
 import { CollectionModule } from '../../ingestion/collection/collection.module';
+import { ZoomController } from './zoom.controller';
 
 @Module({
   imports:[
@@ -17,7 +18,8 @@ import { CollectionModule } from '../../ingestion/collection/collection.module';
   ],
   controllers: [
     ZoomAuthController,
-    ZoomEventsController
+    ZoomEventsController,
+    ZoomController
   ],
   providers: [
     ZoomClientService, 
