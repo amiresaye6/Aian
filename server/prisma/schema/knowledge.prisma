@@ -52,6 +52,8 @@ model KnowledgeArtifact {
   extractedAt      DateTime?       @map("extracted_at") @db.Timestamptz
   resolutionStatus ExtractionStatus @default(pending) @map("resolution_status")
   resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz
+  graphStatus      ExtractionStatus @default(pending) @map("graph_status")
+  graphSyncedAt    DateTime?       @map("graph_synced_at") @db.Timestamptz
   createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -63,5 +65,7 @@ model KnowledgeArtifact {
 
   @@index([organizationId, type])
   @@index([organizationId, extractionStatus])
+  @@index([organizationId, resolutionStatus])
+  @@index([organizationId, graphStatus])
   @@map("knowledge_artifacts")
 }
