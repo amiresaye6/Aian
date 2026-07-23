@@ -128,3 +128,9 @@ export const getMembers = async (connectionId: string) => {
   const response = await api.get(`/eyes/${connectionId}/members`);
   return response.data.data || response.data;
 };
+
+// zoom specific
+export const getScheduledMeetings = async (connectionId: string) =>{
+  const response = await api.get(`/zoom/scheduled/${connectionId}`);
+  return response.data.data;
+}
