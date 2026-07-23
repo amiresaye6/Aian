@@ -1,12 +1,14 @@
 import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { SlackClientService } from './slack-client.service';
 import { SlackAdapterService } from './slack-adapter.service';
+import { SlackAssemblerService } from './slack-assembler.service';
 import { SlackWebhookValidator } from './slack-webhook.validator';
 import { SlackAuthController } from './slack-auth.controller';
 import { SlackEventsController } from './slack-events.controller';
 import { ProviderClientFactory } from '../provider-client.factory';
 import { WebhookSignatureValidatorFactory } from '../../ingestion/collection/webhooks/webhook-signature-validator.factory';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AssemblerFactory } from '../../processor/assemblers/assembler.factory';
 
 /**
  * The Slack Integration Module.
@@ -17,8 +19,8 @@ import { PrismaService } from '../../prisma/prisma.service';
  */
 @Module({
   controllers: [SlackAuthController, SlackEventsController],
-  providers: [SlackClientService, SlackAdapterService, SlackWebhookValidator],
-  exports: [SlackClientService, SlackAdapterService],
+  providers: [SlackClientService, SlackAdapterService, SlackWebhookValidator, SlackAssemblerService],
+  exports: [SlackClientService, SlackAdapterService, SlackAssemblerService],
 })
 export class SlackModule implements OnModuleInit {
   private readonly logger = new Logger(SlackModule.name);
@@ -27,9 +29,11 @@ export class SlackModule implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly clientFactory: ProviderClientFactory,
     private readonly validatorFactory: WebhookSignatureValidatorFactory,
+    private readonly assemblerFactory: AssemblerFactory,
     private readonly slackClient: SlackClientService,
     private readonly slackAdapter: SlackAdapterService,
     private readonly slackValidator: SlackWebhookValidator,
+    private readonly slackAssembler: SlackAssemblerService,
   ) {}
 
   async onModuleInit() {
@@ -51,6 +55,7 @@ export class SlackModule implements OnModuleInit {
     this.clientFactory.registerClient(providerId, this.slackClient);
     this.clientFactory.registerAdapter(providerId, this.slackAdapter);
     this.validatorFactory.registerValidator(providerId, this.slackValidator);
+    this.assemblerFactory.register(this.slackAssembler);
 
     this.logger.log(`Slack module registered with provider ID: ${providerId}`);
   }

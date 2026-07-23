@@ -148,10 +148,10 @@ export class ArtifactsController {
       throw new NotFoundException(`Artifact ${id} not found.`);
     }
 
-    // Reset status so the idempotency guard doesn't skip it
+    // Reset both stages so the full pipeline re-runs: Stage 2 → Stage 3
     await this.prisma.knowledgeArtifact.update({
       where: { id },
-      data: { extractionStatus: 'pending' },
+      data: { extractionStatus: 'pending', resolutionStatus: 'pending' },
     });
 
     this.logger.log(`[Stage 2] Manual retry triggered for artifact: ${id}`);
@@ -190,10 +190,10 @@ export class ArtifactsController {
     if (dto.artifactIds && dto.artifactIds.length > 0) {
       // Specific IDs requested
       targets = dto.artifactIds.map((id) => ({ id }));
-      // Reset their statuses
+      // Reset both stages so the full Stage 2 → Stage 3 pipeline re-runs
       await this.prisma.knowledgeArtifact.updateMany({
         where: { id: { in: dto.artifactIds } },
-        data: { extractionStatus: 'pending' },
+        data: { extractionStatus: 'pending', resolutionStatus: 'pending' },
       });
       this.logger.log(
         `[Stage 2] Bulk retry triggered for ${targets.length} specific artifact(s).`,
