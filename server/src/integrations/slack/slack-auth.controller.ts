@@ -190,7 +190,7 @@ export class SlackAuthController {
         `Slack connected successfully: connection=${connection.id}, team=${teamName}`,
       );
 
-      return res.redirect(`${process.env.FRONTEND_URL}/eyes/slack/success`);
+      return res.redirect(`${process.env.FRONTEND_URL}/eyes/slack/redirect`);
     } catch (err) {
       this.logger.error(
         `Slack OAuth error: ${(err as Error).message}`,
