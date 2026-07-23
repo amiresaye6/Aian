@@ -179,6 +179,7 @@ export class ZoomAuthController {
    * Example: GET /integrations/zoom/test-client/:connectionId
    * Returns the health check result and any resources found.
    */
+  
   @Get('test-client/:connectionId')
   async testClient(@Param('connectionId') connectionId: string) {
     const connection = await this.connectionRepo.findById(connectionId);

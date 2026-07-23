@@ -6,12 +6,13 @@ import { AnimatedEye } from "./components/AnimatedEye";
 import Link from "next/link";
 import { useIntegrationsStore } from "@/store/integrations/integrations.store";
 import { useEffect, useState } from "react";
-import { getAvailableResources, ProviderKey } from "@/api/integrations";
+import { getAvailableResources, getMembers, ProviderKey } from "@/api/integrations";
 
 export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
   const { providers, getProviderByKey, fetchIntegrations } = useIntegrationsStore();
   const provider = getProviderByKey(providerKey);
   const [resources, setResources] = useState<any[]>([]);
+  const [membersCount, setMembersCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -23,9 +24,20 @@ export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
   useEffect(() => {
     if (connectionId) {
       setIsLoading(true);
-      getAvailableResources(providerKey as ProviderKey, connectionId)
-        .then((res) => {
+      const promises: Promise<any>[] = [
+        getAvailableResources(providerKey as ProviderKey, connectionId)
+      ];
+
+      if (providerKey === "jira") {
+        promises.push(getMembers(connectionId));
+      }
+
+      Promise.all(promises)
+        .then(([res, membersRes]) => {
           setResources(res);
+          if (providerKey === "jira" && membersRes) {
+            setMembersCount(Array.isArray(membersRes) ? membersRes.length : 0);
+          }
           setIsLoading(false);
         })
         .catch((err) => {
@@ -63,6 +75,7 @@ export function IntegrationSuccess({ providerKey }: { providerKey: string }) {
     stats = [
       { label: "Projects", value: `${total}` },
       { label: "Active", value: `${total}` },
+      { label: "Members", value: `${membersCount}` },
     ];
   } else if (providerKey === "zoom") {
     stats = [

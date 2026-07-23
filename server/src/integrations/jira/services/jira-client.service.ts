@@ -221,6 +221,34 @@ export class JiraClientService implements ProviderClient {
     }
   }
 
+  async getMembers(connection: ProviderConnection): Promise<any[]> {
+    try {
+      const token = await this.getValidToken(connection);
+      const baseUrl = this.getBaseUrl(connection);
+      const headers = this.buildHeaders(token);
+
+      const usersResponse = await axios.get<{
+        accountId: string;
+        displayName: string;
+        accountType: string;
+        avatarUrls?: Record<string, string>;
+      }[]>(`${baseUrl}/users/search`, { headers });
+
+      const users = usersResponse.data || [];
+      return users.filter(user => user.accountType === 'atlassian').map(user => ({
+        externalId: user.accountId,
+        name: user.displayName,
+        avatarUrls: user.avatarUrls,
+      }));
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to fetch Jira users for connection ${connection.id}`,
+        error instanceof AxiosError ? error.response?.data : error,
+      );
+      throw new Error('Failed to fetch Jira members.');
+    }
+  }
+
   async onResourcesSelected(
     connection: ProviderConnection,
     selectedResources: any[],
@@ -475,7 +503,8 @@ export class JiraClientService implements ProviderClient {
       const payload: any = {
         jql,
         maxResults,
-        expand: ['changelog', 'renderedFields'],
+        fields: ['*all'],
+        expand: 'changelog,renderedFields',
       };
       if (nextPageToken && nextPageToken !== '0') {
         payload.nextPageToken = nextPageToken;
