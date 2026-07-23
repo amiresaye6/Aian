@@ -44,6 +44,19 @@ export class KnowledgeArtifactRepository {
     });
   }
 
+  // ─── Resolution Status ──────────────────────────────────────────────────
+
+  async findCompletedExtractionPendingResolution(): Promise<{ id: string }[]> {
+    return this.prisma.knowledgeArtifact.findMany({
+      where: {
+        extractionStatus: ExtractionStatus.completed,
+        resolutionStatus: ExtractionStatus.pending,
+      },
+      select: { id: true },
+      orderBy: { extractedAt: 'asc' },
+    });
+  }
+
   /**
    * Finds all artifacts stuck in 'failed' or 'pending' state.
    * Used for retry jobs or admin tooling.

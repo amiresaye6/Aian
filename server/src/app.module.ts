@@ -26,6 +26,7 @@ import { ProcessorModule } from './processor/processor.module';
 import { ZoomModule } from './integrations/zoom/zoom.module';
 import { AiGatewayModule } from './ai/ai-gateway.module';
 import { KnowledgeExtractionModule } from './extraction/extraction.module';
+import { ResolutionModule } from './resolution/resolution.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { KnowledgeExtractionModule } from './extraction/extraction.module';
     ProcessorModule,
     AiGatewayModule,
     KnowledgeExtractionModule,
+    ResolutionModule,
     HealthModule,
     UploadModule,
     EmailModule,

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchService } from './batch.service';
+import { EntityResolutionService } from '../../resolution/resolution.service';
 
 @Injectable()
 export class SchedulerService {
@@ -10,6 +11,7 @@ export class SchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly batchService: BatchService,
+    private readonly resolutionService: EntityResolutionService,
   ) {}
 
   /**
@@ -45,5 +47,17 @@ export class SchedulerService {
     this.logger.debug('Running provider polling check...');
     // In a full implementation, this would find all ProviderConnections
     // that rely on polling, check their cursor/schedule, and invoke the BaseCollectorService.
+  }
+
+  /**
+   * Stage 3 safety net: runs every 5 minutes.
+   *
+   * Finds any KnowledgeArtifact where extraction completed but resolution
+   * was never triggered (e.g. due to a server restart between Stage 2 and the
+   * setImmediate firing). Re-dispatches Stage 3 for each orphan.
+   */
+  @Cron('30 */5 * * * *')
+  async handleResolutionSafetyNet() {
+    await this.resolutionService.resolveOrphanedArtifacts();
   }
 }

@@ -3,6 +3,7 @@ import { AiGatewayService } from '../ai/ai-gateway.service';
 import { KnowledgeArtifactRepository } from './repositories/knowledge-artifact.repository';
 import { ExtractionResult, ExtractionResultSchema } from './extraction.schema';
 import { KnowledgeArtifact, ArtifactType } from '@prisma/client';
+import { EntityResolutionService } from '../resolution/resolution.service';
 
 /**
  * The model that has been tested and proven to reliably output
@@ -24,6 +25,7 @@ export class KnowledgeExtractionService {
   constructor(
     private readonly artifactRepository: KnowledgeArtifactRepository,
     private readonly aiGateway: AiGatewayService,
+    private readonly resolutionService: EntityResolutionService,
   ) {}
 
   /**
@@ -71,6 +73,18 @@ export class KnowledgeExtractionService {
         );
 
       await this.artifactRepository.saveExtractionResult(artifactId, result);
+
+      // Stage 3: Trigger entity resolution asynchronously.
+      // setImmediate ensures it never blocks Stage 2's error handling or logging.
+      setImmediate(() => {
+        this.resolutionService
+          .resolveArtifact(artifactId)
+          .catch((err) =>
+            this.logger.error(
+              `[Stage 3] Resolution trigger failed for artifact ${artifactId}: ${err.message}`,
+            ),
+          );
+      });
 
       const latency = Date.now() - startTime;
       this.logger.log(
