@@ -189,13 +189,21 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
           <div className="space-y-4">
             <div className="glass rounded-2xl p-6 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
               <div className="flex items-center gap-4">
-                <EyeHealthRing value={healthData?.status === 'connected' ? 100 : healthData?.status === 'pending' ? 60 : 20} size={56} label="" />
+                <EyeHealthRing value=
+                {providerKey === 'zoom' 
+                    ? (healthData?.isValid ? 100 : 20)
+                    : (healthData?.status === 'connected' ? 100 : healthData?.status === 'pending' ? 60 : 20)
+                  }
+                 size={56} label="" />
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                     Eye status
                   </div>
                   <div className="font-display text-[16px] font-semibold text-foreground">
-                    {healthData?.status === 'connected' ? "Fully awake" : healthData?.status === 'pending' ? "Pending" : "Weak signal"}
+                  {providerKey === 'zoom' 
+                    ? (healthData?.isValid ? "Fully awake" : "Weak signal")
+                    : (healthData?.status === 'connected' ? "Fully awake" : healthData?.status === 'pending' ? "Pending" : "Weak signal")
+                  }
                   </div>
                   <div className="mt-0.5 text-[11.5px] text-muted-foreground">
                     Synced {healthData?.lastSyncAt ? formatDistanceToNow(new Date(healthData.lastSyncAt), { addSuffix: true }) : 'Never'}
