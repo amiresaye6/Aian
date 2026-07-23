@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BatchService } from './batch.service';
 import { EntityResolutionService } from '../../resolution/resolution.service';
+import { GraphUpdateService } from '../../graph/graph-update.service';
 
 @Injectable()
 export class SchedulerService {
@@ -12,6 +13,7 @@ export class SchedulerService {
     private readonly prisma: PrismaService,
     private readonly batchService: BatchService,
     private readonly resolutionService: EntityResolutionService,
+    private readonly graphUpdateService: GraphUpdateService,
   ) {}
 
   /**
@@ -59,5 +61,16 @@ export class SchedulerService {
   @Cron('30 */5 * * * *')
   async handleResolutionSafetyNet() {
     await this.resolutionService.resolveOrphanedArtifacts();
+  }
+
+  /**
+   * Stage 4 safety net: runs every 5 minutes (offset by 1 min).
+   *
+   * Finds any KnowledgeArtifact where resolution completed but graph update
+   * was never triggered or failed. Re-dispatches Stage 4.
+   */
+  @Cron('30 1-59/5 * * * *')
+  async handleGraphSafetyNet() {
+    await this.graphUpdateService.syncOrphanedArtifacts();
   }
 }

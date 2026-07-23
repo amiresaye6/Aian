@@ -4,6 +4,7 @@ import { AiGatewayService } from '../ai/ai-gateway.service';
 import { ResolvedEntityRepository } from './repositories/resolved-entity.repository';
 import { EntityMentionRepository } from './repositories/entity-mention.repository';
 import { ExtractionResult } from '../extraction/extraction.schema';
+import { GraphUpdateService } from '../graph/graph-update.service';
 import { ResolvedEntity, ExtractionStatus } from '@prisma/client';
 
 /**
@@ -52,6 +53,7 @@ export class EntityResolutionService {
     private readonly entityRepo: ResolvedEntityRepository,
     private readonly mentionRepo: EntityMentionRepository,
     private readonly aiGateway: AiGatewayService,
+    private readonly graphUpdate: GraphUpdateService,
   ) {}
 
   /**
@@ -138,6 +140,15 @@ export class EntityResolutionService {
         `[Stage 3] Resolution completed for artifact ${artifactId} in ${latency}ms. ` +
           `Resolved ${resolvedCount}/${extracted.entities.length} entities.`,
       );
+
+      // Trigger Stage 4
+      setImmediate(() => {
+        this.graphUpdate
+          .updateArtifactInGraph(artifactId)
+          .catch((err) =>
+            this.logger.error(`[Stage 4] Background trigger failed: ${err.message}`),
+          );
+      });
     } catch (error) {
       await this.prisma.knowledgeArtifact.update({
         where: { id: artifactId },

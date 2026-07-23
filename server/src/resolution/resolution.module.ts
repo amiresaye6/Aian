@@ -4,10 +4,11 @@ import { ResolvedEntityRepository } from './repositories/resolved-entity.reposit
 import { EntityMentionRepository } from './repositories/entity-mention.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiGatewayModule } from '../ai/ai-gateway.module';
+import { GraphModule } from '../graph/graph.module';
 
 @Global()
 @Module({
-  imports: [PrismaModule, AiGatewayModule],
+  imports: [PrismaModule, AiGatewayModule, GraphModule],
   providers: [
     EntityResolutionService,
     ResolvedEntityRepository,
