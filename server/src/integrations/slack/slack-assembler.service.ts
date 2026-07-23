@@ -1,10 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { KnowledgeItem, KnowledgeArtifact, ArtifactType } from '@prisma/client';
 import { KnowledgeAssembler } from '../../processor/assemblers/knowledge-assembler.interface';
+import { PrismaService } from '../../prisma/prisma.service';
+import { SlackClientService } from './slack-client.service';
 
 @Injectable()
 export class SlackAssemblerService implements KnowledgeAssembler {
   private readonly logger = new Logger(SlackAssemblerService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly slackClient: SlackClientService,
+  ) {}
 
   supports(provider: string): boolean {
     return provider.toLowerCase() === 'slack';
@@ -14,6 +21,67 @@ export class SlackAssemblerService implements KnowledgeAssembler {
     items: KnowledgeItem[],
   ): Promise<Partial<KnowledgeArtifact>[]> {
     if (items.length === 0) return [];
+
+    const organizationId = items[0].organizationId;
+
+    // 1. Fetch connection for this org to retrieve and update user map
+    const connection = await this.prisma.providerConnection.findFirst({
+      where: {
+        organizationEye: { organizationId },
+        provider: { name: 'slack' },
+      },
+    });
+
+    let userMap: Record<string, string> = {};
+
+    if (connection) {
+      const meta = (connection.connectionMetadata as Record<string, any>) || {};
+      userMap = (meta.userMap as Record<string, string>) || {};
+
+      // 2. Identify missing users
+      const missingUserIds = new Set<string>();
+      const idRegex = /<@(U[A-Z0-9]+|W[A-Z0-9]+)>/g;
+
+      for (const item of items) {
+        // Check author
+        const authorId = item.author ? (item.author as any).externalId : null;
+        if (authorId && !userMap[authorId]) {
+          missingUserIds.add(authorId);
+        }
+
+        // Check content
+        let match;
+        while ((match = idRegex.exec(item.content)) !== null) {
+          const id = match[1];
+          if (!userMap[id]) {
+            missingUserIds.add(id);
+          }
+        }
+      }
+
+      // 3. Fetch users if missing
+      if (missingUserIds.size > 0) {
+        this.logger.log(`Found ${missingUserIds.size} unknown Slack users. Fetching user list...`);
+        try {
+          const newMap = await this.slackClient.fetchWorkspaceUsers(connection as any);
+          userMap = { ...userMap, ...newMap };
+
+          // Save to DB
+          await this.prisma.providerConnection.update({
+            where: { id: connection.id },
+            data: {
+              connectionMetadata: {
+                ...meta,
+                userMap,
+              },
+            },
+          });
+          this.logger.log('Updated Slack userMap in connection metadata.');
+        } catch (err) {
+          this.logger.error(`Failed to fetch workspace users: ${(err as Error).message}`);
+        }
+      }
+    }
 
     // Group items by externalResourceId (usually the Slack channel or thread)
     const grouped = items.reduce(
@@ -37,11 +105,20 @@ export class SlackAssemblerService implements KnowledgeAssembler {
 
       // Concatenate content into a clean script format
       const lines = groupItems.map((item) => {
-        const author = item.author
+        const authorId = item.author
           ? (item.author as any).externalId || 'Unknown User'
           : 'Unknown User';
+        
+        const authorName = userMap[authorId] || authorId;
         const time = item.occurredAt.toISOString();
-        return `[${time}] ${author}: ${item.content}`;
+
+        let content = item.content;
+        // Replace <@U1234> with @Name
+        content = content.replace(/<@(U[A-Z0-9]+|W[A-Z0-9]+)>/g, (match, id) => {
+          return userMap[id] ? `@${userMap[id]}` : match;
+        });
+
+        return `[${time}] ${authorName}: ${content}`;
       });
 
       const fullContent = lines.join('\n\n');
@@ -59,8 +136,6 @@ export class SlackAssemblerService implements KnowledgeAssembler {
       const participants = Array.from(participantsSet).map((id) => ({
         externalId: id,
       }));
-
-      const organizationId = groupItems[0].organizationId;
 
       artifacts.push({
         organizationId,
