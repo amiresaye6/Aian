@@ -78,6 +78,7 @@ export class SlackAuthController {
     @Query('code') code: string,
     @Query('state') state: string,
     @Query('error') error: string,
+    @Res() res: express.Response,
   ) {
     // Handle user denying the OAuth request
     if (error) {
@@ -189,21 +190,16 @@ export class SlackAuthController {
         `Slack connected successfully: connection=${connection.id}, team=${teamName}`,
       );
 
-      return {
-        success: true,
-        message: 'Slack connected successfully!',
-        data: {
-          connectionId: connection.id,
-          teamName,
-          teamId,
-        },
-      };
+      return res.redirect(`${process.env.FRONTEND_URL}/eyes/slack/success`);
     } catch (err) {
       this.logger.error(
         `Slack OAuth error: ${(err as Error).message}`,
         (err as Error).stack,
       );
-      throw new BadRequestException('Failed to complete Slack OAuth flow');
+
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/eyes/slack/error?provider=slack&error=oauth_failed`,
+      );
     }
   }
 }

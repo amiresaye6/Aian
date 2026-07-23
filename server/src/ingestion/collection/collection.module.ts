@@ -3,7 +3,7 @@ import { WebhookController } from './webhooks/webhook.controller';
 import { WebhookService } from './webhooks/webhook.service';
 import { WebhookEventDispatcherService } from './webhooks/webhook-event-dispatcher.service';
 import { BaseCollectorService } from './base-collector.service';
-import { GithubWebhookController } from './webhooks/github-webhook.controller';
+import { GithubWebhookController } from '../../integrations/github/github-webhook.controller';
 import { IntegrationsModule } from '../../integrations/integrations.module';
 import { HistoricalSyncService } from './historical-sync.service';
 

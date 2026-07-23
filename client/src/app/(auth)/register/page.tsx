@@ -67,6 +67,7 @@ export default function RegisterPage() {
       }, 2000);
       
     } catch (err: any) {
+      console.log(err)
       setErrorMsg(err.response?.data?.message || "Registration failed. Try again.");
       setLoading(false); 
     }

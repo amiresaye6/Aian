@@ -2,12 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ProviderClient, ProviderConnection, ProviderResource } from '../contracts';
 import { EncryptionService } from '../../common/encryption.service';
 import axios from 'axios';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ZoomClientService implements ProviderClient {
   private readonly logger = new Logger(ZoomClientService.name);
 
-  constructor(private readonly encryptionService: EncryptionService) {}
+  constructor(
+    private readonly encryptionService: EncryptionService,
+    private readonly prismaService: PrismaService
+  ) {}
 
   /**
    * Verifies if the active connection is healthy and authorized.
@@ -126,6 +130,87 @@ export class ZoomClientService implements ProviderClient {
         `Failed to reach Zoom API for token revocation: ${errorMsg}`,
       );
 
+    }
+  }
+
+  async refreshAccessToken(connection: ProviderConnection): Promise<string> {
+    this.logger.log(`Attempting to refresh Zoom access token for connection: ${connection.id}`);
+    
+    if (!connection.refreshTokenEncrypted) {
+      throw new Error('Refresh token is missing from connection.');
+    }
+
+    const refreshToken = this.encryptionService.decrypt(connection.refreshTokenEncrypted);
+    const clientId = process.env.ZOOM_CLIENT_ID;
+    const clientSecret = process.env.ZOOM_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      throw new Error('Zoom client ID or client secret is missing from environment variables.');
+    }
+
+    try {
+      const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      const params = new URLSearchParams();
+      params.append('grant_type', 'refresh_token');
+      params.append('refresh_token', refreshToken);
+
+      const response = await axios.post('https://zoom.us/oauth/token', params, {
+        headers: {
+          Authorization: `Basic ${authHeader}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      const { access_token, refresh_token, expires_in } = response.data;
+      
+      const newAccessTokenEncrypted = this.encryptionService.encrypt(access_token);
+      const newRefreshTokenEncrypted = refresh_token ? this.encryptionService.encrypt(refresh_token) : connection.refreshTokenEncrypted;
+      const tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
+
+      await this.prismaService.providerConnection.update({
+        where: { id: connection.id },
+        data: {
+          accessTokenEncrypted: newAccessTokenEncrypted,
+          refreshTokenEncrypted: newRefreshTokenEncrypted,
+          tokenExpiresAt: tokenExpiresAt,
+        },
+      });
+
+      this.logger.log(`Zoom token refreshed successfully for connection: ${connection.id}`);
+      return access_token;
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message;
+      this.logger.error(`Failed to refresh Zoom access token: ${errorMsg}`);
+      throw new Error(`Zoom token refresh failed: ${errorMsg}`);
+    }
+  }
+
+  async getMeetingDetails(connection: ProviderConnection, meetingId: string): Promise<any> {
+    let accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+
+    try {
+      const response = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        this.logger.warn(`Access token expired for connection ${connection.id}. Trying to refresh...`);
+        try {
+          accessToken = await this.refreshAccessToken(connection);
+          
+          const retryResponse = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          return retryResponse.data;
+        } catch (refreshError: any) {
+          throw new Error(`Token refresh failed or retry failed: ${refreshError.message}`);
+        }
+      }
+
+      const errorMsg = error.response?.data?.message || error.message;
+      this.logger.error(`Failed to fetch Zoom meeting details: ${errorMsg}`);
+      throw new Error(`Failed to fetch Zoom meeting: ${errorMsg}`);
     }
   }
 }
