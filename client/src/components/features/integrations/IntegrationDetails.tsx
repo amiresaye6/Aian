@@ -26,7 +26,8 @@ import {
   getHealth, 
   getRecentKnowledge, 
   getKnowledgeStats, 
-  revokeConnection 
+  revokeConnection,
+  getMembers 
 } from "@/api/integrations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -50,6 +51,7 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
   const [healthData, setHealthData] = useState<any>(null);
   const [recentKnowledge, setRecentKnowledge] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [membersCount, setMembersCount] = useState<number>(0);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   useEffect(() => {
@@ -75,6 +77,13 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
     getKnowledgeStats(cid).then((res) => {
       setStats(res.data || res);
     }).catch(() => {});
+
+    if (providerKey === 'jira') {
+      getMembers(cid).then((res) => {
+        const members = res.data || res;
+        setMembersCount(Array.isArray(members) ? members.length : 0);
+      }).catch(() => {});
+    }
   }, [provider?.connectionId, providerKey]);
 
   if (!provider) {
@@ -150,7 +159,7 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
             <div className="grid gap-4 sm:grid-cols-3">
               <Metric label="Knowledge items" value={stats?.total?.toLocaleString() ?? "0"} />
               <Metric label={provider.resourceLabel} value={resources?.length?.toString() ?? "0"} />
-              <Metric label="Members mapped" value="0" />
+              <Metric label="Members mapped" value={providerKey === 'jira' ? membersCount.toString() : "0"} />
             </div>
 
             <div className="glass rounded-2xl p-6 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
@@ -254,13 +263,23 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
 
       {tab === "data" && (
         <div className="grid gap-4 sm:grid-cols-3">
-          {[
-            { label: "Documents", value: stats?.breakdown?.documents?.toLocaleString() ?? "0" },
-            { label: "Messages", value: stats?.breakdown?.messages?.toLocaleString() ?? "0" },
-            { label: "Entities", value: stats?.breakdown?.entities?.toLocaleString() ?? "0" },
-          ].map((c) => (
-            <Metric key={c.label} label={c.label} value={c.value} />
-          ))}
+          {providerKey === 'jira' ? (
+            [
+              { label: "Issues", value: stats?.breakdown?.entities?.toLocaleString() ?? "0" },
+              { label: "Comments", value: stats?.breakdown?.messages?.toLocaleString() ?? "0" },
+              { label: "Transitions", value: stats?.breakdown?.documents?.toLocaleString() ?? "0" },
+            ].map((c) => (
+              <Metric key={c.label} label={c.label} value={c.value} />
+            ))
+          ) : (
+            [
+              { label: "Documents", value: stats?.breakdown?.documents?.toLocaleString() ?? "0" },
+              { label: "Messages", value: stats?.breakdown?.messages?.toLocaleString() ?? "0" },
+              { label: "Entities", value: stats?.breakdown?.entities?.toLocaleString() ?? "0" },
+            ].map((c) => (
+              <Metric key={c.label} label={c.label} value={c.value} />
+            ))
+          )}
         </div>
       )}
 

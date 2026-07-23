@@ -63,7 +63,7 @@ export class GithubAuthController {
     @Query('state') organizationEyeId: string,
     @Res() res: Response,
   ) {
-    const frontendUrl =this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000';
     if (!installationId || !organizationEyeId) {
       throw new BadRequestException('Missing installation_id or state');
     }
@@ -85,7 +85,7 @@ export class GithubAuthController {
       // throw new InternalServerErrorException(
       //   'PROVIDER_CONNECTION_FAILED: GitHub provider not found in database (seed missing?)',
       // );
-       return res.redirect(`${frontendUrl}/eyes/github/connect?error=provider_not_found`,);
+      return res.redirect(`${frontendUrl}/eyes/github/connect?error=provider_not_found`,);
     }
 
     // 4. Generate a short-lived App JWT signed with our private key.
@@ -114,45 +114,58 @@ export class GithubAuthController {
       //   'PROVIDER_CONNECTION_FAILED: could not exchange installation_id for access token',
       // );
       return res.redirect(
-      `${frontendUrl}/eyes/github/connect?error=token_exchange_failed`,
+        `${frontendUrl}/eyes/github/connect?error=token_exchange_failed`,
       );
     }
 
     // 6. Encrypt and save the connection using the shared repository.
     try {
-    const existingConnection = await this.connectionRepo.findByOrganizationEyeId(organizationEyeId);
-    if (existingConnection) {
-      await this.connectionRepo.update(existingConnection.id, {
-        status: 'connected',
-        externalAccountId: installationId,
-        accessTokenEncrypted:
-          this.encryptionService.encrypt(installationToken),
-        tokenExpiresAt,
-        scopes: ['contents:read', 'issues:read', 'pull_requests:read'],
-        connectedAt: new Date(),
-        lastErrorMessage: null,
-      });
-    } else {
-      await this.connectionRepo.create({
-        organizationEyeId,
-        providerId: githubProvider.id, // real UUID now, not the enum string
-        status: 'connected',
-        externalAccountId: installationId,
-        accessTokenEncrypted: this.encryptionService.encrypt(installationToken),
-        tokenExpiresAt,
-        scopes: ['contents:read', 'issues:read', 'pull_requests:read'],
-        connectedAt: new Date(),
-      } as any);
-    }
+      const webhookSecret = this.configService.get<string>('GITHUB_APP_WEBHOOK_SECRET');
+      if (!webhookSecret) {
+        throw new InternalServerErrorException(
+          'GITHUB_WEBHOOK_SECRET is not configured on the server',
+        );
+      }
+      const existingConnection = await this.connectionRepo.findByOrganizationEyeId(organizationEyeId);
+      if (existingConnection) {
+        await this.connectionRepo.update(existingConnection.id, {
+          status: 'connected',
+          externalAccountId: installationId,
+          accessTokenEncrypted:
+            this.encryptionService.encrypt(installationToken),
+          tokenExpiresAt,
+          scopes: ['contents:read', 'issues:read', 'pull_requests:read'],
+          connectedAt: new Date(),
+          webhookSecret: this.encryptionService.encrypt(webhookSecret),
+          lastErrorMessage: null,
+        });
+      } else {
+        await this.connectionRepo.create({
+          organizationEyeId,
+          providerId: githubProvider.id, // real UUID now, not the enum string
+          status: 'connected',
+          externalAccountId: installationId,
+          accessTokenEncrypted: this.encryptionService.encrypt(installationToken),
+          tokenExpiresAt,
+          scopes: ['contents:read', 'issues:read', 'pull_requests:read'],
+          connectedAt: new Date(),
+          webhookSecret: this.encryptionService.encrypt(webhookSecret), 
+        } as any);
+      }
     } catch (error) {
-    return res.redirect(
-      `${frontendUrl}/eyes/github/connect?error=save_connection_failed`,
-    );
+      return res.redirect(
+        `${frontendUrl}/eyes/github/connect?error=save_connection_failed`,
+      );
     }
-    
-      return res.redirect(`${frontendUrl}/eyes/github/success?organizationEyeId=${organizationEyeId}`,);
-      // return res.send('GitHub App connected successfully. You can close this window.');
-    }
+
+    // Update the OrganizationEye status to 'connected'
+    await this.prisma.organizationEye.update({
+      where: { id: organizationEyeId },
+      data: { status: 'connected' },
+    });
+
+    return res.redirect(`${frontendUrl}/eyes/github/redirect`);
+  }
 
   /**
    * Signs a JWT using the GitHub App's private key.

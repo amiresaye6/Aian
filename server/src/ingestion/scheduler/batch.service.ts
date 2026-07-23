@@ -3,6 +3,7 @@ import { KnowledgeItemRepository } from '../repositories/knowledge-item.reposito
 import { IngestionBatchRepository } from '../repositories/ingestion-batch.repository';
 import { ProcessingSettingsRepository } from '../repositories/processing-settings.repository';
 import type { KnowledgeProcessorGateway } from '../../integrations/contracts/processor-gateway.interface';
+import { ProviderConnectionRepository } from '../repositories/provider-connection.repository';
 
 @Injectable()
 export class BatchService {
@@ -12,6 +13,7 @@ export class BatchService {
     private readonly knowledgeItemRepo: KnowledgeItemRepository,
     private readonly batchRepo: IngestionBatchRepository,
     private readonly settingsRepo: ProcessingSettingsRepository,
+    private readonly connectionRepo: ProviderConnectionRepository,
     @Inject('KNOWLEDGE_PROCESSOR_GATEWAY')
     private readonly processorGateway: KnowledgeProcessorGateway,
   ) {}
@@ -74,6 +76,12 @@ export class BatchService {
 
       // 5. Lock the batch
       await this.batchRepo.markLocked(batch.id);
+
+      // Update lastSyncAt for all connections in this organization since we are handing off their data
+      const connections = await this.connectionRepo.findByOrganizationId(organizationId);
+      for (const conn of connections) {
+        await this.connectionRepo.updateLastSync(conn.id);
+      }
 
       // 6. Hand off to processor
       const handoffResult = await this.processorGateway.handoffBatch(batch.id);

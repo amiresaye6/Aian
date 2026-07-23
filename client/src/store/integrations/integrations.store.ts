@@ -55,7 +55,7 @@ export const useIntegrationsStore = create<IntegrationsState>((set, get) => ({
 
                 return {
                   ...p,
-                  status: eye.status as any,
+                  status: (integration?.status || eye.status) as any,
                   health: integration ? 100 : 0, 
                   knowledgeItems: integration?.knowledgeItems || 0,
                   connectionId: integration?.id,

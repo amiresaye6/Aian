@@ -123,3 +123,8 @@ export const selectJiraSite = async (connectionId: string, selectedCloudId: stri
   });
   return response.data.data;
 };
+
+export const getMembers = async (connectionId: string) => {
+  const response = await api.get(`/eyes/${connectionId}/members`);
+  return response.data.data || response.data;
+};
