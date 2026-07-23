@@ -322,6 +322,62 @@
           }
         }
       ]
+    },
+    {
+      "name": "Resolved Entities",
+      "item": [
+        {
+          "name": "List Entities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities?organizationId={{organizationId}}&type=&page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}", "description": "Scope to a specific organization." },
+                { "key": "type", "value": "", "description": "Filter by entity type: Person | Team | Project | Feature | System | Service | API | Database | Repository | PullRequest | Meeting | Decision | Document | Release. Leave empty for all." },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            },
+            "description": "Lists all resolved entities with mention counts. Powers the Org Knowledge dashboard."
+          }
+        },
+        {
+          "name": "Get Entity Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities/{{entityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities", "{{entityId}}"],
+              "variable": [
+                { "key": "entityId", "value": "{{entityId}}", "description": "UUID of the resolved entity." }
+              ]
+            },
+            "description": "Returns a single resolved entity with its full mention history — every artifact it appeared in, the exact name used, and timestamps."
+          }
+        },
+        {
+          "name": "Retry Resolution",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities/retry-resolution?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities", "retry-resolution"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}", "description": "Scope to one org. Omit to retry across all orgs." }
+              ]
+            },
+            "description": "Re-triggers Stage 3 entity resolution for all artifacts where extraction completed but resolution is pending or failed."
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -348,6 +404,11 @@
     {
       "key": "artifactId",
       "value": "replace-with-artifact-uuid",
+      "type": "string"
+    },
+    {
+      "key": "entityId",
+      "value": "replace-with-entity-uuid",
       "type": "string"
     }
   ]
