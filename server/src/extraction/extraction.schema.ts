@@ -218,6 +218,7 @@ function normalizeExtraction(raw: any): any {
   ];
 
   return {
+    title: pickNullable(raw, 'title', 'name', 'heading', 'subject') || undefined,
     summary: pick(raw, 'summary', 'overview', 'description', 'abstract'),
 
     topics: Array.isArray(raw.topics)
@@ -395,6 +396,11 @@ function normalizeExtraction(raw: any): any {
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 
 const RawExtractionResultSchema = z.object({
+  title: z
+    .string()
+    .optional()
+    .describe('A concise, descriptive title for the event if this is a chat conversation or meeting.'),
+
   summary: z
     .string()
     .describe('A concise 2-4 sentence summary of the artifact content.'),

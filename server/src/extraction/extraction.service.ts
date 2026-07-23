@@ -70,7 +70,16 @@ export class KnowledgeExtractionService {
           },
         );
 
-      await this.artifactRepository.saveExtractionResult(artifactId, result);
+      let newTitle: string | undefined;
+      if (
+        (artifact.type === ArtifactType.conversation ||
+          artifact.type === ArtifactType.meeting_outcome) &&
+        result.title
+      ) {
+        newTitle = result.title;
+      }
+
+      await this.artifactRepository.saveExtractionResult(artifactId, result, newTitle);
 
       const latency = Date.now() - startTime;
       this.logger.log(
@@ -127,11 +136,13 @@ ARTIFACT CONTENT:
 ${artifact.content}
 ---
 
-Output a JSON object with EXACTLY these top-level keys: summary, topics, entities, relationships, claims, decisions, actionItems.
+Output a JSON object with EXACTLY these top-level keys: title, summary, topics, entities, relationships, claims, decisions, actionItems.
 
 Do NOT invent your own key names. Do NOT use 'people', 'systems', 'tasks', 'observations', or any other keys.
 
 Rules for each field:
+
+- title: string (optional). If the artifact is a conversation or meeting, generate a concise, descriptive title for the event. Omit otherwise.
 
 - summary: string. A concise 2-4 sentence summary.
 
