@@ -218,7 +218,7 @@ function normalizeExtraction(raw: any): any {
   ];
 
   return {
-    title: pickNullable(raw, 'title', 'name', 'heading', 'subject') || undefined,
+    title: pickNullable(raw, 'title', 'name', 'heading', 'subject'),
     summary: pick(raw, 'summary', 'overview', 'description', 'abstract'),
 
     topics: Array.isArray(raw.topics)
@@ -398,7 +398,7 @@ function normalizeExtraction(raw: any): any {
 const RawExtractionResultSchema = z.object({
   title: z
     .string()
-    .optional()
+    .nullable()
     .describe('A concise, descriptive title for the event if this is a chat conversation or meeting.'),
 
   summary: z

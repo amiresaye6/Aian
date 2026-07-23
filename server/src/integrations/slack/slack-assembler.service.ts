@@ -28,7 +28,7 @@ export class SlackAssemblerService implements KnowledgeAssembler {
     const connection = await this.prisma.providerConnection.findFirst({
       where: {
         organizationEye: { organizationId },
-        provider: { name: 'slack' },
+        provider: { key: 'slack' },
       },
     });
 

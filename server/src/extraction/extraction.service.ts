@@ -142,7 +142,7 @@ Do NOT invent your own key names. Do NOT use 'people', 'systems', 'tasks', 'obse
 
 Rules for each field:
 
-- title: string (optional). If the artifact is a conversation or meeting, generate a concise, descriptive title for the event. Omit otherwise.
+- title: string or null. If the artifact is a conversation or meeting, generate a concise, descriptive title for the event. Return null otherwise.
 
 - summary: string. A concise 2-4 sentence summary.
 
