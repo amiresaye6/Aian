@@ -469,4 +469,74 @@ export class SlackClientService implements ProviderClient {
       }
     }
   }
+
+  /**
+   * Fetches all users in the Slack workspace.
+   * Returns a dictionary mapping userId -> user real_name (or name).
+   */
+  async fetchWorkspaceUsers(
+    connection: ProviderConnection,
+  ): Promise<Record<string, string>> {
+    const token = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    const userMap: Record<string, string> = {};
+    let cursor: string | undefined;
+
+    do {
+      const params: Record<string, string> = {
+        limit: '200',
+      };
+      if (cursor) params.cursor = cursor;
+
+      try {
+        const response = await axios.get('https://slack.com/api/users.list', {
+          headers: { Authorization: `Bearer ${token}` },
+          params,
+        });
+
+        if (!response.data.ok) {
+          if (response.data.error === 'ratelimited') {
+            this.logger.warn(`Rate limited on users.list. Waiting 5s...`);
+            await this.sleep(5000);
+            continue;
+          }
+          this.logger.error(`Slack users.list failed: ${response.data.error}`);
+          throw new Error(`Slack API error: ${response.data.error}`);
+        }
+
+        const members = response.data.members || [];
+        for (const member of members) {
+          if (!member.id) continue;
+          // Prefer real_name, fallback to name
+          const name =
+            member.profile?.real_name || member.real_name || member.name;
+          userMap[member.id] = name;
+        }
+
+        cursor = response.data.response_metadata?.next_cursor || undefined;
+
+        if (cursor) {
+          await this.sleep(1200); // Respect Tier 2 limits (~20 per minute -> 1.2s delay to be extremely safe, though 3s is better if 20/min. Let's use 3000ms just in case)
+        }
+      } catch (error: any) {
+        if (error.response?.status === 429) {
+          const retryAfter =
+            parseInt(error.response.headers['retry-after'], 10) || 5;
+          this.logger.warn(
+            `Axios 429 Rate limited on users.list. Waiting ${retryAfter}s...`,
+          );
+          await this.sleep(retryAfter * 1000);
+          continue;
+        }
+        throw error;
+      }
+    } while (cursor);
+
+    this.logger.log(
+      `Fetched ${Object.keys(userMap).length} users from Slack workspace`,
+    );
+    return userMap;
+  }
 }

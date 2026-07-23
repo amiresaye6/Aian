@@ -23,6 +23,7 @@ export class KnowledgeArtifactRepository {
   async saveExtractionResult(
     id: string,
     result: ExtractionResult,
+    title?: string,
   ): Promise<void> {
     await this.prisma.knowledgeArtifact.update({
       where: { id },
@@ -30,6 +31,7 @@ export class KnowledgeArtifactRepository {
         extractionStatus: ExtractionStatus.completed,
         extractedData: result as any,
         extractedAt: new Date(),
+        ...(title ? { title } : {}),
       },
     });
   }
