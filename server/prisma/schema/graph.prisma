@@ -1,0 +1,68 @@
+// ─── Stage 3: Entity Resolution Models ───────────────────────────────────────
+//
+// ResolvedEntity is the canonical organizational entity registry.
+// Every unique entity (person, system, project, etc.) that has been
+// identified across all KnowledgeArtifacts lives here.
+//
+// EntityMention is the evidence link: each time an entity is extracted
+// from an artifact, a mention record is created pointing back to both
+// the resolved entity and the source artifact.
+//
+// This forms the traceable evidence chain:
+//   ResolvedEntity ← EntityMention ← KnowledgeArtifact ← KnowledgeItem
+
+model ResolvedEntity {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+
+  /// The canonical display name (first-seen wins, never overwritten).
+  canonicalName  String   @map("canonical_name") @db.VarChar(500)
+
+  /// Lowercase, punctuation-stripped version used for exact and fuzzy lookups.
+  normalizedName String   @map("normalized_name") @db.VarChar(500)
+
+  /// EntityType from the extraction schema (Person, System, Project, etc.)
+  type           String   @db.VarChar(50)
+
+  /// All known names, spellings, and aliases for this entity.
+  aliases        Json     @default("[]")
+
+  /// Provider-specific IDs for future cross-reference (e.g. { slack: "U0BGXU4AVSS" }).
+  providerIds    Json     @default("{}")
+
+  /// Confidence from Stage 2 extraction (averaged across mentions over time).
+  confidence     Float    @default(1.0)
+
+  firstSeenAt    DateTime @default(now()) @map("first_seen_at") @db.Timestamptz
+  lastSeenAt     DateTime @default(now()) @updatedAt @map("last_seen_at") @db.Timestamptz
+
+  mentions     EntityMention[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  /// Unique by normalized name + type per org — prevents duplicate resolution.
+  @@unique([organizationId, normalizedName, type])
+  @@index([organizationId, type])
+  @@map("resolved_entities")
+}
+
+model EntityMention {
+  id               String   @id @default(uuid())
+  resolvedEntityId String   @map("resolved_entity_id")
+  artifactId       String   @map("artifact_id")
+
+  /// The exact name as the LLM extracted it from this specific artifact.
+  /// May differ from the canonicalName (e.g. "Amir E." vs "Amir").
+  extractedName    String   @map("extracted_name") @db.VarChar(500)
+
+  /// Confidence score from the Stage 2 extraction for this specific occurrence.
+  confidence       Float
+
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  resolvedEntity ResolvedEntity    @relation(fields: [resolvedEntityId], references: [id])
+  artifact       KnowledgeArtifact @relation(fields: [artifactId], references: [id])
+
+  /// Prevent duplicate mentions for the same entity+artifact+name combination.
+  @@unique([resolvedEntityId, artifactId, extractedName])
+  @@map("entity_mentions")
+}

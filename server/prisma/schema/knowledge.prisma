@@ -50,11 +50,14 @@ model KnowledgeArtifact {
   extractionStatus ExtractionStatus @default(pending) @map("extraction_status")
   extractedData    Json?           @map("extracted_data")
   extractedAt      DateTime?       @map("extracted_at") @db.Timestamptz
+  resolutionStatus ExtractionStatus @default(pending) @map("resolution_status")
+  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz
   createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // One artifact is made of many raw items
   sourceItems KnowledgeItem[]
+  entityMentions EntityMention[]
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
