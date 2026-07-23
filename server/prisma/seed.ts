@@ -332,7 +332,7 @@ async function main() {
 
   // 7. Seed Simulated Users & Organizations
   console.log('Seeding simulated users and organization...');
-  const realHash = await bcrypt.hash('password123', 10);
+  const realHash = await bcrypt.hash('P@ssword123', 10);
 
   const usersData = [
     { fullName: 'Amir Mawla', email: 'amir.mawla@example.com' },
