@@ -79,4 +79,32 @@ export class KnowledgeController {
 
     return { total, breakdown };
   }
+
+  @Get('activity')
+  async getKnowledgeActivity(@Param('connectionId') connectionId: string) {
+    const connection = await this.connectionRepo.findByIdMapped(connectionId);
+    if (!connection) throw new NotFoundException('Connection not found');
+
+    // Grouping by date natively in Prisma is clunky, so we use a raw SQL query.
+    // This fetches the ingestion volume for the last 30 days grouped by day.
+    const timeSeries = await this.prisma.$queryRaw<
+      { date: Date; count: number }[]
+    >`
+      SELECT DATE(created_at) as date, COUNT(*)::int as count
+      FROM knowledge_items
+      WHERE organization_id = ${connection.organizationId}
+        AND provider = ${connection.providerKey.toUpperCase()}
+        AND created_at > NOW() - INTERVAL '30 days'
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC;
+    `;
+
+    // Map into a simpler format for the frontend chart (YYYY-MM-DD)
+    const formattedSeries = timeSeries.map((row) => ({
+      date: new Date(row.date).toISOString().split('T')[0],
+      count: Number(row.count),
+    }));
+
+    return formattedSeries;
+  }
 }

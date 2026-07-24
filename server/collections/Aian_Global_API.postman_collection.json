@@ -131,6 +131,20 @@
       }
     },
     {
+      "name": "Get Knowledge Activity",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/knowledge/activity",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "knowledge", "activity"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
       "name": "Get Organization Batches",
       "request": {
         "method": "GET",
