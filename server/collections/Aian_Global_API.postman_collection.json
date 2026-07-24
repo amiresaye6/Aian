@@ -159,6 +159,24 @@
       }
     },
     {
+      "name": "Get Batch Items",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/batches/:batchId/items?page=1&limit=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "batches", ":batchId", "items"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" }
+          ],
+          "variable": [
+            { "key": "batchId", "value": "{{batchId}}" }
+          ]
+        }
+      }
+    },
+    {
       "name": "Get Processing Settings",
       "request": {
         "method": "GET",
