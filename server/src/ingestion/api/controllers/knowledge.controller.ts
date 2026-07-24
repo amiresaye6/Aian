@@ -17,7 +17,7 @@ export class KnowledgeController {
     const items = await this.prisma.knowledgeItem.findMany({
       where: {
         organizationId: connection.organizationId,
-        provider: connection.providerKey.toUpperCase(), 
+        provider: connection.providerKey.toUpperCase(),
       },
       orderBy: { createdAt: 'desc' },
       take: 5,
@@ -27,9 +27,9 @@ export class KnowledgeController {
         sourceType: true,
         createdAt: true,
         metadata: true,
-      }
+      },
     });
-    
+
     return items;
   }
 
@@ -42,7 +42,7 @@ export class KnowledgeController {
       where: {
         organizationId: connection.organizationId,
         provider: connection.providerKey.toUpperCase(),
-      }
+      },
     });
 
     // In a real scenario we could group by sourceType
@@ -60,21 +60,30 @@ export class KnowledgeController {
       messages: 0,
       entities: 0,
     };
-    
-    grouped.forEach(g => {
+
+    grouped.forEach((g) => {
       const type = g.sourceType.toLowerCase();
-      if (type.includes('message') || type.includes('chat') || type.includes('comment')) {
+      if (
+        type.includes('message') ||
+        type.includes('chat') ||
+        type.includes('comment')
+      ) {
         breakdown.messages += g._count;
-      } else if (type.includes('issue') || type.includes('task') || type.includes('repo')) {
+      } else if (
+        type.includes('issue') ||
+        type.includes('task') ||
+        type.includes('repo')
+      ) {
         breakdown.entities += g._count;
       } else {
         breakdown.documents += g._count;
       }
     });
 
-    const mapped = breakdown.documents + breakdown.messages + breakdown.entities;
+    const mapped =
+      breakdown.documents + breakdown.messages + breakdown.entities;
     if (total > mapped) {
-      breakdown.documents += (total - mapped); 
+      breakdown.documents += total - mapped;
     }
 
     return { total, breakdown };
