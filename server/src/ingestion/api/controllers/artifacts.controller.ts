@@ -133,6 +133,25 @@ export class ArtifactsController {
   }
 
   /**
+   * GET /api/v1/artifacts/:id/logs
+   *
+   * Returns the extraction error logs for a failed artifact.
+   */
+  @Get(':id/logs')
+  async getArtifactLogs(@Param('id') id: string) {
+    const artifact = await this.prisma.knowledgeArtifact.findUnique({
+      where: { id },
+      select: { extractionError: true },
+    });
+
+    if (!artifact) {
+      throw new NotFoundException(`Artifact ${id} not found.`);
+    }
+
+    return { error: artifact.extractionError };
+  }
+
+  /**
    * POST /api/v1/artifacts/:id/retry-extraction
    *
    * Retries extraction for a single specific artifact.
@@ -161,9 +180,7 @@ export class ArtifactsController {
       this.extractionService
         .extractFromArtifact(id)
         .catch((err) =>
-          this.logger.error(
-            `Retry failed for artifact ${id}: ${err.message}`,
-          ),
+          this.logger.error(`Retry failed for artifact ${id}: ${err.message}`),
         );
     });
 
@@ -216,11 +233,13 @@ export class ArtifactsController {
     setImmediate(() => {
       Promise.all(
         targets.map((t) =>
-          this.extractionService.extractFromArtifact(t.id).catch((err) =>
-            this.logger.error(
-              `Bulk retry failed for artifact ${t.id}: ${err.message}`,
+          this.extractionService
+            .extractFromArtifact(t.id)
+            .catch((err) =>
+              this.logger.error(
+                `Bulk retry failed for artifact ${t.id}: ${err.message}`,
+              ),
             ),
-          ),
         ),
       );
     });

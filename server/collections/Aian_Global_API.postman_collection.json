@@ -296,6 +296,26 @@
           }
         },
         {
+          "name": "Get Artifact Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/artifacts/{{artifactId}}/logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "artifacts", "{{artifactId}}", "logs"],
+              "variable": [
+                {
+                  "key": "artifactId",
+                  "value": "{{artifactId}}",
+                  "description": "The UUID of the artifact to inspect logs for."
+                }
+              ]
+            },
+            "description": "Returns the extraction error string for a failed artifact."
+          }
+        },
+        {
           "name": "Retry Single Artifact Extraction",
           "request": {
             "method": "POST",
