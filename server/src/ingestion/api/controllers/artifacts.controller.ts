@@ -7,8 +7,12 @@ import {
   Logger,
   Query,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { AuthGaurd } from '../../../auth/auth.gaurd';
+import { RolesGuards } from '../../../roles_permissions/roles.guard';
+import { RequiredPermissions } from '../../../decorators/required-permissions.decorator';
 import { KnowledgeExtractionService } from '../../../extraction/extraction.service';
 import { KnowledgeArtifactRepository } from '../../../extraction/repositories/knowledge-artifact.repository';
 import { IsOptional, IsString, IsArray } from 'class-validator';
@@ -37,6 +41,8 @@ class BulkRetryDto {
  * Designed to back a future "Knowledge" dashboard page where users can see
  * all assembled artifacts, their extraction status, and retry failed ones.
  */
+@UseGuards(AuthGaurd, RolesGuards)
+@RequiredPermissions('dashboard.read')
 @Controller('artifacts')
 export class ArtifactsController {
   private readonly logger = new Logger(ArtifactsController.name);

@@ -1,6 +1,11 @@
-import { Controller, Get, Put, Param, Body } from '@nestjs/common';
+import { Controller, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
 import { ProcessingSettingsRepository } from '../../repositories/processing-settings.repository';
+import { AuthGaurd } from '../../../auth/auth.gaurd';
+import { RolesGuards } from '../../../roles_permissions/roles.guard';
+import { RequiredPermissions } from '../../../decorators/required-permissions.decorator';
 
+@UseGuards(AuthGaurd, RolesGuards)
+@RequiredPermissions('eyes.manage')
 @Controller('organizations/:organizationId/settings/processing')
 export class ProcessingSettingsController {
   constructor(private readonly settingsRepo: ProcessingSettingsRepository) {}

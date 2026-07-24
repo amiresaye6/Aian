@@ -1,7 +1,12 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { IngestionBatchRepository } from '../../repositories/ingestion-batch.repository';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { AuthGaurd } from '../../../auth/auth.gaurd';
+import { RolesGuards } from '../../../roles_permissions/roles.guard';
+import { RequiredPermissions } from '../../../decorators/required-permissions.decorator';
 
+@UseGuards(AuthGaurd, RolesGuards)
+@RequiredPermissions('dashboard.read')
 @Controller('batches')
 export class BatchesController {
   constructor(

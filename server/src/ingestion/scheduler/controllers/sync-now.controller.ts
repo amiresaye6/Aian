@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Param, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { BatchService } from '../batch.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuthGaurd } from '../../../auth/auth.gaurd';
