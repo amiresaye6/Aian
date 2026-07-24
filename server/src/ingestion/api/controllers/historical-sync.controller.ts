@@ -4,11 +4,17 @@ import {
   Get,
   Param,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
 import { ProviderConnectionRepository } from '../../repositories/provider-connection.repository';
 import { CollectionRunRepository } from '../../repositories/collection-run.repository';
 import { HistoricalSyncService } from '../../collection/historical-sync.service';
+import { AuthGaurd } from '../../../auth/auth.gaurd';
+import { RolesGuards } from '../../../roles_permissions/roles.guard';
+import { RequiredPermissions } from '../../../decorators/required-permissions.decorator';
 
+@UseGuards(AuthGaurd, RolesGuards)
+@RequiredPermissions('eyes.manage')
 @Controller('eyes/:connectionId/sync/historical')
 export class HistoricalSyncController {
   constructor(
@@ -25,9 +31,10 @@ export class HistoricalSyncController {
     }
 
     // Check if already running
-    const latestRun = await this.collectionRunRepo.findLatestByOrganizationEyeId(
-      connection.organizationEyeId,
-    );
+    const latestRun =
+      await this.collectionRunRepo.findLatestByOrganizationEyeId(
+        connection.organizationEyeId,
+      );
 
     if (latestRun && latestRun.status === 'running') {
       return {
@@ -65,9 +72,10 @@ export class HistoricalSyncController {
       throw new NotFoundException('Connection not found');
     }
 
-    const latestRun = await this.collectionRunRepo.findLatestByOrganizationEyeId(
-      connection.organizationEyeId,
-    );
+    const latestRun =
+      await this.collectionRunRepo.findLatestByOrganizationEyeId(
+        connection.organizationEyeId,
+      );
 
     if (!latestRun) {
       return {

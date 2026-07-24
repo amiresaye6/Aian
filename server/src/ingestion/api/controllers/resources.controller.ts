@@ -6,11 +6,15 @@ import {
   Body,
   BadRequestException,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
 import { ProviderConnectionRepository } from '../../repositories/provider-connection.repository';
 import { ProviderResourceSelectionRepository } from '../../repositories/provider-resource-selection.repository';
 import { ProviderClientFactory } from '../../../integrations/provider-client.factory';
 import { IsArray, IsString } from 'class-validator';
+import { AuthGaurd } from '../../../auth/auth.gaurd';
+import { RolesGuards } from '../../../roles_permissions/roles.guard';
+import { RequiredPermissions } from '../../../decorators/required-permissions.decorator';
 
 export class UpdateSelectedResourcesDto {
   @IsArray()
@@ -18,6 +22,8 @@ export class UpdateSelectedResourcesDto {
   resourceIds: string[];
 }
 
+@UseGuards(AuthGaurd, RolesGuards)
+@RequiredPermissions('dashboard.read')
 @Controller('eyes/:connectionId/resources')
 export class ResourcesController {
   constructor(
