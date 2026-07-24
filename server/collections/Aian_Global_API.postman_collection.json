@@ -208,6 +208,20 @@
       }
     },
     {
+      "name": "Check Sync Status",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sync/:organizationId/status",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sync", ":organizationId", "status"],
+          "variable": [
+            { "key": "organizationId", "value": "{{organizationId}}" }
+          ]
+        }
+      }
+    },
+    {
       "name": "Knowledge Artifacts",
       "item": [
         {
