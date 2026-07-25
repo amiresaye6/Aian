@@ -28,8 +28,12 @@ export class SyncNowController {
   @Post(':organizationId/now')
   @HttpCode(HttpStatus.OK)
   async syncNow(@Param('organizationId') organizationId: string) {
-    // Force a batch creation regardless of thresholds
-    await this.batchService.processOrganizationBatches(organizationId, true);
+    // Fire and forget the background job so the API returns instantly
+    this.batchService
+      .processOrganizationBatches(organizationId, true)
+      .catch((err) => {
+        console.error('Background sync failed:', err);
+      });
 
     return {
       success: true,
@@ -58,8 +62,8 @@ export class SyncNowController {
 
     const isRunning =
       latestManualBatch.status === 'pending' ||
-      latestManualBatch.status === 'locked' ||
-      latestManualBatch.status === 'handed_off';
+      latestManualBatch.status === 'locked';
+    // || latestManualBatch.status === 'handed_off';
 
     return {
       isRunning,
