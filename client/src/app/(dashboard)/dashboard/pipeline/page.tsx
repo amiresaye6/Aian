@@ -36,7 +36,7 @@ export default function PipelinePage() {
       </div>
 
       {/* Top Section: Trigger & Settings */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2">
           <SyncTrigger organizationId={organizationId} />
         </div>
@@ -46,17 +46,11 @@ export default function PipelinePage() {
       </div>
 
       {/* Bottom Section: Batches Table */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold tracking-tight">Ingestion Batches</h3>
-          <p className="text-sm text-muted-foreground">Historical record of all data pulls and event groupings.</p>
-        </div>
-        <BatchesTable 
-          organizationId={organizationId} 
-          selectedBatchId={selectedBatchId || undefined}
-          onSelectBatch={setSelectedBatchId} 
-        />
-      </div>
+      <BatchesTable 
+        organizationId={organizationId} 
+        selectedBatchId={selectedBatchId || undefined}
+        onSelectBatch={setSelectedBatchId} 
+      />
 
       {/* Details Sheet Overlay */}
       <BatchDetailsSheet 
