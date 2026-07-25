@@ -27,7 +27,8 @@ import {
   getRecentKnowledge, 
   getKnowledgeStats, 
   revokeConnection,
-  getMembers 
+  getMembers,
+  getPendingCount
 } from "@/api/integrations";
 import { formatDistanceToNow } from "date-fns";
 
@@ -52,6 +53,7 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
   const [recentKnowledge, setRecentKnowledge] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [membersCount, setMembersCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   useEffect(() => {
@@ -82,6 +84,11 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
       getMembers(cid).then((res) => {
         const members = res.data || res;
         setMembersCount(Array.isArray(members) ? members.length : 0);
+      }).catch(() => {});
+    }
+    if (providerKey === 'github') {
+      getPendingCount(cid).then((res) => {
+        setPendingCount(res?.pendingCount ?? 0);
       }).catch(() => {});
     }
   }, [provider?.connectionId, providerKey]);
@@ -156,10 +163,13 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
       {tab === "overview" && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className={cn("grid gap-4", providerKey === 'github' ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
               <Metric label="Knowledge items" value={stats?.total?.toLocaleString() ?? "0"} />
               <Metric label={provider.resourceLabel} value={resources?.length?.toString() ?? "0"} />
               <Metric label="Members mapped" value={providerKey === 'jira' ? membersCount.toString() : "0"} />
+              {providerKey === 'github' && (
+                <Metric label="Pending items" value={pendingCount.toString()} />
+              )}
             </div>
 
             <div className="glass rounded-2xl p-6 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
@@ -268,6 +278,14 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
               { label: "Issues", value: stats?.breakdown?.entities?.toLocaleString() ?? "0" },
               { label: "Comments", value: stats?.breakdown?.messages?.toLocaleString() ?? "0" },
               { label: "Transitions", value: stats?.breakdown?.documents?.toLocaleString() ?? "0" },
+            ].map((c) => (
+              <Metric key={c.label} label={c.label} value={c.value} />
+            ))
+          ) : providerKey === 'github' ? (
+            [
+              { label: "Pull requests", value: stats?.breakdown?.pullRequests?.toLocaleString() ?? "0" },
+              { label: "Issues & comments", value: stats?.breakdown?.issues?.toLocaleString() ?? "0" },
+              { label: "Commits", value: stats?.breakdown?.commits?.toLocaleString() ?? "0" },
             ].map((c) => (
               <Metric key={c.label} label={c.label} value={c.value} />
             ))
