@@ -6,6 +6,7 @@ import { SyncTrigger } from "./_components/SyncTrigger";
 import { ProcessingSettingsForm } from "./_components/ProcessingSettings";
 import { BatchesTable } from "./_components/BatchesTable";
 import { BatchDetailsSheet } from "./_components/BatchDetailsSheet";
+import { DataJourneyAnimation } from "./_components/DataJourneyAnimation";
 import { Database } from "lucide-react";
 import { AppLayout } from "@/layouts/AppLayout";
 
@@ -37,8 +38,9 @@ export default function PipelinePage() {
 
       {/* Top Section: Trigger & Settings */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <SyncTrigger organizationId={organizationId} />
+          <DataJourneyAnimation />
         </div>
         <div className="lg:col-span-1">
           <ProcessingSettingsForm organizationId={organizationId} />
