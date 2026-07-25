@@ -60,7 +60,7 @@ export default function RootLayout({
       className={`${sansFont.variable} ${displayFont.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>{children}</Providers>
         <Toaster richColors position="top-right" />
       </body>
