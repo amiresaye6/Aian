@@ -11,6 +11,11 @@ import { ProviderKeyDbMap } from './github-connection.constants';
 import { ConfigModule } from '@nestjs/config/dist/config.module';
 import { CollectionModule } from '../../ingestion/collection/collection.module';
 import { GithubWebhookController } from './github-webhook.controller';
+import { AssemblerFactory } from '../../processor/assemblers/assembler.factory';
+import { GithubAssemblerService } from './github-assembler.service';
+import { GithubPrAssemblerHelper } from './github-pr-assembler.helper';
+import { GithubIssueAssemblerHelper } from './github-issue-assembler.helper';
+
 
 /**
  * The GitHub Integration Module.
@@ -26,7 +31,7 @@ import { GithubWebhookController } from './github-webhook.controller';
 @Module({
   imports: [ConfigModule],
   controllers: [GithubAuthController,GithubWebhookController],
-  providers: [GithubClientService, GithubWebhookValidator, GitHubAdapterService],
+  providers: [GithubClientService, GithubWebhookValidator, GitHubAdapterService,GithubAssemblerService,GithubPrAssemblerHelper,GithubIssueAssemblerHelper,],
   exports: [GithubClientService, GitHubAdapterService],
 })
 export class GithubModule implements OnModuleInit {
@@ -39,6 +44,8 @@ export class GithubModule implements OnModuleInit {
     private readonly githubClient: GithubClientService,
     private readonly githubAdapter: GitHubAdapterService,
     private readonly githubValidator: GithubWebhookValidator,
+    private readonly assemblerFactory: AssemblerFactory,
+    private readonly githubAssembler: GithubAssemblerService,
   ) {}
 
   async onModuleInit() {
@@ -52,8 +59,8 @@ export class GithubModule implements OnModuleInit {
       this.logger.warn(
         'GitHub provider not found in DB. Skipping registration. Did you run the seed?',
       );
-      return;
-    }
+      // return;
+    } else{
 
     const providerId = githubProvider.id;
 
@@ -62,5 +69,12 @@ export class GithubModule implements OnModuleInit {
     this.validatorFactory.registerValidator(providerId, this.githubValidator);
 
     this.logger.log(`GitHub module registered with provider ID: ${providerId}`);
+    }
+    // NEW: Assembler registration is provider-key based ("github"), not DB UUID —
+    // independent of whether the DB lookup above succeeded.
+    this.assemblerFactory.register(this.githubAssembler);
+    this.logger.log('GithubAssemblerService registered with AssemblerFactory');
+
   }
+  
 }
