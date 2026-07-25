@@ -10,18 +10,18 @@ import {
 export const pipelineApi = {
   // Processing Settings
   getProcessingSettings: async (organizationId: string) => {
-    const response = await api.get<ProcessingSettings>(
+    const response = await api.get(
       `/organizations/${organizationId}/settings/processing`
     );
-    return response.data;
+    return response.data?.data || response.data;
   },
 
   updateProcessingSettings: async (organizationId: string, data: Partial<ProcessingSettings>) => {
-    const response = await api.put<ProcessingSettings>(
+    const response = await api.put(
       `/organizations/${organizationId}/settings/processing`,
       data
     );
-    return response.data;
+    return response.data?.data || response.data;
   },
 
   // Sync Operations

@@ -7,11 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { ProcessingSettings } from "@/types/pipeline";
-import { Database } from "lucide-react";
+import { Database, Edit } from "lucide-react";
 
 export function ProcessingSettingsForm({ organizationId }: { organizationId: string }) {
   const { data: settings, isLoading, mutate } = useSWR(
@@ -20,6 +31,8 @@ export function ProcessingSettingsForm({ organizationId }: { organizationId: str
   );
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [localSettings, setLocalSettings] = useState<Partial<ProcessingSettings>>({});
 
   useEffect(() => {
@@ -42,6 +55,7 @@ export function ProcessingSettingsForm({ organizationId }: { organizationId: str
       toast.error("Failed to update settings");
     } finally {
       setIsSaving(false);
+      setIsEditing(false);
     }
   };
 
@@ -67,19 +81,20 @@ export function ProcessingSettingsForm({ organizationId }: { organizationId: str
             </p>
           </div>
           <Switch
-            checked={localSettings.autoSyncEnabled ?? true}
-            onCheckedChange={(checked) => setLocalSettings({ ...localSettings, autoSyncEnabled: checked })}
+            checked={localSettings.isAutoProcessingEnabled ?? true}
+            onCheckedChange={(checked) => setLocalSettings({ ...localSettings, isAutoProcessingEnabled: checked })}
+            disabled={!isEditing}
           />
         </div>
 
         <div className="space-y-2">
           <Label>Sync Interval (Hours)</Label>
           <Select
-            value={localSettings.syncIntervalHours?.toString() || "6"}
-            onValueChange={(val) => setLocalSettings({ ...localSettings, syncIntervalHours: parseInt(val) })}
-            disabled={!localSettings.autoSyncEnabled}
+            value={localSettings.timeIntervalHours?.toString() || "6"}
+            onValueChange={(val) => setLocalSettings({ ...localSettings, timeIntervalHours: parseInt(val) })}
+            disabled={!isEditing || !(localSettings.isAutoProcessingEnabled ?? true)}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white/5 border-white/10">
               <SelectValue placeholder="Select interval" />
             </SelectTrigger>
             <SelectContent>
@@ -91,14 +106,84 @@ export function ProcessingSettingsForm({ organizationId }: { organizationId: str
           </Select>
         </div>
 
-        <Button 
-          onClick={handleSave} 
-          disabled={isSaving} 
-          className="btn-gold btn-gold-hover w-full md:w-auto"
-        >
-          {isSaving ? "Saving..." : "Save Configuration"}
-        </Button>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Pending Item Threshold</Label>
+          </div>
+          <Input 
+            type="number"
+            min={1}
+            max={1000}
+            value={localSettings.pendingItemThreshold || ""}
+            onChange={(e) => setLocalSettings({ ...localSettings, pendingItemThreshold: parseInt(e.target.value) || 0 })}
+            disabled={!isEditing || !(localSettings.isAutoProcessingEnabled ?? true)}
+            className="bg-white/5 border-white/10"
+            placeholder="e.g. 50"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Trigger batching automatically when unbatched items exceed this amount, bypassing the interval.
+          </p>
+        </div>
+
+        {isEditing ? (
+          <div className="flex items-center gap-3 pt-2">
+            <Button 
+              onClick={() => setShowConfirm(true)} 
+              disabled={isSaving} 
+              className="btn-gold btn-gold-hover w-full md:w-auto text-[#17130A] font-semibold"
+            >
+              Save Changes
+            </Button>
+            <Button 
+              onClick={() => {
+                setIsEditing(false);
+                setLocalSettings(settings || {});
+              }} 
+              variant="outline" 
+              className="w-full md:w-auto bg-transparent border-white/10 text-foreground hover:bg-white/5"
+            >
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div className="pt-2">
+            <Button 
+              onClick={() => setIsEditing(true)} 
+              variant="outline"
+              className="w-full md:w-auto bg-white/5 border-white/10 hover:bg-white/10"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Configure Settings
+            </Button>
+          </div>
+        )}
       </CardContent>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent className="glass-strong border-white/10 bg-background/80">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground font-display text-xl">Save Configuration</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Are you sure you want to update the auto-sync settings? This will change how frequently your integrations are pulled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving} className="bg-transparent border-white/10 hover:bg-white/5 text-foreground">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowConfirm(false);
+                handleSave();
+              }} 
+              disabled={isSaving} 
+              className="btn-gold btn-gold-hover text-[#17130A] font-semibold"
+            >
+              Confirm Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -1,9 +1,10 @@
 export interface ProcessingSettings {
   id?: string;
   organizationId: string;
-  autoSyncEnabled: boolean;
-  syncIntervalHours: number;
+  isAutoProcessingEnabled: boolean;
+  timeIntervalHours: number;
   batchSize: number;
+  pendingItemThreshold: number;
   llmModelPreference: string;
 }
 
