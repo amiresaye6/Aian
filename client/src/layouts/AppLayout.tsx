@@ -12,6 +12,7 @@ import {
   BarChart3,
   Plug,
   Database,
+  Network,
   Users,
   Building2,
   CreditCard,
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/dashboard/knowledge/artifacts", label: "Knowledge", icon: BookOpen },
+  { to: "/dashboard/knowledge/entities", label: "Entities", icon: Network },
   { to: "/dashboard/Meetings", label: "Meetings", icon: Video },
   { to: "/dashboard/Reports", label: "Reports", icon: BarChart3 },
   { to: "/eyes", label: "Integrations", icon: Plug },
