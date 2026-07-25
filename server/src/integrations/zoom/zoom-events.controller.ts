@@ -18,6 +18,8 @@ import axios from "axios";
 import * as crypto from 'crypto';
 import { ZoomAdapterService } from "./zoom-adapter.service";
 import { WebhookEventDispatcherService } from "../../ingestion/collection/webhooks/webhook-event-dispatcher.service";
+import { ZoomWebhookValidator } from "./zoom-webhook.validator";
+import { EncryptionService } from "../../common/encryption.service";
 
 @Controller('events')
 export class ZoomEventsController {
@@ -28,6 +30,8 @@ export class ZoomEventsController {
         private readonly meetingBaasService:MeetingBaasService,
         private readonly zoomClientService:ZoomClientService,
         private readonly zoomAdapterService:ZoomAdapterService,
+        private readonly zoomWebhookValidator:ZoomWebhookValidator,
+        private readonly encryptionService:EncryptionService
         //private readonly disbatcher:WebhookEventDispatcherService
     ){}
 
@@ -62,7 +66,15 @@ export class ZoomEventsController {
         
         const connectionId=providerConnection?.id;
         this.logger.debug('connectionId:'+ connectionId)
-        await this.webhookService.processWebhook(connectionId, req as any);
+
+        if(!providerConnection.webhookSecret)
+            throw new UnauthorizedException("couldn't find zoom webhook secret")
+
+        const decryptedSecret = await this.encryptionService.decrypt(providerConnection?.webhookSecret)
+        const isValid = this.zoomWebhookValidator.validate_Zoom(req,req.rawBody,decryptedSecret);
+        if(!isValid)
+            throw new UnauthorizedException('Zoom Webhook Signature comparison mismatch.')
+        //await this.webhookService.processWebhook(connectionId, req as any);
         //console.log(req.body)
         if (req.body.event == 'meeting.started') {
             try {
@@ -76,14 +88,14 @@ export class ZoomEventsController {
                 );
                 
                 const realMeetingUrl = meetingDetails.join_url;
-
+                this.logger.log('Bot is being created:', realMeetingUrl);
                 const meetingBaasResponse = await this.meetingBaasService.createBot(
                     providerConnection as any,
                     realMeetingUrl,
                     'Aian bot',
                 );
                 
-                //console.log('Bot created successfully:', meetingBaasResponse);
+                this.logger.log('Bot created successfully:', meetingBaasResponse);
             } catch (error: any) {
                 this.logger.error(`Failed to trigger MeetingBaas Bot: ${error.message}`);
             }
@@ -98,43 +110,13 @@ export class ZoomEventsController {
     async handleMeetingBaasWebhook(
         @Req() req: RawBodyRequest<any>,
     ) {
-        this.logger.debug('Webhook reached at meetingbaas events');
-
-        const svixId = req.headers['svix-id'] as string;
-        const svixTimestamp = req.headers['svix-timestamp'] as string;
-        const svixSignature = req.headers['svix-signature'] as string;
-        const webhookSecret = process.env.MEETING_BAAS_WEBHOOK_SECRET;
-
-        if (webhookSecret && svixId && svixTimestamp && svixSignature) {
-            if (!req.rawBody) {
-                throw new UnauthorizedException('Raw body is missing. Ensure { rawBody: true } is enabled in main.ts');
-            }
-
-            const secretKey = webhookSecret.startsWith('whsec_') 
-                ? Buffer.from(webhookSecret.split('_')[1], 'base64') 
-                : webhookSecret;
-
-            const signedContent = `${svixId}.${svixTimestamp}.${req.rawBody.toString('utf-8')}`;
-            const computedSignature = crypto
-                .createHmac('sha256', secretKey)
-                .update(signedContent)
-                .digest('base64');
-
-            const passedSignatures = svixSignature.split(' ').flatMap(s => s.split(','));
-            const isValid = passedSignatures.some(sig => sig === computedSignature || sig === `v1,${computedSignature}`);
-
-            if (!isValid) {
-                this.logger.error('Svix signature verification failed!');
-                throw new UnauthorizedException('Invalid Svix webhook signature.');
-            }
-            this.logger.log('Webhook signature verified successfully via Svix.');
-        }
-
+        
         try {
+            //console.log(req.body)
             const eventType = req.body?.event;
             const eventData = req.body?.data;
 
-            const botId = eventData?.bot_id || req.body?.bot_id;
+            const botId = eventData?.bot_id;
 
             if (!botId) {
                 throw new NotFoundException('bot_id is missing from webhook body');
@@ -162,7 +144,9 @@ export class ZoomEventsController {
                 this.logger.warn(`No active provider connection profile mapped for Meeting Baas Bot: ${botId}`);
             }
 
-            const connectionId = providerConnection?.id || 'null';
+            const connectionId = providerConnection?.id;
+            if(!connectionId)
+                throw new UnauthorizedException("couldn't find connection")
             this.logger.debug(`Meeting Baas connectionId matched: ${connectionId} for Bot ID: ${botId}`);
 
             if (eventType === 'bot.completed' && eventData) {
@@ -205,7 +189,7 @@ export class ZoomEventsController {
             }));
 
             const meetingResultObject = {
-                botId: botId,
+                bot_id: botId,
                 connectionId: connectionId,
                 durationSeconds: eventData.duration_seconds,
                 joinedAt: eventData.joined_at,
@@ -220,43 +204,16 @@ export class ZoomEventsController {
                 externalAccountId:providerConnection?.externalAccountId,
                 externalAccountName:providerConnection?.externalAccountName,
             };
-
-            this.logger.log('--- Meeting Data Object Successfully Compiled ---');
-
-            const organizationEye = await this.prismaService.organizationEye.findFirst({
-                where:{id:providerConnection?.organizationEyeId}
-            })
-
-            if(!organizationEye?.id)
-                throw new NotFoundException('organization eye not found');
-            //console.log(meetingResultObject);
-            const eventInput: ProviderEventInput = {
-                rawPayload: meetingResultObject,
-                rawEventReference: botId, 
-                organizationId: organizationEye?.id,
-                connectionId: connectionId,
-                providerEventType: eventType,
-            };
-
-            const knowledgeItems = this.zoomAdapterService.normalizeEvent(eventInput);
-
-            //console.log('knowledge Item: ',knowledgeItems)
-            /*
-            this.disbatcher.dispatch(
-                connectionId,
-                meetingProvider.id,
-                meetingProvider.key,
-                organizationEye.id,
-                organizationEye.organizationId,
-                'meeting',
-                'bot.completed',
-                knowledgeItems
-            )
-                */
-        }
-
-            
-            
+            req.body.data = meetingResultObject;
+            try {
+                await this.webhookService.processWebhook(connectionId, req as any);
+                this.logger.log('--- Meeting Data Object Successfully Compiled ---');
+            } catch (validationError: any) {
+                this.logger.warn(
+                    `Skipping unsigned/invalid MeetingBaas callback for bot ${botId}: ${validationError.message}`,
+                );
+            }
+        }     
             return { received: true };
 
         } catch (error: any) {

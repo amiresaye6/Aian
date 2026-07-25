@@ -8,10 +8,11 @@ export class ZoomAdapterService implements ProviderAdapter {
    * Normalizes raw webhook payloads received from Zoom into the unified KnowledgeItem schema.
    */
   normalizeEvent(input: ProviderEventInput): KnowledgeItem[] {
+    //console.log('input: ',input);
+    //console.log('data:', input?.rawPayload?.data);
     const raw = input.rawPayload as any;
-
+    const rawData = raw.data
     // meeting baas event
-    if (raw.botId !== undefined) {
         const normalizedItem: KnowledgeItem = {
             id: undefined as any,
             organizationId: input.organizationId,
@@ -19,44 +20,46 @@ export class ZoomAdapterService implements ProviderAdapter {
             provider: Provider.ZOOM,
             sourceType: 'Meeting Data',
             eventType: 'bot.completed',
-            externalResourceId: raw.botId,
-            externalEventId: raw.botId,
+            externalResourceId: rawData.bot_id,
+            externalEventId: rawData.bot_id,
             parentExternalResourceId: null,
-            title: 'Zoom Meeting Transcript',
+            title: 'Zoom Meeting Data',
 
-            content: raw.transcriptionText || raw.full_transcription || raw.summarization,
+            content: rawData.transcriptionText || rawData.full_transcription || rawData.summarization,
 
             author: {
-                externalId: raw.externalAccountId,
-                name: raw.externalAccountName,
+                externalId: rawData.externalAccountId,
+                name: rawData.externalAccountName,
                 email: undefined,
             },
 
-            participants: raw.participants || [],
+            participants: rawData.participants || [],
             contextLocation: 'Zoom Meeting Room',
-            sourceUrl: raw.videoUrl || null,
-            occurredAt: raw.joinedAt ? new Date(raw.joinedAt) : new Date(),
+            sourceUrl: rawData.videoUrl || null,
+            occurredAt: rawData.joinedAt ? new Date(rawData.joinedAt) : new Date(),
             receivedAt: new Date(),
             visibility: 'ORGANIZATION',
             rawPayloadReference: input.rawEventReference,
             metadata: {
-                durationSeconds: raw.durationSeconds,
-                exitedAt: raw.exitedAt,
-                speakers: raw.speakers || [],
-                summarization: raw.summarization,
-                full_transcription: raw.full_transcription,
-                audioUrl: raw.audioUrl,
+                durationSeconds: rawData.durationSeconds,
+                exitedAt: rawData.exitedAt,
+                speakers: rawData.speakers || [],
+                summarization: rawData.summarization,
+                full_transcription: rawData.full_transcription,
+                transcription: rawData.transcriptionText,
+                audioUrl: rawData.audioUrl,
             },
             version: '1.0',
         };
 
         return [normalizedItem];
-    }
+    
 
     // zoom event
+    /*
     const event = raw;
     const meetingObject = event.payload.object;
-
+    
     const normalizedItem: KnowledgeItem = {
         id: undefined as any,
         organizationId: input.organizationId,
@@ -88,9 +91,11 @@ export class ZoomAdapterService implements ProviderAdapter {
             recording_files: meetingObject.recording_files || [],
         },
         version: '1.0',
-    };
 
+    };
+    
     return [normalizedItem];
+    */
 }
 
   /**

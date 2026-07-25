@@ -206,6 +206,178 @@
           ]
         }
       }
+    },
+    {
+      "name": "Knowledge Artifacts",
+      "item": [
+        {
+          "name": "List Artifacts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/artifacts?status=&organizationId={{organizationId}}&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "artifacts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Filter by extractionStatus: pending | processing | completed | failed. Leave empty for all."
+                },
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}",
+                  "description": "Scope to a specific organization."
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Lists all KnowledgeArtifacts with their extraction status. Use the 'status' query param to filter by pending | processing | completed | failed."
+          }
+        },
+        {
+          "name": "Get Artifact Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/artifacts/{{artifactId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "artifacts", "{{artifactId}}"],
+              "variable": [
+                {
+                  "key": "artifactId",
+                  "value": "{{artifactId}}",
+                  "description": "The UUID of the artifact to inspect."
+                }
+              ]
+            },
+            "description": "Returns a single artifact with its full extractedData blob (entities, relationships, decisions, actionItems)."
+          }
+        },
+        {
+          "name": "Retry Single Artifact Extraction",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/artifacts/{{artifactId}}/retry-extraction",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "artifacts", "{{artifactId}}", "retry-extraction"],
+              "variable": [
+                {
+                  "key": "artifactId",
+                  "value": "{{artifactId}}",
+                  "description": "The UUID of the specific artifact to retry."
+                }
+              ]
+            },
+            "description": "Retries Stage 2 extraction for one specific artifact. Resets its status from completed/failed to pending before re-running. Maps to the 'Retry' button per row in the UI."
+          }
+        },
+        {
+          "name": "Bulk Retry — Specific IDs",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"artifactIds\": [\n    \"replace-with-artifact-uuid-1\",\n    \"replace-with-artifact-uuid-2\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/artifacts/retry-extraction",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "artifacts", "retry-extraction"]
+            },
+            "description": "Retries extraction for a specific list of artifact IDs. Maps to a 'Retry Selected' bulk action when multiple rows are checked in the UI."
+          }
+        },
+        {
+          "name": "Bulk Retry — All Failed",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/artifacts/retry-extraction",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "artifacts", "retry-extraction"]
+            },
+            "description": "Retries all failed/pending artifacts for the given organization. If organizationId is omitted, retries across all organizations. Maps to a 'Retry All Failed' button in the UI."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resolved Entities",
+      "item": [
+        {
+          "name": "List Entities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities?organizationId={{organizationId}}&type=&page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}", "description": "Scope to a specific organization." },
+                { "key": "type", "value": "", "description": "Filter by entity type: Person | Team | Project | Feature | System | Service | API | Database | Repository | PullRequest | Meeting | Decision | Document | Release. Leave empty for all." },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "50" }
+              ]
+            },
+            "description": "Lists all resolved entities with mention counts. Powers the Org Knowledge dashboard."
+          }
+        },
+        {
+          "name": "Get Entity Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities/{{entityId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities", "{{entityId}}"],
+              "variable": [
+                { "key": "entityId", "value": "{{entityId}}", "description": "UUID of the resolved entity." }
+              ]
+            },
+            "description": "Returns a single resolved entity with its full mention history — every artifact it appeared in, the exact name used, and timestamps."
+          }
+        },
+        {
+          "name": "Retry Resolution",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities/retry-resolution?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities", "retry-resolution"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}", "description": "Scope to one org. Omit to retry across all orgs." }
+              ]
+            },
+            "description": "Re-triggers Stage 3 entity resolution for all artifacts where extraction completed but resolution is pending or failed."
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -227,6 +399,16 @@
     {
       "key": "batchId",
       "value": "replace-with-batch-uuid",
+      "type": "string"
+    },
+    {
+      "key": "artifactId",
+      "value": "replace-with-artifact-uuid",
+      "type": "string"
+    },
+    {
+      "key": "entityId",
+      "value": "replace-with-entity-uuid",
       "type": "string"
     }
   ]

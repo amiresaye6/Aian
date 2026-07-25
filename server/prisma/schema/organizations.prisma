@@ -25,6 +25,8 @@ model Organization {
   knowledgeItems     KnowledgeItem[]
   ingestionBatches   IngestionBatch[]
   processingSettings OrganizationProcessingSettings?
+  knowledgeArtifacts KnowledgeArtifact[]
+  resolvedEntities   ResolvedEntity[]
 
   @@map("organizations")
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from '../axios';
 import { useAuthStore } from '@/store/auth/auth.store';
 
@@ -133,4 +134,9 @@ export async function getPendingCount(connectionId: string) {
   const orgId = useAuthStore.getState().orgId;
   const res = await api.get(`/eyes/${connectionId}/stats/pending-count?organizationId=${orgId}`);
   return res.data.data || res.data;
+}
+// zoom specific
+export const getScheduledMeetings = async (connectionId: string) =>{
+  const response = await api.get(`/zoom/scheduled/${connectionId}`);
+  return response.data.data;
 }

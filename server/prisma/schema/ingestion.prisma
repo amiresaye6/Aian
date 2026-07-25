@@ -34,6 +34,7 @@ model RawProviderEvent {
 model KnowledgeItem {
   id                       String          @id @default(uuid())
   organizationId           String          @map("organization_id")
+  artifactId               String?         @map("artifact_id")
   eyeType                  String          @map("eye_type") @db.VarChar(20)
   provider                 String          @db.VarChar(20)
   sourceType               String          @map("source_type") @db.VarChar(50)
@@ -60,6 +61,7 @@ model KnowledgeItem {
 
   // Relations
   organization Organization         @relation(fields: [organizationId], references: [id])
+  artifact     KnowledgeArtifact?   @relation(fields: [artifactId], references: [id], onDelete: SetNull)
   batchItems   IngestionBatchItem[]
 
   @@index([organizationId, ingestionStatus])

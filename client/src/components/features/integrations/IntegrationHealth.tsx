@@ -84,7 +84,12 @@ export function IntegrationHealth({ providerKey }: { providerKey: string }) {
       {/* Top cards */}
       <div className="mb-6 grid gap-4 md:grid-cols-4">
         <div className="glass flex items-center gap-4 rounded-2xl p-5 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
-          <EyeHealthRing value={healthData?.status === 'connected' ? 100 : healthData?.status === 'pending' ? 60 : 20} size={56} label="" />
+          <EyeHealthRing value=
+          {providerKey === 'zoom' 
+                    ? (healthData?.isValid ? 100 : 20)
+                    : (healthData?.status === 'connected' ? 100 : healthData?.status === 'pending' ? 60 : 20)
+                  }
+            size={56} label="" />
           <div>
             <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Overall</div>
             <div className="font-display text-[18px] font-semibold text-foreground">Eye health</div>
