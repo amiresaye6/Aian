@@ -85,25 +85,26 @@ export function KnowledgeActivityChart({ organizationId }: { organizationId: str
                   <stop offset="95%" stopColor="var(--gold)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis 
                 dataKey="date" 
                 tickFormatter={(dateStr) => format(parseISO(dateStr), "MMM d")}
-                stroke="rgba(255,255,255,0.3)"
+                stroke="var(--muted-foreground)"
                 fontSize={12}
                 tickMargin={10}
               />
               <YAxis 
-                stroke="rgba(255,255,255,0.3)"
+                stroke="var(--muted-foreground)"
                 fontSize={12}
                 tickFormatter={(val) => val.toLocaleString()}
               />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: "rgba(10, 10, 10, 0.95)", 
-                  borderColor: "rgba(255,255,255,0.1)",
+                  backgroundColor: "var(--card)", 
+                  borderColor: "var(--border)",
+                  color: "var(--foreground)",
                   borderRadius: "8px",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.5)"
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
                 }}
                 labelFormatter={(label) => format(parseISO(label as string), "MMMM d, yyyy")}
                 formatter={(value: number) => [value.toLocaleString(), "Artifacts"]}

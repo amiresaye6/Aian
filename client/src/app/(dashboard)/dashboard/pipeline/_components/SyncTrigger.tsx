@@ -42,7 +42,7 @@ export function SyncTrigger({ organizationId }: { organizationId: string }) {
   const currentStep = isTriggering ? "Starting sync pipeline..." : (syncData?.currentStep || "Initializing...");
 
   return (
-    <Card className="grid-bg relative overflow-hidden border border-white/10 p-6 md:p-8 h-full flex flex-col justify-center">
+    <Card className="glass-strong relative overflow-hidden border border-white/5 p-6 md:p-8 h-full flex flex-col justify-center">
       <div className="absolute inset-0 bg-gradient-to-r from-white/[0.04] to-transparent pointer-events-none" />
       
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
