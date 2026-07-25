@@ -128,3 +128,9 @@ export const getMembers = async (connectionId: string) => {
   const response = await api.get(`/eyes/${connectionId}/members`);
   return response.data.data || response.data;
 };
+
+export async function getPendingCount(connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.get(`/eyes/${connectionId}/stats/pending-count?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
