@@ -77,6 +77,9 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
         // Let the specific provider assembler group and structure the items
         const artifactsData = await assembler.assemble(items);
 
+        // Collect created artifact IDs to safely dispatch extraction outside the transaction
+        const createdArtifactIds: string[] = [];
+
         // Save artifacts and update knowledge items
         await this.prisma.$transaction(async (tx) => {
           for (const artifactData of artifactsData) {
@@ -85,17 +88,7 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
               data: artifactData as any,
             });
 
-            // --- Stage 2 Hook ---
-            // Trigger Knowledge Extraction asynchronously after the transaction completes.
-            // We do NOT await here inside the tx — extraction is non-blocking.
-            // A failed extraction never rolls back the assembly transaction.
-            setImmediate(() => {
-              this.extractionService.extractFromArtifact(artifact.id).catch(
-                (err) => this.logger.error(
-                  `Unexpected error dispatching extraction for artifact ${artifact.id}: ${err.message}`,
-                ),
-              );
-            });
+            createdArtifactIds.push(artifact.id);
 
             // Find all items that belong to this artifact (this assumes the assembler grouped them correctly,
             // but for safety, we can just link all items in this provider batch that match the resourceId)
@@ -122,6 +115,19 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
             }
           }
         });
+
+        // --- Stage 2 Hook ---
+        // Trigger Knowledge Extraction asynchronously AFTER the transaction completes.
+        // We do NOT await here — extraction is non-blocking.
+        for (const artifactId of createdArtifactIds) {
+          setImmediate(() => {
+            this.extractionService.extractFromArtifact(artifactId).catch(
+              (err) => this.logger.error(
+                `Unexpected error dispatching extraction for artifact ${artifactId}: ${err.message}`,
+              ),
+            );
+          });
+        }
 
         this.logger.log(
           `Created ${artifactsData.length} Artifacts for ${provider}.`,
