@@ -131,6 +131,20 @@
       }
     },
     {
+      "name": "Get Knowledge Activity",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/knowledge/activity",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "eyes", ":connectionId", "knowledge", "activity"],
+          "variable": [
+            { "key": "connectionId", "value": "{{connectionId}}" }
+          ]
+        }
+      }
+    },
+    {
       "name": "Get Organization Batches",
       "request": {
         "method": "GET",
@@ -152,6 +166,24 @@
           "raw": "{{baseUrl}}/api/v1/batches/:batchId",
           "host": ["{{baseUrl}}"],
           "path": ["api", "v1", "batches", ":batchId"],
+          "variable": [
+            { "key": "batchId", "value": "{{batchId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Batch Items",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/batches/:batchId/items?page=1&limit=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "batches", ":batchId", "items"],
+          "query": [
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "20" }
+          ],
           "variable": [
             { "key": "batchId", "value": "{{batchId}}" }
           ]
@@ -201,6 +233,20 @@
           "raw": "{{baseUrl}}/api/v1/sync/:organizationId/now",
           "host": ["{{baseUrl}}"],
           "path": ["api", "v1", "sync", ":organizationId", "now"],
+          "variable": [
+            { "key": "organizationId", "value": "{{organizationId}}" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Check Sync Status",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/sync/:organizationId/status",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "sync", ":organizationId", "status"],
           "variable": [
             { "key": "organizationId", "value": "{{organizationId}}" }
           ]
@@ -261,6 +307,26 @@
               ]
             },
             "description": "Returns a single artifact with its full extractedData blob (entities, relationships, decisions, actionItems)."
+          }
+        },
+        {
+          "name": "Get Artifact Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/artifacts/{{artifactId}}/logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "artifacts", "{{artifactId}}", "logs"],
+              "variable": [
+                {
+                  "key": "artifactId",
+                  "value": "{{artifactId}}",
+                  "description": "The UUID of the artifact to inspect logs for."
+                }
+              ]
+            },
+            "description": "Returns the extraction error string for a failed artifact."
           }
         },
         {

@@ -50,6 +50,7 @@ model KnowledgeArtifact {
   extractionStatus ExtractionStatus @default(pending) @map("extraction_status")
   extractedData    Json?           @map("extracted_data")
   extractedAt      DateTime?       @map("extracted_at") @db.Timestamptz
+  extractionError  String?         @map("extraction_error") @db.Text
   resolutionStatus ExtractionStatus @default(pending) @map("resolution_status")
   resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz
   graphStatus      ExtractionStatus @default(pending) @map("graph_status")

@@ -1,8 +1,13 @@
-import { Controller, Get, Delete, Param, Query } from '@nestjs/common';
+import { Controller, Get, Delete, Param, Query, UseGuards } from '@nestjs/common';
 import { ProviderConnectionRepository } from '../../repositories/provider-connection.repository';
 import { ProviderClientFactory } from '../../../integrations/provider-client.factory';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { AuthGaurd } from '../../../auth/auth.gaurd';
+import { RolesGuards } from '../../../roles_permissions/roles.guard';
+import { RequiredPermissions } from '../../../decorators/required-permissions.decorator';
 
+@UseGuards(AuthGaurd, RolesGuards)
+@RequiredPermissions('eyes.manage')
 @Controller('eyes')
 export class EyesController {
   constructor(

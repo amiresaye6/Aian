@@ -17,7 +17,7 @@ export class KnowledgeController {
     const items = await this.prisma.knowledgeItem.findMany({
       where: {
         organizationId: connection.organizationId,
-        provider: connection.providerKey.toUpperCase(), 
+        provider: connection.providerKey.toUpperCase(),
       },
       orderBy: { createdAt: 'desc' },
       take: 5,
@@ -27,9 +27,9 @@ export class KnowledgeController {
         sourceType: true,
         createdAt: true,
         metadata: true,
-      }
+      },
     });
-    
+
     return items;
   }
 
@@ -42,7 +42,7 @@ export class KnowledgeController {
       where: {
         organizationId: connection.organizationId,
         provider: connection.providerKey.toUpperCase(),
-      }
+      },
     });
 
     // In a real scenario we could group by sourceType
@@ -60,23 +60,60 @@ export class KnowledgeController {
       messages: 0,
       entities: 0,
     };
-    
-    grouped.forEach(g => {
+
+    grouped.forEach((g) => {
       const type = g.sourceType.toLowerCase();
-      if (type.includes('message') || type.includes('chat') || type.includes('comment')) {
+      if (
+        type.includes('message') ||
+        type.includes('chat') ||
+        type.includes('comment')
+      ) {
         breakdown.messages += g._count;
-      } else if (type.includes('issue') || type.includes('task') || type.includes('repo')) {
+      } else if (
+        type.includes('issue') ||
+        type.includes('task') ||
+        type.includes('repo')
+      ) {
         breakdown.entities += g._count;
       } else {
         breakdown.documents += g._count;
       }
     });
 
-    const mapped = breakdown.documents + breakdown.messages + breakdown.entities;
+    const mapped =
+      breakdown.documents + breakdown.messages + breakdown.entities;
     if (total > mapped) {
-      breakdown.documents += (total - mapped); 
+      breakdown.documents += total - mapped;
     }
 
     return { total, breakdown };
+  }
+
+  @Get('activity')
+  async getKnowledgeActivity(@Param('connectionId') connectionId: string) {
+    const connection = await this.connectionRepo.findByIdMapped(connectionId);
+    if (!connection) throw new NotFoundException('Connection not found');
+
+    // Grouping by date natively in Prisma is clunky, so we use a raw SQL query.
+    // This fetches the ingestion volume for the last 30 days grouped by day.
+    const timeSeries = await this.prisma.$queryRaw<
+      { date: Date; count: number }[]
+    >`
+      SELECT DATE(created_at) as date, COUNT(*)::int as count
+      FROM knowledge_items
+      WHERE organization_id = ${connection.organizationId}
+        AND provider = ${connection.providerKey.toUpperCase()}
+        AND created_at > NOW() - INTERVAL '30 days'
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC;
+    `;
+
+    // Map into a simpler format for the frontend chart (YYYY-MM-DD)
+    const formattedSeries = timeSeries.map((row) => ({
+      date: new Date(row.date).toISOString().split('T')[0],
+      count: Number(row.count),
+    }));
+
+    return formattedSeries;
   }
 }

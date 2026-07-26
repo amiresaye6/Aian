@@ -1,3 +1,5 @@
+// TODO: remove from production version
+
 import {
   Controller,
   Post,
@@ -5,8 +7,12 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { MessagesService } from '../../../integrations/messages/messages.service';
+import { AuthGaurd } from '../../../auth/auth.gaurd';
+import { RolesGuards } from '../../../roles_permissions/roles.guard';
+import { RequiredPermissions } from '../../../decorators/required-permissions.decorator';
 
 import {
   IsString,
@@ -56,6 +62,8 @@ class SendMessageDto {
  * Any consumer (frontend, AI agent, alert service) can hit this endpoint
  * to send a message through the provider connected on the given eye.
  */
+@UseGuards(AuthGaurd, RolesGuards)
+@RequiredPermissions('dashboard.read')
 @Controller('eyes/:connectionId/messages')
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}

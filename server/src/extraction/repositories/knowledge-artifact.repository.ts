@@ -31,6 +31,7 @@ export class KnowledgeArtifactRepository {
         extractionStatus: ExtractionStatus.completed,
         extractedData: result as any,
         extractedAt: new Date(),
+        extractionError: null, // Clear any previous error
         ...(title ? { title } : {}),
       },
     });
@@ -42,6 +43,7 @@ export class KnowledgeArtifactRepository {
       where: { id },
       data: {
         extractionStatus: ExtractionStatus.failed,
+        extractionError: errorMessage,
       },
     });
   }

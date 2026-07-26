@@ -11,6 +11,8 @@ import {
   Video,
   BarChart3,
   Plug,
+  Database,
+  Network,
   Users,
   Building2,
   CreditCard,
@@ -33,10 +35,12 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dashboard/Knowledge", label: "Knowledge", icon: BookOpen },
+  { to: "/dashboard/knowledge/artifacts", label: "Knowledge", icon: BookOpen },
+  { to: "/dashboard/knowledge/entities", label: "Entities", icon: Network },
   { to: "/dashboard/Meetings", label: "Meetings", icon: Video },
   { to: "/dashboard/Reports", label: "Reports", icon: BarChart3 },
   { to: "/eyes", label: "Integrations", icon: Plug },
+  { to: "/dashboard/pipeline", label: "Pipeline", icon: Database },
   { to: "/dashboard/members", label: "Members", icon: Users },
   { to: "/dashboard/Organization", label: "Organization", icon: Building2 },
   { to: "/dashboard/Billing", label: "Billing", icon: CreditCard },
