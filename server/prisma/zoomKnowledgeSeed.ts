@@ -132,6 +132,7 @@ async function main() {
         audioUrl:
           'https://meeting-baas-v2-artifacts.s3.fr-par.scw.cloud/f7f5fc93-6b51-4208-89d2-f5347518f586/output.flac?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=SCW1ZM6P0A83KVXXS1BE%2F20260723%2Ffr-par%2Fs3%2Faws4_request&X-Amz-Date=20260723T160812Z&X-Amz-Expires=14400&X-Amz-Signature=2b3c6e3f4a4d09eae419cbcd435f7d358ea1c1d7db974a131be4d4e256c153ef&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject',
         exitedAt: '2026-07-23T16:04:35.000Z',
+        joinedAt: '2026-07-23T15:24:23.000Z',
         speakers: [
           {
             id: 1,

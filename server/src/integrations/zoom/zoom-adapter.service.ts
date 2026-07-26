@@ -43,6 +43,7 @@ export class ZoomAdapterService implements ProviderAdapter {
             metadata: {
                 durationSeconds: rawData.durationSeconds,
                 exitedAt: rawData.exitedAt,
+                joinedAt: rawData.joinedAt,
                 speakers: rawData.speakers || [],
                 summarization: rawData.summarization,
                 full_transcription: rawData.full_transcription,
