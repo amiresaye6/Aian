@@ -444,6 +444,30 @@
           }
         }
       ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Query Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"What are the currently integrated services?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/chat/query",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "chat", "query"]
+            },
+            "description": "Query the graph and knowledge artifacts to generate an answer based on extracted entities."
+          }
+        }
+      ]
     }
   ],
   "variable": [
