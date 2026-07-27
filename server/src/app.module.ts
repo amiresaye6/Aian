@@ -28,6 +28,7 @@ import { AiGatewayModule } from './ai/ai-gateway.module';
 import { KnowledgeExtractionModule } from './extraction/extraction.module';
 import { ResolutionModule } from './resolution/resolution.module';
 import { GraphModule } from './graph/graph.module';
+import { RetrievalModule } from './retrieval/retrieval.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { GraphModule } from './graph/graph.module';
     KnowledgeExtractionModule,
     ResolutionModule,
     GraphModule,
+    RetrievalModule,
     HealthModule,
     UploadModule,
     EmailModule,

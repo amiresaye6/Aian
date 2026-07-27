@@ -18,8 +18,8 @@ export const entitiesApi = {
     return response.data?.data || response.data;
   },
 
-  getEntityDetails: async (entityId: string) => {
-    const response = await api.get<ResolvedEntity>(`/entities/${entityId}`);
+  getEntityDetails: async (entityId: string): Promise<ResolvedEntity> => {
+    const response = await api.get<any>(`/entities/${entityId}`);
     return response.data?.data || response.data;
   },
 };

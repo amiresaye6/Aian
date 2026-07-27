@@ -36,7 +36,6 @@ async function main() {
   await prisma.subscriptionPlan.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.user.deleteMany();
- 
 
   await prisma.eyeProvider.deleteMany();
   await prisma.provider.deleteMany();
@@ -102,6 +101,7 @@ async function main() {
     'integrations.read',
     'integrations.connect',
     'dashboard.read',
+    'chat.use',
   ];
 
   const permissions = await Promise.all(
@@ -148,6 +148,7 @@ async function main() {
     'eyes.read',
     'providers.read',
     'integrations.read',
+    'chat.use',
   ];
   for (const p of permissions) {
     if (memberIncluded.includes(p.key)) {
@@ -409,50 +410,50 @@ async function main() {
         memberStatus: 'active',
         invitedByUserId: ownerUser.id,
         joinedAt: new Date(),
-        emailVerifiedAt: new Date()
+        emailVerifiedAt: new Date(),
       },
     });
     createdUsers.push(user);
   }
   // 8. Seed Billing
-  console.log("Seeding subscription plans...");
+  console.log('Seeding subscription plans...');
 
   await prisma.subscriptionPlan.createMany({
     data: [
       {
-        name: "Starter",
-        slug: "starter",
+        name: 'Starter',
+        slug: 'starter',
         description:
-          "Perfect for startups and small teams getting started with AIAN.",
+          'Perfect for startups and small teams getting started with AIAN.',
         monthlyPriceCents: 1900,
         yearlyPriceCents: 19000,
-        currency: "USD",
+        currency: 'USD',
         maxMembers: 10,
         storageLimitMb: 10240,
         active: true,
         sortOrder: 1,
       },
       {
-        name: "Growth",
-        slug: "growth",
+        name: 'Growth',
+        slug: 'growth',
         description:
-          "Ideal for growing businesses collaborating across multiple teams.",
+          'Ideal for growing businesses collaborating across multiple teams.',
         monthlyPriceCents: 4900,
         yearlyPriceCents: 49000,
-        currency: "USD",
+        currency: 'USD',
         maxMembers: 50,
         storageLimitMb: 51200,
         active: true,
         sortOrder: 2,
       },
       {
-        name: "Enterprise",
-        slug: "enterprise",
+        name: 'Enterprise',
+        slug: 'enterprise',
         description:
-          "Advanced collaboration, security, and scalability for large organizations.",
+          'Advanced collaboration, security, and scalability for large organizations.',
         monthlyPriceCents: 9900,
         yearlyPriceCents: 99000,
-        currency: "USD",
+        currency: 'USD',
         maxMembers: 500,
         storageLimitMb: 204800,
         active: true,
@@ -462,7 +463,7 @@ async function main() {
     skipDuplicates: true,
   });
   const starterPlan = await prisma.subscriptionPlan.findUnique({
-    where: { slug: "starter" },
+    where: { slug: 'starter' },
   });
 
   const organization = await prisma.organization.findFirst();
@@ -472,14 +473,14 @@ async function main() {
       data: {
         organizationId: organization.id,
         planId: starterPlan.id,
-        billingCycle: "monthly",
-        status: "active",
-        paymentProvider: "stripe",
-        providerCustomerId: "cus_demo_001",
-        providerSubscriptionId: "sub_demo_001",
+        billingCycle: 'monthly',
+        status: 'active',
+        paymentProvider: 'stripe',
+        providerCustomerId: 'cus_demo_001',
+        providerSubscriptionId: 'sub_demo_001',
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(
-          new Date().setMonth(new Date().getMonth() + 1)
+          new Date().setMonth(new Date().getMonth() + 1),
         ),
         cancelAtPeriodEnd: false,
       },
@@ -489,18 +490,18 @@ async function main() {
       data: {
         organizationId: organization.id,
         subscriptionId: subscription.id,
-        paymentProvider: "stripe",
-        providerPaymentId: "pi_demo_001",
-        invoiceId: "in_demo_001",
+        paymentProvider: 'stripe',
+        providerPaymentId: 'pi_demo_001',
+        invoiceId: 'in_demo_001',
         amountCents: 1900,
-        currency: "USD",
-        billingCycle: "monthly",
-        status: "paid",
+        currency: 'USD',
+        billingCycle: 'monthly',
+        status: 'paid',
         paidAt: new Date(),
         providerPayload: {
-          receiptUrl: "https://example.com/receipt",
-          cardBrand: "visa",
-          last4: "4242",
+          receiptUrl: 'https://example.com/receipt',
+          cardBrand: 'visa',
+          last4: '4242',
         },
       },
     });

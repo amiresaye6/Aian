@@ -107,7 +107,7 @@ export function KnowledgeActivityChart({ organizationId }: { organizationId: str
                   boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
                 }}
                 labelFormatter={(label) => format(parseISO(label as string), "MMMM d, yyyy")}
-                formatter={(value: number) => [value.toLocaleString(), "Artifacts"]}
+                formatter={(value: any) => [value?.toLocaleString() || "0", "Artifacts"]}
               />
               <Area 
                 type="monotone" 
