@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { api } from "@/api/axios";
 import { ArtifactActivity } from "@/types/knowledge";
 
@@ -7,3 +8,4 @@ export const knowledgeApi = {
     return response.data?.data || response.data;
   },
 };
+

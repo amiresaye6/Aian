@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard/chat", label: "AI Portal", icon: Sparkles },
   { to: "/dashboard/knowledge/artifacts", label: "Knowledge", icon: BookOpen },
   { to: "/dashboard/knowledge/entities", label: "Entities", icon: Network },
   { to: "/dashboard/Meetings", label: "Meetings", icon: Video },
