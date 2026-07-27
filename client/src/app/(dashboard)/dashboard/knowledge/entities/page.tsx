@@ -13,8 +13,8 @@ export default function EntitiesPage() {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  // TODO: Get active org ID from context. Hardcoded for now based on the user's example.
-  const organizationId = "b4fb918c-d783-4eaa-b75b-86e3e3bceb3d";
+  const user = useAuthStore((s) => s.user);
+  const organizationId = user?.organizationId;
 
   const { data: response, isLoading } = useQuery({
     queryKey: ["entities", organizationId, selectedType, page],
