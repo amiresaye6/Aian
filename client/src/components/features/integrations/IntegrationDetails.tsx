@@ -185,14 +185,14 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
       {tab === "overview" && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <div className={cn("grid gap-4", providerKey === 'github' ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
+            {/* <div className={cn("grid gap-4", providerKey === 'github' ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
               <Metric label="Knowledge items" value={stats?.total?.toLocaleString() ?? "0"} />
               <Metric label={provider.resourceLabel} value={resources?.length?.toString() ?? "0"} />
               <Metric label="Members mapped" value={providerKey === 'jira' ? membersCount.toString() : "0"} />
               {providerKey === 'github' && (
                 <Metric label="Pending items" value={pendingCount.toString()} />
               )}
-            </div>
+            </div> */}
             <div className="grid gap-4 sm:grid-cols-3">
               {providerKey === 'zoom' ? (
                 <>
@@ -204,6 +204,9 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
                   <Metric label="Knowledge items" value={stats?.total?.toLocaleString() ?? "0"} />
                   <Metric label={provider.resourceLabel} value={resources?.length?.toString() ?? "0"} />
                   <Metric label="Members mapped" value={providerKey === 'jira' ? membersCount.toString() : "0"} />
+                  {providerKey === 'github' && (
+                <Metric label="Pending items" value={pendingCount.toString()} />
+              )}
                 </>
               )}
             </div>
