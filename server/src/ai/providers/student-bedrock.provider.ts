@@ -133,4 +133,104 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
       throw error;
     }
   }
+
+  async generateToolCalls(
+    messages: import('./ai-provider.interface').AiMessage[],
+    tools: import('./ai-provider.interface').AiTool[],
+    systemPrompt?: string,
+    options?: AiOptions,
+  ): Promise<import('./ai-provider.interface').AiMessage> {
+    const model = options?.model || this.DEFAULT_MODEL;
+    this.logger.debug(`Generating tool calls using model: ${model}`);
+
+    // Map internal message format to gateway format
+    const formattedMessages = messages.map((m) => {
+      if (m.role === 'tool') {
+        return {
+          role: 'user', // LLMs often need tool results as user messages if not using native tool roles, but we'll try native first
+          content: `Tool Result for ${m.toolResultId}: ${m.content}`,
+        };
+      }
+      return m;
+    });
+
+    const promptWithTools = `
+${systemPrompt || 'You are a helpful assistant with access to tools.'}
+
+You have access to the following tools:
+${JSON.stringify(tools, null, 2)}
+
+If you need to use a tool to fulfill the user's request, you MUST output ONLY a valid JSON object matching this structure:
+{
+  "toolCalls": [
+    {
+      "id": "unique_call_id",
+      "name": "TheToolName",
+      "input": { ... }
+    }
+  ]
+}
+If you do not need to use a tool, just respond normally with text. Do not wrap normal text in JSON.`;
+
+    try {
+      // Assuming the gateway supports Anthropic/OpenAI-style tool definitions natively,
+      // but providing a strong fallback prompt in case it ignores the 'tools' array.
+      const response = await axios.post(
+        `${this.baseUrl}/student/chat`,
+        {
+          model_id: model,
+          messages: formattedMessages,
+          system_prompt: promptWithTools,
+          tools: tools, // Pass tools directly to gateway just in case it's supported natively
+          max_tokens: options?.maxTokens || 4000,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      const content =
+        response.data.output_text || JSON.stringify(response.data);
+
+      // If the gateway supports native tool calls, it should return them in response.data.tool_calls
+      if (response.data.tool_calls) {
+        return {
+          role: 'assistant',
+          content: response.data.output_text,
+          toolCalls: response.data.tool_calls,
+        };
+      }
+
+      // Fallback: Check if the content is a JSON object with a tool call (manual parse)
+      try {
+        const match = content.match(/\{[\s\S]*\}/);
+        const cleanContent = match
+          ? match[0]
+          : content
+              .replace(/```json/gi, '')
+              .replace(/```/g, '')
+              .trim();
+
+        const parsed = JSON.parse(cleanContent);
+        if (parsed.toolCalls && Array.isArray(parsed.toolCalls)) {
+          return { role: 'assistant', toolCalls: parsed.toolCalls };
+        }
+      } catch (e) {
+        // Not JSON, just normal text response
+      }
+
+      return {
+        role: 'assistant',
+        content: content,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Bedrock Tool Gen Error: ${error.response?.data ? JSON.stringify(error.response.data) : error.message}`,
+      );
+      throw error;
+    }
+  }
 }

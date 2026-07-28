@@ -27,4 +27,31 @@ export interface AiProvider {
     schemaDescription: string,
     options?: AiOptions,
   ): Promise<T>;
+
+  /**
+   * Multi-turn chat with tool calling support.
+   */
+  generateToolCalls(
+    messages: AiMessage[],
+    tools: AiTool[],
+    systemPrompt?: string,
+    options?: AiOptions,
+  ): Promise<AiMessage>;
+}
+
+export interface AiMessage {
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content?: string;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    input: any;
+  }>;
+  toolResultId?: string; // used when role is 'tool'
+}
+
+export interface AiTool {
+  name: string;
+  description: string;
+  schema: any; // json-schema representation
 }

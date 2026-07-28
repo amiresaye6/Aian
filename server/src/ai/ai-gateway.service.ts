@@ -97,4 +97,36 @@ export class AiGatewayService {
       throw error;
     }
   }
+
+  /**
+   * Wrapper for multi-turn tool calling.
+   */
+  async generateToolCalls(
+    messages: import('./providers/ai-provider.interface').AiMessage[],
+    tools: import('./providers/ai-provider.interface').AiTool[],
+    systemPrompt?: string,
+    options?: AiOptions,
+  ): Promise<import('./providers/ai-provider.interface').AiMessage> {
+    const provider = this.providerFactory.getProvider();
+
+    this.logger.log(`Routing tool calls to ${provider.name}.`);
+    const startTime = Date.now();
+
+    try {
+      const result = await provider.generateToolCalls(
+        messages,
+        tools,
+        systemPrompt,
+        options,
+      );
+      const latency = Date.now() - startTime;
+      this.logger.log(`Tool generation completed in ${latency}ms.`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Tool AI Generation failed on ${provider.name}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
 }
