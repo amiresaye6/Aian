@@ -16,7 +16,7 @@ const EXTRACTION_MODEL = 'openai.gpt-oss-120b-1:0';
  * Higher token limit for extraction — long conversations produce large JSON.
  * The Slack bug-fixing conversation used ~4000 tokens and was truncated at 4000.
  */
-const EXTRACTION_MAX_TOKENS = 8000;
+const EXTRACTION_MAX_TOKENS = 12000;
 
 @Injectable()
 export class KnowledgeExtractionService {

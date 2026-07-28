@@ -86,10 +86,31 @@ export class GithubClientService implements ProviderClient {
         `GitHub connection verified: ${response.data.total_count} repositories accessible`,
       );
 
+      // return {
+      //   isValid: true,
+      //   message: `Connected. ${response.data.total_count} repositories accessible.`,
+      //   accountName: connection.externalAccountId ?? undefined,
+      //   accountId: connection.externalAccountId ?? undefined,
+      // };
+
+      
+       // Prefer the first accessible repository's full name (e.g. "owner/repo")
+      // as a human-readable account label; fall back to the raw installation ID.
+      const firstRepoFullName = response.data.repositories?.[0]?.full_name;
+
+      // Persist it so other controllers reading externalAccountName directly
+      // from the DB (instead of calling verifyConnection) also see a real name.
+      if (firstRepoFullName && connection.externalAccountName !== firstRepoFullName) {
+        await this.connectionRepo.update(connection.id, {
+          externalAccountName: firstRepoFullName,
+        });
+      }
+
+
       return {
         isValid: true,
         message: `Connected. ${response.data.total_count} repositories accessible.`,
-        accountName: connection.externalAccountId ?? undefined,
+        accountName: firstRepoFullName ?? connection.externalAccountId ?? undefined,
         accountId: connection.externalAccountId ?? undefined,
       };
     } catch (error) {
@@ -220,6 +241,8 @@ export class GithubClientService implements ProviderClient {
     savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
   ): Promise<void> {
     const [owner, repo] = (resource.name as string).split('/');
+    this.logger.log(`[HISTORICAL SYNC DEBUG] fromDate=${fromDate?.toISOString?.() ?? fromDate}, resource.name=${resource.name}, resource.externalResourceId=${resource.externalResourceId}`);
+    this.logger.log(`[HISTORICAL SYNC DEBUG] raw cursor param = ${JSON.stringify(cursor)}`);
     if (!owner || !repo) {
       throw new InternalServerErrorException(
         `Invalid GitHub resource name "${resource.name}", expected "owner/repo"`,
@@ -238,6 +261,7 @@ export class GithubClientService implements ProviderClient {
     let state = this.parseHistoricalCursor(cursor, phases[0]);
 
     while (state.phase !== 'done') {
+      this.logger.log(`[HISTORICAL SYNC DEBUG] phase=${state.phase} page=${state.page}`);
       const token = await this.getValidInstallationToken(connection);
       if (state.phase === 'pr_reviews') {
         const step = await this.fetchPrReviewsStep(

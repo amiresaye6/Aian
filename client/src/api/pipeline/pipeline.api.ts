@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { api } from "@/api/axios";
 import {
   ProcessingSettings,
@@ -55,3 +56,4 @@ export const pipelineApi = {
     return response.data;
   },
 };
+

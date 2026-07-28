@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Clock, ArrowRight, Receipt, Loader2, Sparkles } from "lucide-react";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 
-export default function PaymentResultPage() {
+function PaymentResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const theme = useTheme();
@@ -166,5 +166,17 @@ export default function PaymentResultPage() {
         </motion.div>
       {/* </div> */}
     </OnboardingLayout>
+  );
+}
+
+export default function PaymentResultPage() {
+  return (
+    <Suspense fallback={
+      <OnboardingLayout title="Verifying Payment" subtitle="Please wait while we verify your transaction.">
+        <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-gold/30 border-t-gold rounded-full animate-spin" /></div>
+      </OnboardingLayout>
+    }>
+      <PaymentResultContent />
+    </Suspense>
   );
 }

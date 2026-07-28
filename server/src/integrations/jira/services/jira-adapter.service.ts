@@ -31,9 +31,9 @@ export class JiraAdapterService implements ProviderAdapter {
     // Issue Events (From Webhooks or Historical Sync)
     if (
       eventTypeStr.includes('issue_created') ||
-      eventTypeStr.includes('issue_updated') ||
       eventTypeStr.includes('issue_deleted') ||
-      eventTypeStr === 'jira_historical_issue'
+      eventTypeStr === 'jira_historical_issue' ||
+      (eventTypeStr.includes('issue_updated') && !payload.changelog)
     ) {
       if (payload.issue) {
         items.push(this.mapIssue(input, payload.issue as Record<string, unknown>, this.mapEventType(eventTypeStr)));
@@ -85,35 +85,48 @@ export class JiraAdapterService implements ProviderAdapter {
     }
 
     // Transitions (extracted from changelog in issue_updated or historical sync)
-    if (
-      (eventTypeStr.includes('issue_updated') || eventTypeStr === 'jira_historical_issue') &&
-      payload.changelog &&
-      payload.issue
-    ) {
+    if (eventTypeStr.includes('issue_updated') && payload.changelog && payload.issue) {
       const changelogObj = payload.changelog as Record<string, unknown>;
-      // Historical sync returns histories in .histories instead of .items, but some webhook payloads use .items. 
-      // Actually Jira API /search returns changelog.histories array.
-      const historiesArr = (changelogObj.histories as unknown[]) || (changelogObj.items ? [{ items: changelogObj.items }] : []);
+      const itemsArr = (changelogObj.items as unknown[]) || [];
+      for (const item of itemsArr) {
+        const itemObj = item as Record<string, unknown>;
+        items.push(
+          this.mapTransition(
+            input,
+            payload.issue as Record<string, unknown>,
+            itemObj
+          ),
+        );
+      }
+    }
+
+    // Historical Sync Changelogs (convert to individual transitions)
+    if (eventTypeStr === 'jira_historical_issue' && payload.issue) {
+      const issueObj = payload.issue as Record<string, unknown>;
+      const changelogObj = issueObj.changelog as Record<string, unknown> | undefined;
+      const historiesArr = changelogObj?.histories as unknown[] | undefined;
       
-      for (const history of historiesArr) {
-        const historyObj = history as Record<string, unknown>;
-        const itemsArr = (historyObj.items as unknown[]) || [];
-        const transitionItem = itemsArr.find((i: unknown) => {
-          const itemObj = i as Record<string, unknown>;
-          return itemObj.field === 'status';
-        });
-        if (transitionItem) {
-          // Pass the history author as the user who made the transition
-          const author = historyObj.author || (input.rawPayload as Record<string, unknown>)?.user;
-          const fakeInput = { ...input, rawPayload: { ...payload, user: author } };
-          items.push(
-            this.mapTransition(
-              fakeInput,
-              payload.issue as Record<string, unknown>,
-              transitionItem as Record<string, unknown>,
-              'issue_transitioned',
-            ),
-          );
+      if (historiesArr && Array.isArray(historiesArr)) {
+        for (const history of historiesArr) {
+          const historyObj = history as Record<string, unknown>;
+          const historyItems = historyObj.items as unknown[] | undefined;
+          if (historyItems && historyItems.length > 0) {
+            const dateStr = historyObj.created as string | undefined;
+            const authorObj = historyObj.author as Record<string, unknown> | undefined;
+            
+            for (const item of historyItems) {
+              const itemObj = item as Record<string, unknown>;
+              items.push(
+                this.mapTransition(
+                  input,
+                  issueObj,
+                  itemObj,
+                  authorObj,
+                  dateStr
+                )
+              );
+            }
+          }
         }
       }
     }
@@ -151,7 +164,11 @@ export class JiraAdapterService implements ProviderAdapter {
     return raw;
   }
 
-  private mapIssue(input: ProviderEventInput, issue: Record<string, unknown>, eventType: string): KnowledgeItem {
+  private mapIssue(
+    input: ProviderEventInput, 
+    issue: Record<string, unknown>, 
+    eventType: string
+  ): KnowledgeItem {
     const fields = (issue.fields as Record<string, unknown>) || {};
     const project = (fields.project as Record<string, unknown>) || {};
     const creator = (fields.creator as Record<string, unknown>) || {};
@@ -390,26 +407,51 @@ export class JiraAdapterService implements ProviderAdapter {
       version: '1',
     };
   }
-
   private mapTransition(
     input: ProviderEventInput,
     issue: Record<string, unknown>,
     transition: Record<string, unknown>,
-    eventType: string,
+    historyAuthor?: Record<string, unknown>,
+    historyCreated?: string
   ): KnowledgeItem {
-    const user = (input.rawPayload as Record<string, unknown>)?.user as Record<string, unknown> | undefined || {};
+    const user = historyAuthor || (input.rawPayload as Record<string, unknown>)?.user as Record<string, unknown> | undefined || {};
+    
+    const field = transition.field as string;
+    const fromStr = (transition as Record<string, string>)['fromString'] || 'None';
+    const toStr = (transition as Record<string, string>)['toString'] || 'None';
+    
+    let eventType = 'issue_updated';
+    let sourceType = 'transition';
+    let title = `Update on ${issue.key}: ${field.charAt(0).toUpperCase() + field.slice(1)}`;
+    let content = `${field.charAt(0).toUpperCase() + field.slice(1)} changed from '${fromStr}' to '${toStr}'`;
+
+    if (field === 'status') {
+      eventType = 'status_changed';
+      sourceType = 'transition';
+      title = `Status Changed on ${issue.key}`;
+    } else if (field === 'priority') {
+      eventType = 'priority_changed';
+      sourceType = 'priority_change';
+      title = `Priority Changed on ${issue.key}`;
+    } else if (field === 'assignee') {
+      eventType = 'assignee_changed';
+      sourceType = 'assignee_change';
+      title = `Assignee Changed on ${issue.key}`;
+      content = `Ticket reassigned from '${fromStr}' to '${toStr}'`;
+    }
+
     return {
       id: crypto.randomUUID(),
       organizationId: input.organizationId,
       eyeType: 'task_management' as EyeType,
       provider: Provider.JIRA,
-      sourceType: 'transition',
+      sourceType,
       eventType,
       externalResourceId: (issue.id as string | undefined)?.toString() || 'unknown',
       externalEventId: null,
       parentExternalResourceId: (issue.id as string | undefined)?.toString() || 'unknown',
-      title: `Status Changed on ${issue.key}`,
-      content: `Status changed from '${transition.fromString}' to '${transition.toString}'`,
+      title,
+      content,
       author: {
         externalId: (user.accountId as string) || '',
         name: (user.displayName as string) || 'Unknown',
@@ -418,18 +460,27 @@ export class JiraAdapterService implements ProviderAdapter {
       participants: [],
       contextLocation: `Issue: ${issue.key}`,
       sourceUrl: null,
-      occurredAt: new Date(),
+      occurredAt: historyCreated ? new Date(historyCreated) : new Date(),
       receivedAt: new Date(),
       visibility: 'ORGANIZATION',
       metadata: {
         issueKey: issue.key,
-        fromStatus: transition.fromString,
-        toStatus: transition.toString,
+        field,
+        fromString: fromStr,
+        toString: toStr,
+        summary: (issue.fields as any)?.summary,
+        projectKey: (issue.fields as any)?.project?.key,
+        status: (issue.fields as any)?.status?.name,
+        priority: (issue.fields as any)?.priority?.name,
+        assigneeName: (issue.fields as any)?.assignee?.displayName,
+        reporterName: (issue.fields as any)?.reporter?.displayName,
+        created: (issue.fields as any)?.created,
       },
       rawPayloadReference: input.rawEventReference,
       version: '1',
     };
   }
+
 
   private extractParticipants(fields: Record<string, unknown>): Array<{ externalId?: string; name?: string; email?: string }> {
     const participants: Array<{ externalId?: string; name?: string; email?: string }> = [];
@@ -479,8 +530,15 @@ export class JiraAdapterService implements ProviderAdapter {
       return `jira:${org}:issuelink:${id}`;
     }
 
-    if (item.sourceType === 'transition') {
-      return `jira:${org}:transition:${item.externalResourceId}:${item.metadata?.toStatus}`;
+    if (
+      item.sourceType === 'transition' || 
+      item.sourceType === 'priority_change' || 
+      item.sourceType === 'assignee_change'
+    ) {
+      const field = (item.metadata as Record<string, any>)?.field || 'unknown';
+      const toStr = (item.metadata as Record<string, any>)?.toString || 'unknown';
+      const time = item.occurredAt.getTime();
+      return `jira:${org}:${item.sourceType}:${item.externalResourceId}:${field}:${toStr}:${time}`;
     }
 
     return `jira:${org}:${item.sourceType}:${id}`;

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/auth/auth.store";
 
-export default function OAuthSuccess() {
+function OAuthSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const loginStore = useAuthStore((state) => state.login);
@@ -34,5 +34,17 @@ export default function OAuthSuccess() {
     <div className="flex h-screen w-screen items-center justify-center text-gold-gradient bg-background">
       Connecting to your organizational brain...
     </div>
+  );
+}
+
+export default function OAuthSuccess() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-screen items-center justify-center text-gold-gradient bg-background">
+        Loading...
+      </div>
+    }>
+      <OAuthSuccessContent />
+    </Suspense>
   );
 }
