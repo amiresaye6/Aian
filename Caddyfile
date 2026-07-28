@@ -1,9 +1,4 @@
 aiaan.tech {
-    # Route all requests starting with /api to the NestJS backend
-    handle_path /api/* {
-        # NestJS expects the /api prefix, so we shouldn't strip it if it's deeply integrated,
-        # but handle_path automatically strips it. If NestJS expects /api, use `handle` instead.
-    }
 
     # Better approach for NestJS which usually expects /api in the route:
     handle /api/* {
