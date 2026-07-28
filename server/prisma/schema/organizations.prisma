@@ -27,6 +27,8 @@ model Organization {
   processingSettings OrganizationProcessingSettings?
   knowledgeArtifacts KnowledgeArtifact[]
   resolvedEntities   ResolvedEntity[]
+  handsSessions      HandsSession[]
+  auditLogs          AuditLog[]
 
   @@map("organizations")
 }
