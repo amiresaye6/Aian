@@ -1,0 +1,99 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aian_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aian_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aian_password}
+      POSTGRES_DB: ${POSTGRES_DB:-aian_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aian_user} -d ${POSTGRES_DB:-aian_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: aian_neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-aian_neo4j_password}
+    volumes:
+      - neo4j_data:/data
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: aian_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - client
+      - server
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: aian_server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_started
+    env_file:
+      - ./server/.env
+    environment:
+      - NODE_ENV=production
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: aian_client
+    restart: unless-stopped
+    depends_on:
+      - server
+    env_file:
+      - ./client/.env
+    environment:
+      - NODE_ENV=production
+
+  prisma-studio:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: aian_prisma_studio
+    restart: unless-stopped
+    command: npx prisma studio --port 5555 --hostname 0.0.0.0
+    ports:
+      - "5555:5555"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./server/.env
+
+volumes:
+  postgres_data:
+    driver: local
+  neo4j_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
