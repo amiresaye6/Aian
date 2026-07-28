@@ -61,40 +61,14 @@ export class ZoomClientService implements ProviderClient {
    * Retrieves importable/syncable resources (scheduled meetings) from Zoom.
    */
   async getResources(connection: ProviderConnection): Promise<ProviderResource[]> {
-    try {
-      await this.verifyConnection(connection)
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
-
-      const response = await axios.get('https://api.zoom.us/v2/users/me/meetings', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
-          type: 'scheduled',
-          page_size: 30,
-        },
-      });
-
-      const meetings = response.data.meetings || [];
-
-      // Map raw Zoom API meeting response to the standard ProviderResource contract
-      return meetings.map((meeting: any) => ({
-        externalResourceId: meeting.id.toString(),
-        name: meeting.topic,
-        resourceType: 'meeting',
-        metadata: {
-          start_time: meeting.start_time,
-          duration: meeting.duration,
-          timezone: meeting.timezone,
-          join_url: meeting.join_url,
-        },
-      }));
-    } catch (error: any) {
-      
-      const errorMsg = error.response?.data?.message || error.message;
-      this.logger.error(`Failed to fetch Zoom meetings/resources: ${errorMsg}`);
-      throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);
-    }
+      return [
+        {
+          name: "monitor all meetings",
+          resourceType:'meetings',
+          externalResourceId:"not available",
+          metadata:{}
+        } as ProviderResource
+      ]
   }
 
   /**
