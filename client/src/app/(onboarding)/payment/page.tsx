@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { CreditCard, Shield, Sparkles, Check, ArrowRight, Lock, Loader2 } from "lucide-react";
@@ -11,7 +11,7 @@ import { BillingCycle } from "@/types/billing/billing";
 import { useAuthStore } from "@/store/auth/auth.store";
 import { toast } from "sonner";
 
-export default function PaymentPage() {
+function PaymentContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const planSlug = searchParams.get("plan") || "growth";
@@ -168,6 +168,18 @@ export default function PaymentPage() {
         </motion.div>
       </div>
     </OnboardingLayout>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={
+      <OnboardingLayout title="Checkout" subtitle="Loading secure payment gateway...">
+        <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-gold/30 border-t-gold rounded-full animate-spin" /></div>
+      </OnboardingLayout>
+    }>
+      <PaymentContent />
+    </Suspense>
   );
 }
 

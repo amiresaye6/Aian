@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getPendingSites, selectJiraSite } from '@/api/integrations';
 
@@ -11,7 +11,7 @@ interface Site {
   avatarUrl: string;
 }
 
-export default function SelectJiraSitePage() {
+function SelectJiraSiteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const connectionId = searchParams.get('connectionId');
@@ -146,5 +146,13 @@ export default function SelectJiraSitePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SelectJiraSitePage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center text-foreground">Loading sites...</div>}>
+      <SelectJiraSiteContent />
+    </Suspense>
   );
 }

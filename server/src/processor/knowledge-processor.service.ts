@@ -90,26 +90,43 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
 
             createdArtifactIds.push(artifact.id);
 
-            // Find all items that belong to this artifact (this assumes the assembler grouped them correctly,
-            // but for safety, we can just link all items in this provider batch that match the resourceId)
-            // The assembler doesn't return the mapping. We should probably pass it back, but simpler:
-            // Since we grouped by externalResourceId in the slack assembler, we can find them.
-            // Actually, best approach is just to let the items link to the first artifact in MVP,
-            // or we update the assembler interface to return { artifact, items }.
-            // For now, let's just do a bulk link for items that belong to the same resource.
+            // Find all items that belong to this artifact
             const resourceId = (artifactData.metadata as any)?.resourceId;
+            const prNumber = (artifactData.metadata as any)?.prNumber;
+            const issueNumber = (artifactData.metadata as any)?.issueNumber;
+
             if (resourceId) {
+              const orConditions: any[] = [
+                { externalResourceId: resourceId },
+                { parentExternalResourceId: resourceId },
+              ];
+
+              if (prNumber !== undefined && prNumber !== null) {
+                orConditions.push({
+                  metadata: {
+                    path: ['prNumber'],
+                    equals: prNumber,
+                  },
+                });
+              }
+
+              if (issueNumber !== undefined && issueNumber !== null) {
+                orConditions.push({
+                  metadata: {
+                    path: ['issueNumber'],
+                    equals: issueNumber,
+                  },
+                });
+              }
+
               await tx.knowledgeItem.updateMany({
                 where: {
                   id: { in: items.map((i) => i.id) },
-                  OR: [
-                    { externalResourceId: resourceId },
-                    { parentExternalResourceId: resourceId },
-                  ],
+                  OR: orConditions,
                 },
                 data: {
                   artifactId: artifact.id,
-                  ingestionStatus: IngestionStatus.handed_off, // We consider it handed off to Stage 2
+                  ingestionStatus: IngestionStatus.handed_off,
                 },
               });
             }
@@ -118,7 +135,6 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
 
         // --- Stage 2 Hook ---
         // Trigger Knowledge Extraction asynchronously AFTER the transaction completes.
-        // We do NOT await here — extraction is non-blocking.
         for (const artifactId of createdArtifactIds) {
           setImmediate(() => {
             this.extractionService.extractFromArtifact(artifactId).catch(
