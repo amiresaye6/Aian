@@ -11,6 +11,8 @@ import { ZoomEventsController } from './zoom-events.controller';
 import { MeetingBaasService } from './meeting-baas.service';
 import { CollectionModule } from '../../ingestion/collection/collection.module';
 import { ZoomController } from './zoom.controller';
+import { AssemblerFactory } from '../../processor/assemblers/assembler.factory';
+import { ZoomAssemblerService } from './zoom-assembler.service';
 
 @Module({
   imports:[
@@ -25,6 +27,7 @@ import { ZoomController } from './zoom.controller';
     ZoomClientService, 
     ZoomAdapterService, 
     ZoomWebhookValidator,
+    ZoomAssemblerService,
     MeetingBaasService
   ],
   exports: [
@@ -36,10 +39,12 @@ import { ZoomController } from './zoom.controller';
 export class ZoomModule implements OnModuleInit {
   constructor(
     private readonly clientFactory: ProviderClientFactory,
+    private readonly assemblerFactory: AssemblerFactory,
     private readonly validatorFactory: WebhookSignatureValidatorFactory,
     private readonly zoomClient: ZoomClientService,
     private readonly zoomAdapter: ZoomAdapterService,
     private readonly zoomValidator: ZoomWebhookValidator,
+    private readonly zoomAssemblerService: ZoomAssemblerService,
     private readonly prisma: PrismaService
   ) {}
 
@@ -56,5 +61,6 @@ export class ZoomModule implements OnModuleInit {
     this.clientFactory.registerClient(zoomProvider.id, this.zoomClient);
     this.clientFactory.registerAdapter(zoomProvider.id, this.zoomAdapter);
     this.validatorFactory.registerValidator(zoomProvider.id, this.zoomValidator);
+    this.assemblerFactory.register(this.zoomAssemblerService)
   }
 }
