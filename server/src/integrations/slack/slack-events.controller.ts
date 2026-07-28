@@ -7,11 +7,14 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderConnectionRepository } from '../../ingestion/repositories/provider-connection.repository';
 import { WebhookService } from '../../ingestion/collection/webhooks/webhook.service';
+import { OrchestratorService } from '../../hands/orchestrator/orchestrator.service';
 
 /**
  * Dedicated controller for receiving Slack Events API payloads.
@@ -34,6 +37,8 @@ export class SlackEventsController {
     private readonly prisma: PrismaService,
     private readonly connectionRepo: ProviderConnectionRepository,
     private readonly webhookService: WebhookService,
+    @Inject(forwardRef(() => OrchestratorService))
+    private readonly orchestratorService: OrchestratorService,
   ) {}
 
   @Post('events')
@@ -85,7 +90,37 @@ export class SlackEventsController {
       return { received: true };
     }
 
-    // Delegate to the existing global webhook pipeline.
+    // ─── Case 2.5: Isolate DMs for Hands Subsystem ───────────────────
+    const event = body.event;
+    if (
+      event &&
+      event.type === 'message' &&
+      event.channel_type === 'im' &&
+      !event.bot_id
+    ) {
+      this.logger.log(
+        `[Hands Subsystem] Isolated DM from user ${event.user} in team ${teamId}`,
+      );
+      // TODO: Perform signature validation for DMs here before calling Orchestrator
+      // For now, delegate directly to the Orchestrator Service
+      this.orchestratorService
+        .handleDM({
+          organizationId: connection.organizationId,
+          connectionId: connection.id,
+          teamId: teamId,
+          userId: event.user,
+          channelId: event.channel,
+          text: event.text,
+          threadTs: event.thread_ts || event.ts,
+        })
+        .catch((err) => {
+          this.logger.error(`Orchestrator failed to handle DM: ${err.message}`);
+        });
+
+      return { received: true };
+    }
+
+    // ─── Case 3: Delegate group/channel chatter to the Eyes pipeline ─
     // This reuses signature validation, dispatch, normalization — everything.
     await this.webhookService.processWebhook(connection.id, req);
 

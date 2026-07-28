@@ -9,6 +9,8 @@ import { ProviderClientFactory } from '../provider-client.factory';
 import { WebhookSignatureValidatorFactory } from '../../ingestion/collection/webhooks/webhook-signature-validator.factory';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AssemblerFactory } from '../../processor/assemblers/assembler.factory';
+import { forwardRef } from '@nestjs/common';
+import { HandsModule } from '../../hands/hands.module';
 
 /**
  * The Slack Integration Module.
@@ -18,8 +20,14 @@ import { AssemblerFactory } from '../../processor/assemblers/assembler.factory';
  * the global factories so the shared pipeline can route to them.
  */
 @Module({
+  imports: [forwardRef(() => HandsModule)],
   controllers: [SlackAuthController, SlackEventsController],
-  providers: [SlackClientService, SlackAdapterService, SlackWebhookValidator, SlackAssemblerService],
+  providers: [
+    SlackClientService,
+    SlackAdapterService,
+    SlackWebhookValidator,
+    SlackAssemblerService,
+  ],
   exports: [SlackClientService, SlackAdapterService, SlackAssemblerService],
 })
 export class SlackModule implements OnModuleInit {
