@@ -613,6 +613,13 @@ export class GithubClientService implements ProviderClient {
       );
     }
   }
+  /**
+   * Public wrapper so the PR Assembler (Sprint 3) can get a valid token
+   * to enrich commit→PR linkage via the GitHub API directly.
+   */
+  async getInstallationTokenForAssembler(connection: ProviderConnection): Promise<string> {
+    return this.getValidInstallationToken(connection);
+  }
 
   /**
    * Signs a JWT using the GitHub App's private key.
