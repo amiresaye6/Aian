@@ -39,27 +39,27 @@ model OnboardingProgress {
 // ---------------- Sprint 3 Models ----------------
 
 model KnowledgeArtifact {
-  id               String          @id @default(uuid())
-  organizationId   String          @map("organization_id")
+  id               String           @id @default(uuid())
+  organizationId   String           @map("organization_id")
   type             ArtifactType
-  provider         String          @db.VarChar(20)
-  title            String?         @db.VarChar(500)
-  content          String          @db.Text
-  participants     Json            @default("[]")
-  metadata         Json            @default("{}")
+  provider         String           @db.VarChar(20)
+  title            String?          @db.VarChar(500)
+  content          String           @db.Text
+  participants     Json             @default("[]")
+  metadata         Json             @default("{}")
   extractionStatus ExtractionStatus @default(pending) @map("extraction_status")
-  extractedData    Json?           @map("extracted_data")
-  extractedAt      DateTime?       @map("extracted_at") @db.Timestamptz
-  extractionError  String?         @map("extraction_error") @db.Text
+  extractedData    Json?            @map("extracted_data")
+  extractedAt      DateTime?        @map("extracted_at") @db.Timestamptz
+  extractionError  String?          @map("extraction_error") @db.Text
   resolutionStatus ExtractionStatus @default(pending) @map("resolution_status")
-  resolvedAt       DateTime?       @map("resolved_at") @db.Timestamptz
+  resolvedAt       DateTime?        @map("resolved_at") @db.Timestamptz
   graphStatus      ExtractionStatus @default(pending) @map("graph_status")
-  graphSyncedAt    DateTime?       @map("graph_synced_at") @db.Timestamptz
-  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  graphSyncedAt    DateTime?        @map("graph_synced_at") @db.Timestamptz
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // One artifact is made of many raw items
-  sourceItems KnowledgeItem[]
+  sourceItems    KnowledgeItem[]
   entityMentions EntityMention[]
 
   organization Organization @relation(fields: [organizationId], references: [id])
