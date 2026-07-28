@@ -18,7 +18,8 @@ export default function EntitiesPage() {
 
   const { data: response, isLoading } = useQuery({
     queryKey: ["entities", organizationId, selectedType, page],
-    queryFn: () => entitiesApi.getEntities(organizationId, selectedType, page, 10),
+    queryFn: () => entitiesApi.getEntities(organizationId as string, selectedType, page, 10),
+    enabled: !!organizationId,
   });
 
   if (!organizationId) {
