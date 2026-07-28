@@ -129,9 +129,10 @@ By default, Azure blocks custom ports. We need to open ports so you can access t
    ```
    *(Press `Ctrl + C` to exit the logs).*
 
-4. **Database Migrations:** Once the server is running, you need to push your Prisma schema to the Postgres database:
+4. **Database Migrations & Seeding:** Because the server will crash on the first boot if the database tables don't exist yet, you should use `run --rm` to create a temporary container to push the schema and seed the database:
    ```bash
-   docker-compose exec server npx prisma db push
+   docker-compose run --rm server npx prisma db push
+   docker-compose run --rm server npm run db:seed
    ```
 
 **🎉 YOU ARE DONE!** 
