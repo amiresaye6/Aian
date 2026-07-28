@@ -13,8 +13,8 @@ import * as crypto from 'crypto';
  *   ORGANIZATION_ID  -> get it from organization table after creating your org
  *   CONNECTION_ID    -> the connection id you get after connecting your org with zoom
  * ===================================================================== */
-const ORGANIZATION_ID = '602415af-2b34-405e-bb42-70af75e026da';
-const CONNECTION_ID = 'a9280c16-04ae-4ca4-8deb-83af41e16e6d';
+const ORGANIZATION_ID = '';
+const CONNECTION_ID = '';
 
 // ---------------------------------------------------------------------
 

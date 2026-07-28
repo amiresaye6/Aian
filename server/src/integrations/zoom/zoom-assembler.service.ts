@@ -18,8 +18,8 @@ export class ZoomAssemblerService implements KnowledgeAssembler {
   }
 
   async assemble(items: KnowledgeItem[]): Promise<Partial<KnowledgeArtifact>[]> {
+    this.logger.log('reached zoom assembler')
     if (!items || items.length === 0) return [];
-
     const artifacts: Partial<KnowledgeArtifact>[] = [];
 
     for (const item of items) {
@@ -27,6 +27,13 @@ export class ZoomAssemblerService implements KnowledgeAssembler {
       const metadata: any = item?.metadata || {};
       const summarization = metadata?.summarization || '';
       const content = item?.content || '';
+      const artifactMetaData = {
+        audioUrl:metadata.audioUrl,
+        exitedAt:metadata.exitedAt,
+        joinedAt:metadata.joinedAt,
+        speakers:metadata.speakers,
+        resourceId:item.externalResourceId
+      };
 
       if (!content) continue;
 
@@ -41,7 +48,8 @@ export class ZoomAssemblerService implements KnowledgeAssembler {
             summary of full meeting: ${summarization}
             and this is part number ${partNumber} of the conversation occurred in the meeting:
             ${chunk}`;
-
+        //console.log('chunked successfully');
+      
         artifacts.push({
           organizationId,
           type: 'meeting_outcome',
@@ -49,7 +57,7 @@ export class ZoomAssemblerService implements KnowledgeAssembler {
           title: 'zoom meeting data',
           content: finalContent,
           participants: item.participants,
-          metadata: item.metadata,
+          metadata: artifactMetaData,
         });
       });
     }
