@@ -63,6 +63,13 @@ export class BillingController {
     return this.billingService.verifyPayment(providerPaymentId);
   }
 
+  @Get('subscription')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async getSubscription(@Query('organizationId') organizationId: string) {
+    return this.billingService.getActiveSubscription(organizationId);
+  }
+
   @Get('usage/logs')
   @UseGuards(AuthGaurd)
   @RequiredPermissions('billing.manage')

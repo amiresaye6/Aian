@@ -43,8 +43,8 @@ const NAV = [
   { to: "/eyes", label: "Integrations", icon: Plug },
   { to: "/dashboard/pipeline", label: "Pipeline", icon: Database },
   { to: "/dashboard/members", label: "Members", icon: Users },
-  { to: "/dashboard/Organization", label: "Organization", icon: Building2 },
-  { to: "/dashboard/Billing", label: "Billing", icon: CreditCard },
+  { to: "/dashboard/organization", label: "Organization", icon: Building2 },
+  { to: "/dashboard/billing", label: "Billing", icon: CreditCard },
 ];
 
 const SECONDARY = [
