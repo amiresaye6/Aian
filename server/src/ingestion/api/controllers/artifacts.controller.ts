@@ -235,19 +235,20 @@ export class ArtifactsController {
       return { message: 'No artifacts to retry.', count: 0 };
     }
 
-    // Fire and forget
-    setImmediate(() => {
-      Promise.all(
-        targets.map((t) =>
-          this.extractionService
-            .extractFromArtifact(t.id)
-            .catch((err) =>
-              this.logger.error(
-                `Bulk retry failed for artifact ${t.id}: ${err.message}`,
-              ),
-            ),
-        ),
-      );
+    // Fire and forget, sequential processing to avoid TPS spikes
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    
+    setImmediate(async () => {
+      for (const t of targets) {
+        try {
+          await this.extractionService.extractFromArtifact(t.id);
+        } catch (err) {
+          this.logger.error(
+            `Bulk retry failed for artifact ${t.id}: ${err.message}`,
+          );
+        }
+        await sleep(1500); // Wait 1.5s between retries
+      }
     });
 
     return {

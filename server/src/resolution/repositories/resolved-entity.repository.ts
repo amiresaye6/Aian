@@ -72,16 +72,32 @@ export class ResolvedEntityRepository {
   }
 
   async create(data: CreateResolvedEntityData): Promise<ResolvedEntity> {
-    return this.prisma.resolvedEntity.create({
-      data: {
-        organizationId: data.organizationId,
-        canonicalName: data.canonicalName,
-        normalizedName: data.normalizedName,
-        type: data.type,
-        aliases: data.aliases,
-        confidence: data.confidence,
-      },
-    });
+    try {
+      return await this.prisma.resolvedEntity.create({
+        data: {
+          organizationId: data.organizationId,
+          canonicalName: data.canonicalName,
+          normalizedName: data.normalizedName,
+          type: data.type,
+          aliases: data.aliases,
+          confidence: data.confidence,
+        },
+      });
+    } catch (error) {
+      if (error.code === 'P2002') {
+        // Unique constraint failed, meaning another concurrent extraction already created this entity.
+        // We can safely query for it and return the newly created entity.
+        const existing = await this.findByNormalizedName(
+          data.organizationId,
+          data.normalizedName,
+          data.type,
+        );
+        if (existing) {
+          return existing;
+        }
+      }
+      throw error;
+    }
   }
 
   /**
