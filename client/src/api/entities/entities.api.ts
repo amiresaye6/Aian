@@ -15,6 +15,8 @@ export const entitiesApi = {
 
     const response = await api.get<PaginatedEntitiesResponse>(`/entities?${params.toString()}`);
     // Unwrap standard { success: true, data: { ... } } structure
+    //console.log(response.data?.data || response.data)
+    //console.log(organizationId);
     return response.data?.data || response.data;
   },
 
