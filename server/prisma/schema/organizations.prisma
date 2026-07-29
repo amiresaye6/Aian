@@ -29,6 +29,7 @@ model Organization {
   resolvedEntities   ResolvedEntity[]
   handsSessions      HandsSession[]
   auditLogs          AuditLog[]
+  aiUsageLogs        AiUsageLog[]
 
   @@map("organizations")
 }

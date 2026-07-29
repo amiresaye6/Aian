@@ -28,7 +28,7 @@ INSTRUCTIONS:
 `;
 
     // We can use standard text generation for the conversational answer
-    const result = await this.aiGateway.generateText(prompt, {
+    const { data: result } = await this.aiGateway.generateText(prompt, {
       temperature: 0.3,
     });
 

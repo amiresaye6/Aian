@@ -55,7 +55,7 @@ USER QUERY:
 Extract the parameters accurately. If no time range is mentioned, set "timeRange" to null. If no people are mentioned, set "people" to [].
 `;
 
-    const result = await this.aiGateway.generateStructuredOutput(
+    const { data: result } = await this.aiGateway.generateStructuredOutput(
       prompt,
       QueryUnderstandingSchema,
       'QueryUnderstanding',

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AiOptions, AiProvider } from './ai-provider.interface';
+import { AiOptions, AiProvider, AiResponse, AiUsage } from './ai-provider.interface';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import axios from 'axios';
@@ -23,20 +23,33 @@ export class StudentBedrockProvider implements AiProvider {
     this.apiKey = this.configService.get<string>('AI_API_KEY') || '';
   }
 
-  async generateText(prompt: string, options?: AiOptions): Promise<string> {
+  private extractUsage(data: any): AiUsage {
+    return {
+      inputTokens: data?.usage?.input_tokens || 0,
+      outputTokens: data?.usage?.output_tokens || 0,
+      totalTokens: data?.usage?.total_tokens || 0,
+      costUsd: parseFloat(data?.actual_cost_usd || '0'),
+      stopReason: data?.usage?.stop_reason,
+      budgetState: data?.usage?.budget_state,
+    };
+  }
+
+  async generateText(prompt: string, options?: AiOptions): Promise<AiResponse<string>> {
     const model = options?.model || this.DEFAULT_MODEL;
 
     this.logger.debug(`Generating text using model: ${model}`);
+    
+    const payload = {
+      model_id: model,
+      messages: [{ role: 'user', content: prompt }],
+      system_prompt: 'You are a helpful assistant.',
+      max_tokens: options?.maxTokens || 1000,
+    };
 
     try {
       const response = await axios.post(
         `${this.baseUrl}/student/chat`,
-        {
-          model_id: model,
-          messages: [{ role: 'user', content: prompt }],
-          system_prompt: 'You are a helpful assistant.',
-          max_tokens: options?.maxTokens || 1000,
-        },
+        payload,
         {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
@@ -45,15 +58,19 @@ export class StudentBedrockProvider implements AiProvider {
         },
       );
 
+      const usage = this.extractUsage(response.data);
+
       // The gateway returns output in the 'output_text' property
       if (response.data && response.data.output_text !== undefined) {
-        return response.data.output_text;
+        return { data: response.data.output_text, usage };
       }
 
-      return JSON.stringify(response.data);
-    } catch (error) {
+      return { data: JSON.stringify(response.data), usage };
+    } catch (error: any) {
+      const status = error.response?.status;
+      const promptLen = JSON.stringify(payload).length;
       this.logger.error(
-        `Bedrock Text Gen Error: ${error.response?.data ? JSON.stringify(error.response.data) : error.message}`,
+        `Bedrock Text Gen Error [${status || 'N/A'}] (Payload: ${promptLen} chars): ${error.response?.data ? JSON.stringify(error.response.data) : error.message}`,
       );
       throw error;
     }
@@ -65,7 +82,7 @@ export class StudentBedrockProvider implements AiProvider {
     schemaName: string,
     schemaDescription: string,
     options?: AiOptions,
-  ): Promise<T> {
+  ): Promise<AiResponse<T>> {
     const model = options?.model || this.DEFAULT_MODEL;
     this.logger.debug(`Generating structured output using model: ${model}`);
 
@@ -88,15 +105,17 @@ Your output will be parsed and type-checked according to the provided schema ins
 Here is the JSON Schema instance your output must adhere to:
 ${JSON.stringify(jsonSchema, null, 2)}`;
 
+    const payload = {
+      model_id: model,
+      messages: [{ role: 'user', content: userPromptWithSchema }],
+      system_prompt: 'You are a strict data extraction AI.',
+      max_tokens: options?.maxTokens || 4000,
+    };
+
     try {
       const response = await axios.post(
         `${this.baseUrl}/student/chat`,
-        {
-          model_id: model,
-          messages: [{ role: 'user', content: userPromptWithSchema }],
-          system_prompt: 'You are a strict data extraction AI.',
-          max_tokens: options?.maxTokens || 4000,
-        },
+        payload,
         {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
@@ -104,6 +123,8 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
           },
         },
       );
+
+      const usage = this.extractUsage(response.data);
 
       // Extract raw text from custom gateway property 'output_text'
       let content = '';
@@ -122,13 +143,13 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
             .replace(/```/g, '')
             .trim();
 
-      this.logger.debug(`Raw LLM Structured Output: ${cleanContent}`);
-
       const parsed = JSON.parse(cleanContent);
-      return schema.parse(parsed) as T;
-    } catch (error) {
+      return { data: schema.parse(parsed) as T, usage };
+    } catch (error: any) {
+      const status = error.response?.status;
+      const promptLen = JSON.stringify(payload).length;
       this.logger.error(
-        `Bedrock Structured Gen Error: ${error.response?.data ? JSON.stringify(error.response.data) : error.message}`,
+        `Bedrock Structured Gen Error [${status || 'N/A'}] (Payload: ${promptLen} chars): ${error.response?.data ? JSON.stringify(error.response.data) : error.message}`,
       );
       throw error;
     }
@@ -139,7 +160,7 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
     tools: import('./ai-provider.interface').AiTool[],
     systemPrompt?: string,
     options?: AiOptions,
-  ): Promise<import('./ai-provider.interface').AiMessage> {
+  ): Promise<AiResponse<import('./ai-provider.interface').AiMessage>> {
     const model = options?.model || this.DEFAULT_MODEL;
     this.logger.debug(`Generating tool calls using model: ${model}`);
 
@@ -172,18 +193,18 @@ If you need to use a tool to fulfill the user's request, you MUST output ONLY a 
 }
 If you do not need to use a tool, just respond normally with text. Do not wrap normal text in JSON.`;
 
+    const payload = {
+      model_id: model,
+      messages: formattedMessages,
+      system_prompt: promptWithTools,
+      tools: tools,
+      max_tokens: options?.maxTokens || 4000,
+    };
+
     try {
-      // Assuming the gateway supports Anthropic/OpenAI-style tool definitions natively,
-      // but providing a strong fallback prompt in case it ignores the 'tools' array.
       const response = await axios.post(
         `${this.baseUrl}/student/chat`,
-        {
-          model_id: model,
-          messages: formattedMessages,
-          system_prompt: promptWithTools,
-          tools: tools, // Pass tools directly to gateway just in case it's supported natively
-          max_tokens: options?.maxTokens || 4000,
-        },
+        payload,
         {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
@@ -192,43 +213,40 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
         },
       );
 
-      const content =
-        response.data.output_text || JSON.stringify(response.data);
+      const usage = this.extractUsage(response.data);
+      const content = response.data.output_text || JSON.stringify(response.data);
 
-      // If the gateway supports native tool calls, it should return them in response.data.tool_calls
       if (response.data.tool_calls) {
         return {
-          role: 'assistant',
-          content: response.data.output_text,
-          toolCalls: response.data.tool_calls,
+          data: {
+            role: 'assistant',
+            content: response.data.output_text,
+            toolCalls: response.data.tool_calls,
+          },
+          usage
         };
       }
 
-      // Fallback: Check if the content is a JSON object with a tool call (manual parse)
       try {
         const match = content.match(/\{[\s\S]*\}/);
-        const cleanContent = match
-          ? match[0]
-          : content
-              .replace(/```json/gi, '')
-              .replace(/```/g, '')
-              .trim();
-
+        const cleanContent = match ? match[0] : content.replace(/```json/gi, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(cleanContent);
         if (parsed.toolCalls && Array.isArray(parsed.toolCalls)) {
-          return { role: 'assistant', toolCalls: parsed.toolCalls };
+          return { data: { role: 'assistant', toolCalls: parsed.toolCalls }, usage };
         }
       } catch (e) {
-        // Not JSON, just normal text response
+        // Not JSON
       }
 
       return {
-        role: 'assistant',
-        content: content,
+        data: { role: 'assistant', content: content },
+        usage
       };
-    } catch (error) {
+    } catch (error: any) {
+      const status = error.response?.status;
+      const promptLen = JSON.stringify(payload).length;
       this.logger.error(
-        `Bedrock Tool Gen Error: ${error.response?.data ? JSON.stringify(error.response.data) : error.message}`,
+        `Bedrock Tool Gen Error [${status || 'N/A'}] (Payload: ${promptLen} chars): ${error.response?.data ? JSON.stringify(error.response.data) : error.message}`,
       );
       throw error;
     }

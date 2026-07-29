@@ -6,6 +6,20 @@ export interface AiOptions {
   maxTokens?: number;
 }
 
+export interface AiUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  costUsd: number;
+  stopReason?: string;
+  budgetState?: string;
+}
+
+export interface AiResponse<T> {
+  data: T;
+  usage: AiUsage;
+}
+
 export interface AiProvider {
   /**
    * The name of the provider (e.g. 'student-bedrock', 'gemini', 'openai')
@@ -15,7 +29,7 @@ export interface AiProvider {
   /**
    * Generates a plain text response.
    */
-  generateText(prompt: string, options?: AiOptions): Promise<string>;
+  generateText(prompt: string, options?: AiOptions): Promise<AiResponse<string>>;
 
   /**
    * Generates a structured JSON output matching the provided Zod schema.
@@ -26,7 +40,7 @@ export interface AiProvider {
     schemaName: string,
     schemaDescription: string,
     options?: AiOptions,
-  ): Promise<T>;
+  ): Promise<AiResponse<T>>;
 
   /**
    * Multi-turn chat with tool calling support.
@@ -36,7 +50,7 @@ export interface AiProvider {
     tools: AiTool[],
     systemPrompt?: string,
     options?: AiOptions,
-  ): Promise<AiMessage>;
+  ): Promise<AiResponse<AiMessage>>;
 }
 
 export interface AiMessage {

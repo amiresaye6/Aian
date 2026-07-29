@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiProviderFactory } from './providers/ai-provider.factory';
-import { AiOptions } from './providers/ai-provider.interface';
+import { AiOptions, AiResponse } from './providers/ai-provider.interface';
 import { z } from 'zod';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class AiGatewayService {
   /**
    * Wrapper for standard text generation. Includes basic telemetry.
    */
-  async generateText(prompt: string, options?: AiOptions): Promise<string> {
+  async generateText(prompt: string, options?: AiOptions): Promise<AiResponse<string>> {
     const safePrompt = this.sanitizePrompt(prompt);
     const provider = this.providerFactory.getProvider();
 
@@ -65,7 +65,7 @@ export class AiGatewayService {
     schemaName: string,
     schemaDescription: string,
     options?: AiOptions,
-  ): Promise<T> {
+  ): Promise<AiResponse<T>> {
     const safePrompt = this.sanitizePrompt(prompt);
     const provider = this.providerFactory.getProvider();
 
@@ -106,7 +106,7 @@ export class AiGatewayService {
     tools: import('./providers/ai-provider.interface').AiTool[],
     systemPrompt?: string,
     options?: AiOptions,
-  ): Promise<import('./providers/ai-provider.interface').AiMessage> {
+  ): Promise<AiResponse<import('./providers/ai-provider.interface').AiMessage>> {
     const provider = this.providerFactory.getProvider();
 
     this.logger.log(`Routing tool calls to ${provider.name}.`);

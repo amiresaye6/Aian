@@ -88,3 +88,25 @@ model Payment {
 
   @@map("payments")
 }
+
+model AiUsageLog {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  feature         String   @db.VarChar(100)
+  modelUsed       String   @map("model_used") @db.VarChar(100)
+  
+  inputTokens     Int      @map("input_tokens")
+  outputTokens    Int      @map("output_tokens")
+  totalTokens     Int      @map("total_tokens")
+  costUsd         Float    @map("cost_usd")
+  
+  stopReason      String?  @map("stop_reason") @db.VarChar(50)
+  budgetState     String?  @map("budget_state") @db.VarChar(50)
+  
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("ai_usage_logs")
+}
