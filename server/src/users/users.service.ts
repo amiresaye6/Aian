@@ -4,7 +4,7 @@ import { User, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) { }
 
   async create(
     fullName: string,
@@ -46,6 +46,7 @@ export class UsersService {
           select: {
             id: true,
             name: true,
+            logoUrl: true,
           },
         },
       },
@@ -70,6 +71,7 @@ export class UsersService {
           select: {
             id: true,
             name: true,
+            logoUrl: true,
           },
         },
       },

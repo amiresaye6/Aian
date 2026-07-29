@@ -2,20 +2,22 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  avatarUrl: string | null;
   roleId: string;
   role: string;
   organizationId: string;
   organization: string;
+  organizationLogo: string | null;
 }
 
-export interface AuthResponse { 
+export interface AuthResponse {
   success: boolean;
-  data:{
-    access_token: string; 
-    refresh_token: string; 
-    user: User; 
+  data: {
+    access_token: string;
+    refresh_token: string;
+    user: User;
   }
-  
+
 };
 
 export interface RefreshResponse {

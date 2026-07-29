@@ -83,21 +83,28 @@
 
 .dark {
   /* AIAN Dark — the default experience */
-  --background: oklch(0.145 0.015 265);   /* #090A0F */
-  --foreground: oklch(0.965 0.005 250);   /* #F5F7FA */
-  --surface: oklch(0.185 0.015 265);      /* #111318 */
-  --surface-2: oklch(0.245 0.02 265);     /* #1D2230 */
-  --card: oklch(0.215 0.018 265);         /* #161A22 */
+  --background: oklch(0.145 0.015 265);
+  /* #090A0F */
+  --foreground: oklch(0.965 0.005 250);
+  /* #F5F7FA */
+  --surface: oklch(0.185 0.015 265);
+  /* #111318 */
+  --surface-2: oklch(0.245 0.02 265);
+  /* #1D2230 */
+  --card: oklch(0.215 0.018 265);
+  /* #161A22 */
   --card-foreground: oklch(0.965 0.005 250);
   --popover: oklch(0.215 0.018 265);
   --popover-foreground: oklch(0.965 0.005 250);
 
-  --primary: oklch(0.74 0.13 82);         /* Gold */
+  --primary: oklch(0.74 0.13 82);
+  /* Gold */
   --primary-foreground: oklch(0.15 0.015 265);
   --secondary: oklch(0.245 0.02 265);
   --secondary-foreground: oklch(0.965 0.005 250);
   --muted: oklch(0.225 0.018 265);
-  --muted-foreground: oklch(0.68 0.02 255); /* #9AA4B2 */
+  --muted-foreground: oklch(0.68 0.02 255);
+  /* #9AA4B2 */
   --accent: oklch(0.245 0.02 265);
   --accent-foreground: oklch(0.965 0.005 250);
   --destructive: oklch(0.65 0.22 22);
@@ -106,10 +113,14 @@
   --input: oklch(1 0 0 / 10%);
   --ring: oklch(0.74 0.13 82);
 
-  --gold: oklch(0.74 0.13 82);            /* #C9982B */
-  --gold-deep: oklch(0.55 0.11 74);       /* #8A6416 */
-  --gold-soft: oklch(0.86 0.12 84);       /* #E8C86A */
-  --teal: oklch(0.75 0.14 180);           /* #15C2A7 */
+  --gold: oklch(0.74 0.13 82);
+  /* #C9982B */
+  --gold-deep: oklch(0.55 0.11 74);
+  /* #8A6416 */
+  --gold-soft: oklch(0.86 0.12 84);
+  /* #E8C86A */
+  --teal: oklch(0.75 0.14 180);
+  /* #15C2A7 */
   --blue: oklch(0.65 0.19 260);
   --success: oklch(0.72 0.16 155);
   --danger: oklch(0.65 0.2 22);
@@ -119,10 +130,12 @@
   * {
     border-color: var(--color-border);
   }
+
   html {
     background-color: var(--color-background);
     color-scheme: dark;
   }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -131,10 +144,16 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-  h1, h2, h3, h4, h5 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
+
   ::selection {
     background: color-mix(in oklab, var(--color-gold) 40%, transparent);
     color: var(--color-foreground);
@@ -177,8 +196,9 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
     0 1px 0 rgba(0, 0, 0, 0.4),
     0 10px 30px -12px rgba(201, 152, 43, 0.55);
-  transition: transform 200ms cubic-bezier(.2,.8,.2,1), box-shadow 300ms ease, filter 200ms ease;
+  transition: transform 200ms cubic-bezier(.2, .8, .2, 1), box-shadow 300ms ease, filter 200ms ease;
 }
+
 @utility btn-gold-hover {
   &:hover {
     filter: brightness(1.06) saturate(1.05);
@@ -201,6 +221,7 @@
 @utility noise {
   position: relative;
 }
+
 @utility noise-after {
   &::after {
     content: "";
@@ -214,26 +235,77 @@
 }
 
 @keyframes aian-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-@keyframes aian-orbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-@keyframes aian-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.04); }
-}
-@keyframes aian-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-@keyframes aian-dash {
-  to { stroke-dashoffset: -200; }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
-.animate-float { animation: aian-float 6s ease-in-out infinite; }
-.animate-orbit-slow { animation: aian-orbit 40s linear infinite; }
-.animate-pulse-soft { animation: aian-pulse 4s ease-in-out infinite; }
-.animate-dash { animation: aian-dash 8s linear infinite; }
+@keyframes aian-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes aian-pulse {
+
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes aian-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes aian-dash {
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+.animate-float {
+  animation: aian-float 6s ease-in-out infinite;
+}
+
+.animate-orbit-slow {
+  animation: aian-orbit 40s linear infinite;
+}
+
+.animate-pulse-soft {
+  animation: aian-pulse 4s ease-in-out infinite;
+}
+
+.animate-dash {
+  animation: aian-dash 8s linear infinite;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

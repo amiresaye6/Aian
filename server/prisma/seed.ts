@@ -385,6 +385,7 @@ async function main() {
         timezone: 'Africa/Cairo',
         status: 'active',
         createdByUserId: ownerUser.id,
+        logoUrl: 'https://logo.clearbit.com/acme.com',
       },
     });
   } finally {

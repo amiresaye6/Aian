@@ -21,7 +21,7 @@ export class AuthService {
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-  ) {}
+  ) { }
 
   private generateOtp() {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -115,10 +115,12 @@ export class AuthService {
       id: existedUser.id,
       email: existedUser.email,
       fullName: existedUser.fullName,
+      avatarUrl: existedUser.avatarUrl || null,
       roleId: existedUser.roleId || 'unkown',
       role: existedUser.role?.name || 'unkown',
       organizationId: existedUser.organizationId || 'unkown',
       organization: existedUser.organization?.name || 'unkown',
+      organizationLogo: existedUser.organization?.logoUrl || null,
     };
 
     const { access_token, refresh_token } = await this.getTokens(payload);
@@ -171,6 +173,7 @@ export class AuthService {
           select: {
             id: true,
             name: true,
+            logoUrl: true,
           },
         },
       },
@@ -187,10 +190,12 @@ export class AuthService {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      avatarUrl: user.avatarUrl || null,
       roleId: user.roleId || 'unkown',
       role: user.role?.name || 'unkown',
       organizationId: user.organizationId || 'unkown',
       organization: user.organization?.name || 'unkown',
+      organizationLogo: user.organization?.logoUrl || null,
     };
 
     const { access_token, refresh_token } = await this.getTokens(payload);

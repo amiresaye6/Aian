@@ -27,8 +27,12 @@ export const AuthField = forwardRef<HTMLInputElement, FieldProps>(function AuthF
       </label>
       <div
         className={cn(
-          "relative flex items-center rounded-2xl border border-black/10 bg-black/[0.035] transition-all duration-300",
-          "focus-within:border-[color:var(--gold-soft)]/60 focus-within:bg-black/[0.05]",
+          "relative flex items-center rounded-2xl border transition-all duration-300",
+          // Light mode
+          "border-black/10 bg-black/[0.035] focus-within:border-[color:var(--gold-soft)]/60 focus-within:bg-black/[0.05]",
+          // Dark mode
+          "dark:border-white/10 dark:bg-white/[0.05] dark:focus-within:bg-white/[0.08]",
+          // Focus shadow
           "focus-within:shadow-[0_0_0_4px_rgba(232,200,106,0.12),0_10px_30px_-15px_rgba(201,152,43,0.5)]",
         )}
       >
