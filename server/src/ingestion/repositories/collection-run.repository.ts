@@ -72,9 +72,16 @@ export class CollectionRunRepository {
     });
   }
 
-  async findLatestByOrganizationEyeId(organizationEyeId: string) {
+  async findLatestByOrganizationEyeId(
+    organizationEyeId: string,
+    collectionMethod?: CollectionMethod,
+  ) {
+    const where: any = { organizationEyeId };
+    if (collectionMethod) {
+      where.collectionMethod = collectionMethod;
+    }
     return this.prisma.collectionRun.findFirst({
-      where: { organizationEyeId },
+      where,
       orderBy: { createdAt: 'desc' },
     });
   }
