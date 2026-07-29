@@ -135,13 +135,23 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
 
         // --- Stage 2 Hook ---
         // Trigger Knowledge Extraction asynchronously AFTER the transaction completes.
-        for (const artifactId of createdArtifactIds) {
-          setImmediate(() => {
-            this.extractionService.extractFromArtifact(artifactId).catch(
-              (err) => this.logger.error(
-                `Unexpected error dispatching extraction for artifact ${artifactId}: ${err.message}`,
-              ),
-            );
+        // We use a single background setImmediate that iterates sequentially
+        // to avoid slamming the AI Provider with parallel requests and hitting rate limits.
+        if (createdArtifactIds.length > 0) {
+          const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+          
+          setImmediate(async () => {
+            for (const artifactId of createdArtifactIds) {
+              try {
+                await this.extractionService.extractFromArtifact(artifactId);
+              } catch (err) {
+                this.logger.error(
+                  `Unexpected error dispatching extraction for artifact ${artifactId}: ${err.message}`,
+                );
+              }
+              // Add a 1.5-second delay to avoid rate limiting or TPS spikes on the AI Gateway
+              await sleep(1500);
+            }
           });
         }
 

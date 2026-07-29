@@ -4,19 +4,21 @@ import { KnowledgeArtifactRepository } from './repositories/knowledge-artifact.r
 import { ExtractionResult, ExtractionResultSchema } from './extraction.schema';
 import { KnowledgeArtifact, ArtifactType } from '@prisma/client';
 import { EntityResolutionService } from '../resolution/resolution.service';
+import { AiUsageService } from '../ai/ai-usage.service';
 
 /**
  * The model that has been tested and proven to reliably output
  * JSON matching our exact schema with correct field names and types.
- * Test date: 2026-07-22. Output verified manually via Postman.
+ * We use Llama 3 70B because the 120B model is too slow and hits the 30s gateway timeout.
  */
-const EXTRACTION_MODEL = 'openai.gpt-oss-120b-1:0';
+const EXTRACTION_MODEL = 'us.meta.llama3-3-70b-instruct-v1:0';
 
 /**
  * Higher token limit for extraction — long conversations produce large JSON.
- * The Slack bug-fixing conversation used ~4000 tokens and was truncated at 4000.
+ * The Slack bug-fixing conversation used ~4000 tokens.
+ * Llama 3 70B has a max token limit of 8192 on Bedrock, so we cap at 8000.
  */
-const EXTRACTION_MAX_TOKENS = 12000;
+const EXTRACTION_MAX_TOKENS = 8000;
 
 @Injectable()
 export class KnowledgeExtractionService {
@@ -26,6 +28,7 @@ export class KnowledgeExtractionService {
     private readonly artifactRepository: KnowledgeArtifactRepository,
     private readonly aiGateway: AiGatewayService,
     private readonly resolutionService: EntityResolutionService,
+    private readonly usageService: AiUsageService,
   ) {}
 
   /**
@@ -60,8 +63,8 @@ export class KnowledgeExtractionService {
       const prompt = this.buildExtractionPrompt(artifact);
       const startTime = Date.now();
 
-      const result: ExtractionResult =
-        await this.aiGateway.generateStructuredOutput(
+      const { data: result, usage } =
+        await this.aiGateway.generateStructuredOutput<ExtractionResult>(
           prompt,
           ExtractionResultSchema,
           'knowledge_extraction',
@@ -71,6 +74,14 @@ export class KnowledgeExtractionService {
             maxTokens: EXTRACTION_MAX_TOKENS,
           },
         );
+        
+      // Log AI Usage
+      await this.usageService.logUsage(
+        artifact.organizationId,
+        'knowledge_extraction',
+        EXTRACTION_MODEL,
+        usage,
+      );
 
       let newTitle: string | undefined;
       if (
