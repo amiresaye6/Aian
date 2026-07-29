@@ -468,6 +468,53 @@
           }
         }
       ]
+    },
+    {
+      "name": "Billing & Usage",
+      "item": [
+        {
+          "name": "Get Usage Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/usage/summary?organizationId={{organizationId}}&fromDate=2026-07-01T00:00:00.000Z&toDate=2026-07-31T23:59:59.999Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "usage", "summary"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}" },
+                { "key": "fromDate", "value": "2026-07-01T00:00:00.000Z", "description": "Optional. Filter by start date." },
+                { "key": "toDate", "value": "2026-07-31T23:59:59.999Z", "description": "Optional. Filter by end date." }
+              ]
+            },
+            "description": "Retrieves an aggregated summary of AI usage grouped by feature and model."
+          }
+        },
+        {
+          "name": "Get Usage Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/usage/logs?organizationId={{organizationId}}&page=1&limit=20&feature=knowledge_extraction&modelUsed=us.meta.llama3-3-70b-instruct-v1:0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "usage", "logs"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "feature", "value": "knowledge_extraction", "description": "Optional." },
+                { "key": "modelUsed", "value": "us.meta.llama3-3-70b-instruct-v1:0", "description": "Optional." },
+                { "key": "fromDate", "value": "", "description": "Optional." },
+                { "key": "toDate", "value": "", "description": "Optional." },
+                { "key": "sortBy", "value": "createdAt", "description": "Optional." },
+                { "key": "sortOrder", "value": "desc", "description": "Optional. asc | desc" }
+              ]
+            },
+            "description": "Retrieves paginated AI usage logs with advanced filtering and sorting."
+          }
+        }
+      ]
     }
   ],
   "variable": [
