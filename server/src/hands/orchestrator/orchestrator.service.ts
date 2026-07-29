@@ -7,6 +7,7 @@ import { SkillContext } from '../core/types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderClientFactory } from '../../integrations/provider-client.factory';
 import { ProviderConnection } from '../../integrations/contracts';
+import { AiUsageService } from '../../ai/ai-usage.service';
 
 export interface HandleDMInput {
   organizationId: string;
@@ -28,6 +29,7 @@ export class OrchestratorService {
     private readonly sessionService: SessionService,
     private readonly prisma: PrismaService,
     private readonly clientFactory: ProviderClientFactory,
+    private readonly usageService: AiUsageService,
   ) {}
 
   /**
@@ -140,10 +142,18 @@ export class OrchestratorService {
     // 3. Normal flow: Build messages and call AI
     const messages: AiMessage[] = [{ role: 'user', content: input.text }];
 
-    const aiResult = await this.aiGateway.generateToolCalls(
+    const { data: aiResult, usage } = await this.aiGateway.generateToolCalls(
       messages,
       this.buildTools(),
       this.buildSystemPrompt(),
+    );
+
+    // Log Usage
+    await this.usageService.logUsage(
+      input.organizationId,
+      'dm_chat',
+      'us.meta.llama3-3-70b-instruct-v1:0', // Ideally passed dynamically if configured
+      usage,
     );
 
     // 4. Handle Tool Calls
