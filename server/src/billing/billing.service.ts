@@ -13,6 +13,7 @@ import type {
   PlanResponse,
   CheckoutResult,
   PaymentVerificationResult,
+  SubscriptionResponse,
 } from './types/billing.types';
 import type {
   PaymobCallbackPayload,
@@ -43,6 +44,23 @@ export class BillingService {
       throw new NotFoundException(`Plan "${slug}" not found`);
     }
     return toPlanResponse(plan);
+  }
+
+  async getActiveSubscription(organizationId: string): Promise<SubscriptionResponse | null> {
+    const subscription = await this.repository.findSubscriptionByOrganizationId(organizationId);
+    if (!subscription) return null;
+
+    return {
+      id: subscription.id,
+      organizationId: subscription.organizationId,
+      planId: subscription.planId,
+      billingCycle: subscription.billingCycle,
+      status: subscription.status,
+      paymentProvider: subscription.paymentProvider,
+      currentPeriodStart: subscription.currentPeriodStart,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      plan: toPlanResponse(subscription.plan),
+    };
   }
 
   // ─── Checkout ──────────────────────────────────────────────────────────────
