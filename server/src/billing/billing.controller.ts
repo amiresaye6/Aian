@@ -64,7 +64,7 @@ export class BillingController {
   }
 
   @Get('usage/logs')
-  // @UseGuards(AuthGaurd)
+  @UseGuards(AuthGaurd)
   @RequiredPermissions('billing.manage')
   async getUsageLogs(
     @Query('organizationId') organizationId: string,
@@ -89,7 +89,7 @@ export class BillingController {
   }
 
   @Get('usage/summary')
-  // @UseGuards(AuthGaurd)
+  @UseGuards(AuthGaurd)
   @RequiredPermissions('billing.manage')
   async getUsageSummary(
     @Query('organizationId') organizationId: string,
