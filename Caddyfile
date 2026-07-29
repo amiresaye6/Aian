@@ -1,0 +1,12 @@
+aiaan.tech {
+
+    # Better approach for NestJS which usually expects /api in the route:
+    handle /api/* {
+        reverse_proxy server:1234
+    }
+
+    # Everything else goes to the Next.js frontend
+    handle {
+        reverse_proxy client:3000
+    }
+}

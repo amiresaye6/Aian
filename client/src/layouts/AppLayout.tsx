@@ -31,10 +31,11 @@ import {
 } from "lucide-react";
 import { AianMark } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { cn } from "@/lib/utils";
+import { cn, getImageUrl } from "@/lib/utils";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard/chat", label: "AI Portal", icon: Sparkles },
   { to: "/dashboard/knowledge/artifacts", label: "Knowledge", icon: BookOpen },
   { to: "/dashboard/knowledge/entities", label: "Entities", icon: Network },
   { to: "/dashboard/zoom/meetings", label: "Meetings", icon: Video },
@@ -53,6 +54,7 @@ const SECONDARY = [
 
 function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   const organization = useAuthStore((s) => s.user?.organization);
+  const organizationLogo = useAuthStore((s) => s.user?.organizationLogo);
 
   return (
     <div
@@ -62,7 +64,11 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
       )}
     >
       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gold-gradient text-[13px] font-bold text-[#17130A] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
-        {organization?.charAt(0) ?? "?"}
+        <img
+          src={getImageUrl(organizationLogo) || `https://ui-avatars.com/api/?name=${organization ?? "AIAN"}&background=E8C86A&color=17130A&bold=true`}
+          alt={organization ?? "Workspace"}
+          className="h-full w-full object-cover"
+        />
       </div>
       {!collapsed && (
         <div className="min-w-0 flex-1">
@@ -97,7 +103,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
         <WorkspaceSwitcher collapsed={collapsed} />
       </div>
 
-      <nav className="mt-6 flex-1 space-y-0.5 px-3">
+      <nav className="mt-6 flex-1 overflow-y-auto scrollbar-none space-y-0.5 px-3 pb-6">
         {!collapsed && (
           <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/70">
             Workspace
@@ -195,8 +201,12 @@ function TopBar() {
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-gold-gradient" />
         </button>
         <div className="ml-1 flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] py-1 pl-1 pr-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gold-gradient text-[12px] font-bold text-[#17130A]">
-            {user?.fullName?.charAt(0) ?? "?"}
+          <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gold-gradient text-[12px] font-bold text-[#17130A]">
+            <img
+              src={getImageUrl(user?.avatarUrl) || `https://ui-avatars.com/api/?name=${user?.fullName ?? "?"}&background=E8C86A&color=17130A&bold=true`}
+              alt={user?.fullName ?? "User"}
+              className="h-full w-full object-cover"
+            />
           </div>
           <div className="hidden text-left leading-tight sm:block">
             <div className="text-[12.5px] font-semibold text-foreground">

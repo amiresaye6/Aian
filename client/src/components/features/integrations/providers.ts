@@ -1,13 +1,15 @@
 import { Activity, Briefcase, FileText, LayoutDashboard, MessageSquare, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+export type EyeStatus = "connected" | "unhealthy" | "connecting" | "disconnected" | "error";
+
 export interface Provider {
   key: string;
   name: string;
   category: string;
   tagline: string;
   brand: string;
-  status: "connected" | "unhealthy" | "connecting" | "disconnected";
+  status: EyeStatus;
   glyph: LucideIcon;
   health: number;
   knowledgeItems: number;

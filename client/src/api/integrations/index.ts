@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from '../axios';
 import { useAuthStore } from '@/store/auth/auth.store';
 
@@ -129,7 +130,16 @@ export const getMembers = async (connectionId: string) => {
   return response.data.data || response.data;
 };
 
+
+export async function getPendingCount(connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.get(`/eyes/${connectionId}/stats/pending-count?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
+
+
 // meeting's providers specific
+
 export const getScheduledMeetings = async (
   connectionId: string,
   provider: string,

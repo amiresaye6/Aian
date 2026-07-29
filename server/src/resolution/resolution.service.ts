@@ -146,7 +146,9 @@ export class EntityResolutionService {
         this.graphUpdate
           .updateArtifactInGraph(artifactId)
           .catch((err) =>
-            this.logger.error(`[Stage 4] Background trigger failed: ${err.message}`),
+            this.logger.error(
+              `[Stage 4] Background trigger failed: ${err.message}`,
+            ),
           );
       });
     } catch (error) {
@@ -394,7 +396,7 @@ export class EntityResolutionService {
       const response = await this.aiGateway.generateText(
         `Are "${extractedName}" and "${canonicalName}" the same ${type} in an organizational context?
 ` + `Answer with exactly one word: yes, no, or uncertain.`,
-        { model: DISAMBIGUATION_MODEL, maxTokens: 10 },
+        { model: DISAMBIGUATION_MODEL, maxTokens: 500 },
       );
 
       const answer = response

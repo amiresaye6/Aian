@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { motion } from "motion/react";
@@ -17,7 +18,6 @@ import {
 import { ProviderHero } from "./components/ProviderHero";
 import { EyeHealthRing } from "./components/EyeHealthRing";
 import { useIntegrationsStore } from "@/store/integrations/integrations.store";
-import { formatAgo, formatIn } from "./providers";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -28,17 +28,18 @@ import {
   getKnowledgeStats, 
   revokeConnection,
   getMembers,
-  getScheduledMeetings
+  getPendingCount,
+  getScheduledMeetings,
+  
 } from "@/api/integrations";
 import { formatDistanceToNow } from "date-fns";
 
-let TABS = [
-  { key: "overview", label: "Overview", icon: Activity },
-  { key: "resources", label: "Resources", icon: ListTree },
-  { key: "data", label: "Data", icon: Database },
-  { key: "settings", label: "Settings", icon: Settings2 },
-];
-
+// let TABS = [
+//   { key: "overview", label: "Overview", icon: Activity },
+//   { key: "resources", label: "Resources", icon: ListTree },
+//   { key: "data", label: "Data", icon: Database },
+//   { key: "settings", label: "Settings", icon: Settings2 },
+// ];
 
 export function IntegrationDetails({ providerKey }: { providerKey: string }) {
   const providers = useIntegrationsStore(state => state.providers);
@@ -54,11 +55,19 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
   const [recentKnowledge, setRecentKnowledge] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [membersCount, setMembersCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [scheduledMeetings, setScheduledMeetings] = useState<any>({});
 
+  const tabs = [
+    { key: "overview", label: "Overview", icon: Activity },
+    { key: "resources", label: "Resources", icon: ListTree },
+    { key: "data", label: "Data", icon: Database },
+    { key: "settings", label: "Settings", icon: Settings2 },
+  ];
+
   if(providerKey === 'zoom'){
-    TABS[1]={ key: "meetings", label: "Scheduled meetings", icon: ListTree }
+    tabs[1]={ key: "meetings", label: "Scheduled meetings", icon: ListTree }
   }
 
   useEffect(() => {
@@ -92,7 +101,11 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
         setMembersCount(Array.isArray(members) ? members.length : 0);
       }).catch(() => {});
     }
-
+    if (providerKey === 'github') {
+      getPendingCount(cid).then((res) => {
+        setPendingCount(res?.pendingCount ?? 0);
+      }).catch(() => {});
+    }
     if (providerKey === 'zoom') {
       getScheduledMeetings(cid,'zoom').then((res) => {
         const meetings = res.data || res;
@@ -149,7 +162,7 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
 
       {/* Tabs */}
       <div className="mb-6 flex items-center gap-1 border-b border-black/5 dark:border-white/5">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
@@ -172,6 +185,14 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
       {tab === "overview" && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
+            {/* <div className={cn("grid gap-4", providerKey === 'github' ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
+              <Metric label="Knowledge items" value={stats?.total?.toLocaleString() ?? "0"} />
+              <Metric label={provider.resourceLabel} value={resources?.length?.toString() ?? "0"} />
+              <Metric label="Members mapped" value={providerKey === 'jira' ? membersCount.toString() : "0"} />
+              {providerKey === 'github' && (
+                <Metric label="Pending items" value={pendingCount.toString()} />
+              )}
+            </div> */}
             <div className="grid gap-4 sm:grid-cols-3">
               {providerKey === 'zoom' ? (
                 <>
@@ -183,6 +204,9 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
                   <Metric label="Knowledge items" value={stats?.total?.toLocaleString() ?? "0"} />
                   <Metric label={provider.resourceLabel} value={resources?.length?.toString() ?? "0"} />
                   <Metric label="Members mapped" value={providerKey === 'jira' ? membersCount.toString() : "0"} />
+                  {providerKey === 'github' && (
+                <Metric label="Pending items" value={pendingCount.toString()} />
+              )}
                 </>
               )}
             </div>
@@ -219,7 +243,7 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
                     ? (healthData?.isValid ? 100 : 20)
                     : (healthData?.status === 'connected' ? 100 : healthData?.status === 'pending' ? 60 : 20)
                   }
-                 size={56} label="" />
+                size={56} label="" />
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                     Eye status
@@ -383,6 +407,14 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
               { label: "Issues", value: stats?.breakdown?.entities?.toLocaleString() ?? "0" },
               { label: "Comments", value: stats?.breakdown?.messages?.toLocaleString() ?? "0" },
               { label: "Transitions", value: stats?.breakdown?.documents?.toLocaleString() ?? "0" },
+            ].map((c) => (
+              <Metric key={c.label} label={c.label} value={c.value} />
+            ))
+          ) : providerKey === 'github' ? (
+            [
+              { label: "Pull requests", value: stats?.breakdown?.pullRequests?.toLocaleString() ?? "0" },
+              { label: "Issues & comments", value: stats?.breakdown?.issues?.toLocaleString() ?? "0" },
+              { label: "Commits", value: stats?.breakdown?.commits?.toLocaleString() ?? "0" },
             ].map((c) => (
               <Metric key={c.label} label={c.label} value={c.value} />
             ))
