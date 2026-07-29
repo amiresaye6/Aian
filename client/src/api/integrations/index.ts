@@ -134,3 +134,8 @@ export const getScheduledMeetings = async (connectionId: string) =>{
   const response = await api.get(`/zoom/scheduled/${connectionId}`);
   return response.data.data;
 }
+
+export const getLiveMeetings = async (connectionId: string) =>{
+  const response = await api.get(`/zoom/live/${connectionId}`);
+  return response.data.data;
+}
