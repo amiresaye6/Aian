@@ -198,9 +198,19 @@ export class ZoomClientService implements ProviderClient {
     }
   }
 
-  async getMeetings(connection: ProviderConnection, type:MeetingType): Promise<ProviderResource[]> {
-      try {
-      await this.verifyConnection(connection)
+  async getMeetings(
+    connection: ProviderConnection,
+    type: MeetingType,
+    pageSize = 30,
+    nextPageToken?: string,
+  ): Promise<{
+    resources: ProviderResource[];
+    nextPageToken: string | null;
+    pageSize: number;
+    totalRecords: number;
+  }> {
+    try {
+      await this.verifyConnection(connection);
       const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
 
       const response = await axios.get('https://api.zoom.us/v2/users/me/meetings', {
@@ -209,14 +219,15 @@ export class ZoomClientService implements ProviderClient {
         },
         params: {
           type,
-          page_size: 30,
+          page_size: pageSize,
+          ...(nextPageToken ? { next_page_token: nextPageToken } : {}),
         },
       });
 
       const meetings = response.data.meetings || [];
 
       // Map raw Zoom API meeting response to the standard ProviderResource contract
-      return meetings.map((meeting: any) => ({
+      const resources = meetings.map((meeting: any) => ({
         externalResourceId: meeting.id.toString(),
         name: meeting.topic,
         resourceType: 'meeting',
@@ -227,8 +238,15 @@ export class ZoomClientService implements ProviderClient {
           join_url: meeting.join_url,
         },
       }));
+
+      return {
+        resources,
+        // Zoom returns an empty string, not null/undefined, when there's no further page
+        nextPageToken: response.data.next_page_token ? response.data.next_page_token : null,
+        pageSize: response.data.page_size ?? pageSize,
+        totalRecords: response.data.total_records ?? resources.length,
+      };
     } catch (error: any) {
-      
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Failed to fetch Zoom meetings/resources: ${errorMsg}`);
       throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);

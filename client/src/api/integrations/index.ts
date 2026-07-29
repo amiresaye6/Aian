@@ -129,13 +129,33 @@ export const getMembers = async (connectionId: string) => {
   return response.data.data || response.data;
 };
 
-// zoom specific
-export const getScheduledMeetings = async (connectionId: string) =>{
-  const response = await api.get(`/zoom/scheduled/${connectionId}`);
+// meeting's providers specific
+export const getScheduledMeetings = async (
+  connectionId: string,
+  provider: string,
+  pageSize = 10,
+  nextPageToken?: string,
+) => {
+  const response = await api.get(`/${provider}/scheduled/${connectionId}`, {
+    params: {
+      pageSize,
+      ...(nextPageToken ? { nextPageToken } : {}),
+    },
+  });
   return response.data.data;
-}
+};
 
-export const getLiveMeetings = async (connectionId: string) =>{
-  const response = await api.get(`/zoom/live/${connectionId}`);
+export const getLiveMeetings = async (
+  connectionId: string,
+  provider: string,
+  pageSize = 10,
+  nextPageToken?: string,
+) => {
+  const response = await api.get(`/${provider}/live/${connectionId}`, {
+    params: {
+      pageSize,
+      ...(nextPageToken ? { nextPageToken } : {}),
+    },
+  });
   return response.data.data;
-}
+};
