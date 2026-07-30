@@ -37,6 +37,7 @@ export const SearchInputSchema = z.object({
   artifactTypes: z
     .array(z.string())
     .optional()
+    .nullable()
     .describe(
       'Optional filter: artifact types like "message", "meeting", "task", "pr".',
     ),
@@ -50,6 +51,7 @@ export const SummarizeInputSchema = z.object({
   scope: z
     .string()
     .optional()
+    .nullable()
     .describe('Optional scope constraint, e.g., a project name or team.'),
 });
 export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;

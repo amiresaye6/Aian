@@ -196,9 +196,12 @@ export class OrchestratorService {
           `Skill ${def.name} executed with success: ${result.success}`,
         );
 
-        let replyText = `✅ Executed: *${def.name}*\nStatus: ${result.success ? 'Success' : 'Failed'}${result.error ? `\nError: ${result.error.message}` : ''}`;
+        let replyText = `✅ Executed: *${def.name}*`;
 
-        if (result.success && result.data) {
+        if (!result.success) {
+          this.logger.error(`Skill ${def.name} failed. Error: ${result.error?.message || JSON.stringify(result.error)}`);
+          replyText = `❌ *${def.name}* failed to execute. Please check the logs for more details.`;
+        } else if (result.data) {
           if (typeof result.data === 'object') {
             const dataObj = result.data as any;
             if (dataObj.answer) {
@@ -207,11 +210,13 @@ export class OrchestratorService {
                 replyText += `\n_Confidence: ${dataObj.confidence}/100_`;
             } else if (dataObj.summary) {
               replyText = `*Summary:*\n${dataObj.summary}`;
+            } else if (dataObj.results && Array.isArray(dataObj.results)) {
+              replyText = `✅ *${def.name}* completed successfully! Found ${dataObj.results.length} relevant items.`;
             } else {
-              replyText += `\n\n*Result:*\n\`\`\`json\n${JSON.stringify(result.data, null, 2)}\n\`\`\``;
+              replyText = `✅ *${def.name}* executed successfully!`;
             }
           } else {
-            replyText += `\n\n*Result:*\n${result.data}`;
+            replyText = `✅ *${def.name}* executed successfully!\n*Result:*\n${result.data}`;
           }
         }
 
