@@ -10,6 +10,8 @@ import { OrchestratorService } from './orchestrator/orchestrator.service';
 import { SessionService } from './orchestrator/session.service';
 import { MessagingSkill } from './skills/messaging.skill';
 import { EmailSkill } from './skills/email.skill';
+import { RetrievalModule } from '../retrieval/retrieval.module';
+import { KnowledgeSkill } from './skills/knowledge.skill';
 
 @Module({
   imports: [
@@ -17,6 +19,7 @@ import { EmailSkill } from './skills/email.skill';
     forwardRef(() => IntegrationsModule),
     EmailModule,
     AiGatewayModule,
+    RetrievalModule,
   ],
   providers: [
     AuditLogService,
@@ -26,6 +29,7 @@ import { EmailSkill } from './skills/email.skill';
     OrchestratorService,
     MessagingSkill,
     EmailSkill,
+    KnowledgeSkill,
   ],
   exports: [OrchestratorService],
 })

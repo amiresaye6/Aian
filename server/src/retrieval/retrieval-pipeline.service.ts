@@ -34,7 +34,10 @@ export class RetrievalPipelineService {
     this.logger.log(`Starting retrieval pipeline for query: "${query}"`);
 
     // Stage 1: Query Understanding
-    const understanding = await this.queryUnderstanding.analyzeQuery(query);
+    const understanding = await this.queryUnderstanding.analyzeQuery(
+      organizationId,
+      query,
+    );
 
     // Stage 2 & 3: Graph Search & Ranking
     const rankedArtifacts = await this.graphSearch.searchAndRankArtifacts(

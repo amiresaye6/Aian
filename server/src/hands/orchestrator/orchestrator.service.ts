@@ -196,10 +196,29 @@ export class OrchestratorService {
           `Skill ${def.name} executed with success: ${result.success}`,
         );
 
+        let replyText = `✅ Executed: *${def.name}*\nStatus: ${result.success ? 'Success' : 'Failed'}${result.error ? `\nError: ${result.error.message}` : ''}`;
+
+        if (result.success && result.data) {
+          if (typeof result.data === 'object') {
+            const dataObj = result.data as any;
+            if (dataObj.answer) {
+              replyText = `*Answer:*\n${dataObj.answer}`;
+              if (dataObj.confidence !== undefined)
+                replyText += `\n_Confidence: ${dataObj.confidence}/100_`;
+            } else if (dataObj.summary) {
+              replyText = `*Summary:*\n${dataObj.summary}`;
+            } else {
+              replyText += `\n\n*Result:*\n\`\`\`json\n${JSON.stringify(result.data, null, 2)}\n\`\`\``;
+            }
+          } else {
+            replyText += `\n\n*Result:*\n${result.data}`;
+          }
+        }
+
         await this.sendReply(
           input.connectionId,
           input.channelId,
-          `✅ Executed: *${def.name}*\nStatus: ${result.success ? 'Success' : 'Failed'}${result.error ? `\nError: ${result.error.message}` : ''}`,
+          replyText,
           input.threadTs,
         );
       }

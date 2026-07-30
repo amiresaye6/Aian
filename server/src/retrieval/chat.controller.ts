@@ -42,6 +42,7 @@ export class ChatController {
 
     // 2. Generate the human-readable answer wrapper
     const answer = await this.answerGeneration.generateAnswer(
+      organizationId,
       query,
       contextString,
     );

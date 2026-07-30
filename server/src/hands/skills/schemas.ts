@@ -20,3 +20,36 @@ export const SendEmailInputSchema = z.object({
 });
 
 export type SendEmailInput = z.infer<typeof SendEmailInputSchema>;
+
+export const AnswerQuestionInputSchema = z.object({
+  question: z
+    .string()
+    .describe(
+      'The natural language question to answer from the knowledge graph.',
+    ),
+});
+export type AnswerQuestionInput = z.infer<typeof AnswerQuestionInputSchema>;
+
+export const SearchInputSchema = z.object({
+  query: z
+    .string()
+    .describe('The search query to find relevant knowledge artifacts.'),
+  artifactTypes: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Optional filter: artifact types like "message", "meeting", "task", "pr".',
+    ),
+});
+export type SearchInput = z.infer<typeof SearchInputSchema>;
+
+export const SummarizeInputSchema = z.object({
+  topic: z
+    .string()
+    .describe('The topic to summarize from the knowledge graph.'),
+  scope: z
+    .string()
+    .optional()
+    .describe('Optional scope constraint, e.g., a project name or team.'),
+});
+export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;
