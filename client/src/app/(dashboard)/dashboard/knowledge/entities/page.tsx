@@ -12,8 +12,6 @@ export default function EntitiesPage() {
   const [selectedType, setSelectedType] = useState<string>("All");
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const {orgId} = useAuthStore()
-
   const user = useAuthStore((s) => s.user);
   const organizationId = user?.organizationId;
 
@@ -23,7 +21,7 @@ export default function EntitiesPage() {
     enabled: !!organizationId,
   });
 
-  if (!orgId) {
+  if (!organizationId) {
     return (
       <AppLayout>
         <div className="flex h-64 items-center justify-center text-muted-foreground">
