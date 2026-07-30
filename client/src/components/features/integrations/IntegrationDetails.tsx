@@ -107,7 +107,7 @@ export function IntegrationDetails({ providerKey }: { providerKey: string }) {
       }).catch(() => {});
     }
     if (providerKey === 'zoom') {
-      getScheduledMeetings(cid).then((res) => {
+      getScheduledMeetings(cid,'zoom').then((res) => {
         const meetings = res.data || res;
         setScheduledMeetings(meetings);
         console.log(meetings)

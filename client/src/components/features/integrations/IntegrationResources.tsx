@@ -282,7 +282,8 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
   //               <Row label="Initial sync" value={`~${Math.max(1, Math.round(selected.size * 0.6))}m`} />
   //               <Row label="Ongoing storage" value={`~${(selected.size * 0.4).toFixed(1)} GB`} />
   //             </div> */}
-
+            {providerKey !=='zoom'&&
+            <>
             <button
               onClick={handleSave}
               disabled={selected.size === 0 || !connectionId}
@@ -303,6 +304,23 @@ export function IntegrationResources({ providerKey }: { providerKey: string }) {
             >
               Skip historical sync (track new only)
             </button>
+            </>}
+            {providerKey ==='zoom'&&
+            <>
+            <button
+              onClick={handleSkipSync}
+              disabled={selected.size === 0 || !connectionId}
+              className="btn-gold btn-gold-hover mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:transform-none text-[#17130A]"
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Start sync <ArrowRight className="h-4 w-4" />
+                </>
+                )}
+             </button>
+             </>}
           </div>
 
           <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] p-4 text-[12px] text-muted-foreground">

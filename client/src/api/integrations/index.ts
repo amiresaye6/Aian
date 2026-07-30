@@ -130,13 +130,42 @@ export const getMembers = async (connectionId: string) => {
   return response.data.data || response.data;
 };
 
+
 export async function getPendingCount(connectionId: string) {
   const orgId = useAuthStore.getState().orgId;
   const res = await api.get(`/eyes/${connectionId}/stats/pending-count?organizationId=${orgId}`);
   return res.data.data || res.data;
 }
-// zoom specific
-export const getScheduledMeetings = async (connectionId: string) =>{
-  const response = await api.get(`/zoom/scheduled/${connectionId}`);
+
+
+// meeting's providers specific
+
+export const getScheduledMeetings = async (
+  connectionId: string,
+  provider: string,
+  pageSize = 10,
+  nextPageToken?: string,
+) => {
+  const response = await api.get(`/${provider}/scheduled/${connectionId}`, {
+    params: {
+      pageSize,
+      ...(nextPageToken ? { nextPageToken } : {}),
+    },
+  });
   return response.data.data;
-}
+};
+
+export const getLiveMeetings = async (
+  connectionId: string,
+  provider: string,
+  pageSize = 10,
+  nextPageToken?: string,
+) => {
+  const response = await api.get(`/${provider}/live/${connectionId}`, {
+    params: {
+      pageSize,
+      ...(nextPageToken ? { nextPageToken } : {}),
+    },
+  });
+  return response.data.data;
+};

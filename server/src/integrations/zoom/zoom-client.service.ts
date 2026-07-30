@@ -4,6 +4,12 @@ import { EncryptionService } from '../../common/encryption.service';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
 
+
+export enum MeetingType {
+  Scheduled = 'scheduled',
+  Live = 'live',
+}
+
 @Injectable()
 export class ZoomClientService implements ProviderClient {
   private readonly logger = new Logger(ZoomClientService.name);
@@ -61,40 +67,14 @@ export class ZoomClientService implements ProviderClient {
    * Retrieves importable/syncable resources (scheduled meetings) from Zoom.
    */
   async getResources(connection: ProviderConnection): Promise<ProviderResource[]> {
-    try {
-      await this.verifyConnection(connection)
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
-
-      const response = await axios.get('https://api.zoom.us/v2/users/me/meetings', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
-          type: 'scheduled',
-          page_size: 30,
-        },
-      });
-
-      const meetings = response.data.meetings || [];
-
-      // Map raw Zoom API meeting response to the standard ProviderResource contract
-      return meetings.map((meeting: any) => ({
-        externalResourceId: meeting.id.toString(),
-        name: meeting.topic,
-        resourceType: 'meeting',
-        metadata: {
-          start_time: meeting.start_time,
-          duration: meeting.duration,
-          timezone: meeting.timezone,
-          join_url: meeting.join_url,
-        },
-      }));
-    } catch (error: any) {
-      
-      const errorMsg = error.response?.data?.message || error.message;
-      this.logger.error(`Failed to fetch Zoom meetings/resources: ${errorMsg}`);
-      throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);
-    }
+      return [
+        {
+          name: "monitor all meetings",
+          resourceType:'meetings',
+          externalResourceId:"not available",
+          metadata:{}
+        } as ProviderResource
+      ]
   }
 
   /**
@@ -215,6 +195,61 @@ export class ZoomClientService implements ProviderClient {
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Failed to fetch Zoom meeting details: ${errorMsg}`);
       throw new Error(`Failed to fetch Zoom meeting: ${errorMsg}`);
+    }
+  }
+
+  async getMeetings(
+    connection: ProviderConnection,
+    type: MeetingType,
+    pageSize = 30,
+    nextPageToken?: string,
+  ): Promise<{
+    resources: ProviderResource[];
+    nextPageToken: string | null;
+    pageSize: number;
+    totalRecords: number;
+  }> {
+    try {
+      await this.verifyConnection(connection);
+      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+
+      const response = await axios.get('https://api.zoom.us/v2/users/me/meetings', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        params: {
+          type,
+          page_size: pageSize,
+          ...(nextPageToken ? { next_page_token: nextPageToken } : {}),
+        },
+      });
+
+      const meetings = response.data.meetings || [];
+
+      // Map raw Zoom API meeting response to the standard ProviderResource contract
+      const resources = meetings.map((meeting: any) => ({
+        externalResourceId: meeting.id.toString(),
+        name: meeting.topic,
+        resourceType: 'meeting',
+        metadata: {
+          start_time: meeting.start_time,
+          duration: meeting.duration,
+          timezone: meeting.timezone,
+          join_url: meeting.join_url,
+        },
+      }));
+
+      return {
+        resources,
+        // Zoom returns an empty string, not null/undefined, when there's no further page
+        nextPageToken: response.data.next_page_token ? response.data.next_page_token : null,
+        pageSize: response.data.page_size ?? pageSize,
+        totalRecords: response.data.total_records ?? resources.length,
+      };
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message;
+      this.logger.error(`Failed to fetch Zoom meetings/resources: ${errorMsg}`);
+      throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);
     }
   }
 }

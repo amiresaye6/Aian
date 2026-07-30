@@ -38,7 +38,7 @@ const NAV = [
   { to: "/dashboard/chat", label: "AI Portal", icon: Sparkles },
   { to: "/dashboard/knowledge/artifacts", label: "Knowledge", icon: BookOpen },
   { to: "/dashboard/knowledge/entities", label: "Entities", icon: Network },
-  { to: "/dashboard/Meetings", label: "Meetings", icon: Video },
+  { to: "/dashboard/zoom/meetings", label: "Meetings", icon: Video },
   { to: "/dashboard/Reports", label: "Reports", icon: BarChart3 },
   { to: "/eyes", label: "Integrations", icon: Plug },
   { to: "/dashboard/pipeline", label: "Pipeline", icon: Database },
