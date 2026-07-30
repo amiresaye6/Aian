@@ -1,0 +1,32 @@
+model HandsSession {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  state          String   @db.VarChar(50) // idle, collecting_info, confirming, executing
+  pendingAction  Json?    @map("pending_action") // Stores skillMethod, partialInput, missingFields, etc.
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@map("hands_sessions")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  actorUserId    String   @map("actor_user_id")
+  skill          String   @db.VarChar(100)
+  method         String   @db.VarChar(100)
+  input          Json
+  success        Boolean
+  error          Json?
+  idempotencyKey String   @map("idempotency_key") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, idempotencyKey])
+  @@map("audit_logs")
+}

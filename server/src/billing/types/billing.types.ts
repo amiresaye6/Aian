@@ -35,6 +35,7 @@ export interface SubscriptionResponse {
   paymentProvider: string;
   currentPeriodStart: Date | null;
   currentPeriodEnd: Date | null;
+  plan: PlanResponse;
 }
 
 // ─── Payment Response ────────────────────────────────────────────────────────

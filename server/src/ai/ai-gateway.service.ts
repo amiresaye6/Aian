@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiProviderFactory } from './providers/ai-provider.factory';
-import { AiOptions } from './providers/ai-provider.interface';
+import { AiOptions, AiResponse } from './providers/ai-provider.interface';
 import { z } from 'zod';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class AiGatewayService {
   /**
    * Wrapper for standard text generation. Includes basic telemetry.
    */
-  async generateText(prompt: string, options?: AiOptions): Promise<string> {
+  async generateText(prompt: string, options?: AiOptions): Promise<AiResponse<string>> {
     const safePrompt = this.sanitizePrompt(prompt);
     const provider = this.providerFactory.getProvider();
 
@@ -65,7 +65,7 @@ export class AiGatewayService {
     schemaName: string,
     schemaDescription: string,
     options?: AiOptions,
-  ): Promise<T> {
+  ): Promise<AiResponse<T>> {
     const safePrompt = this.sanitizePrompt(prompt);
     const provider = this.providerFactory.getProvider();
 
@@ -93,6 +93,38 @@ export class AiGatewayService {
     } catch (error) {
       this.logger.error(
         `Structured AI Generation failed on ${provider.name}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Wrapper for multi-turn tool calling.
+   */
+  async generateToolCalls(
+    messages: import('./providers/ai-provider.interface').AiMessage[],
+    tools: import('./providers/ai-provider.interface').AiTool[],
+    systemPrompt?: string,
+    options?: AiOptions,
+  ): Promise<AiResponse<import('./providers/ai-provider.interface').AiMessage>> {
+    const provider = this.providerFactory.getProvider();
+
+    this.logger.log(`Routing tool calls to ${provider.name}.`);
+    const startTime = Date.now();
+
+    try {
+      const result = await provider.generateToolCalls(
+        messages,
+        tools,
+        systemPrompt,
+        options,
+      );
+      const latency = Date.now() - startTime;
+      this.logger.log(`Tool generation completed in ${latency}ms.`);
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Tool AI Generation failed on ${provider.name}: ${error.message}`,
       );
       throw error;
     }

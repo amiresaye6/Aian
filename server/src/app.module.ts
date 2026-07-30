@@ -29,6 +29,7 @@ import { KnowledgeExtractionModule } from './extraction/extraction.module';
 import { ResolutionModule } from './resolution/resolution.module';
 import { GraphModule } from './graph/graph.module';
 import { RetrievalModule } from './retrieval/retrieval.module';
+import { HandsModule } from './hands/hands.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { RetrievalModule } from './retrieval/retrieval.module';
     // DashboardModule,
     PaymobModule,
     BillingModule,
+    HandsModule,
   ],
 })
 export class AppModule {}

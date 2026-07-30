@@ -34,6 +34,7 @@ export class HistoricalSyncController {
     const latestRun =
       await this.collectionRunRepo.findLatestByOrganizationEyeId(
         connection.organizationEyeId,
+        'manual',
       );
 
     if (latestRun && latestRun.status === 'running') {
@@ -50,7 +51,7 @@ export class HistoricalSyncController {
       connectionId: connection.id,
       eyeType: connection.eyeType,
       provider: connection.providerKey,
-      collectionMethod: 'polling',
+      collectionMethod: 'manual',
     });
 
     // Fire and forget the background job
@@ -75,6 +76,7 @@ export class HistoricalSyncController {
     const latestRun =
       await this.collectionRunRepo.findLatestByOrganizationEyeId(
         connection.organizationEyeId,
+        'manual',
       );
 
     if (!latestRun) {

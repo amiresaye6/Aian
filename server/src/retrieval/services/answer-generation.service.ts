@@ -1,13 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
+import { AiUsageService } from '../../ai/ai-usage.service';
 
 @Injectable()
 export class AnswerGenerationService {
   private readonly logger = new Logger(AnswerGenerationService.name);
 
-  constructor(private readonly aiGateway: AiGatewayService) {}
+  constructor(
+    private readonly aiGateway: AiGatewayService,
+    private readonly usageService: AiUsageService,
+  ) {}
 
-  async generateAnswer(query: string, contextString: string): Promise<string> {
+  async generateAnswer(
+    organizationId: string,
+    query: string,
+    contextString: string,
+  ): Promise<string> {
     this.logger.log('Generating final answer based on Evidence Chains.');
 
     const prompt = `
@@ -28,9 +36,16 @@ INSTRUCTIONS:
 `;
 
     // We can use standard text generation for the conversational answer
-    const result = await this.aiGateway.generateText(prompt, {
+    const { data: result, usage } = await this.aiGateway.generateText(prompt, {
       temperature: 0.3,
     });
+
+    await this.usageService.logUsage(
+      organizationId,
+      'retrieval',
+      'us.meta.llama3-3-70b-instruct-v1:0',
+      usage,
+    );
 
     this.logger.log('Final answer generated successfully.');
     return result;

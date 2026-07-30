@@ -3,13 +3,15 @@ import { ConfigModule } from '@nestjs/config';
 import { AiProviderFactory } from './providers/ai-provider.factory';
 import { StudentBedrockProvider } from './providers/student-bedrock.provider';
 import { AiGatewayService } from './ai-gateway.service';
+import { AiUsageService } from './ai-usage.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Global()
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, PrismaModule],
   controllers: [],
-  providers: [AiProviderFactory, StudentBedrockProvider, AiGatewayService],
-  exports: [AiGatewayService],
+  providers: [AiProviderFactory, StudentBedrockProvider, AiGatewayService, AiUsageService],
+  exports: [AiGatewayService, AiUsageService],
 })
 export class AiGatewayModule implements OnModuleInit {
   constructor(

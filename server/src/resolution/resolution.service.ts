@@ -393,7 +393,7 @@ export class EntityResolutionService {
     type: string,
   ): Promise<boolean> {
     try {
-      const response = await this.aiGateway.generateText(
+      const { data: response } = await this.aiGateway.generateText(
         `Are "${extractedName}" and "${canonicalName}" the same ${type} in an organizational context?
 ` + `Answer with exactly one word: yes, no, or uncertain.`,
         { model: DISAMBIGUATION_MODEL, maxTokens: 500 },
