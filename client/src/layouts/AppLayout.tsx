@@ -6,6 +6,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "@/store/auth/auth.store";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   LayoutDashboard,
   BookOpen,
   Video,
@@ -217,16 +228,36 @@ function TopBar() {
             <div className="text-[10.5px] text-muted-foreground">{user?.role ?? ""}</div>
           </div>
         </div>
-        <button
-          onClick={() => {
-            logout();
-            router.push("/login");
-          }}
-          className="ml-2 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-          title="Sign out"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              className="ml-2 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="border-white/10 bg-background/95 backdrop-blur-xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to sign out of your account?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-white/10 bg-white/5 hover:bg-white/10 hover:text-foreground text-foreground">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => {
+                  logout();
+                  router.push("/login");
+                }}
+                className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+              >
+                Sign out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </header>
   );
