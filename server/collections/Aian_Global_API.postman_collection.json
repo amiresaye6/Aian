@@ -515,6 +515,45 @@
           }
         }
       ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs?page=1&limit=20&skill=&success=&dateFrom=&dateTo=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-logs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "skill", "value": "", "description": "Optional filter by skill name" },
+                { "key": "success", "value": "", "description": "Optional filter by success status (true/false)" },
+                { "key": "dateFrom", "value": "", "description": "Optional start date" },
+                { "key": "dateTo", "value": "", "description": "Optional end date" }
+              ]
+            },
+            "description": "Retrieves paginated audit logs for the organization."
+          }
+        },
+        {
+          "name": "Get Audit Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-logs", "analytics"]
+            },
+            "description": "Retrieves aggregated audit log statistics including success rate, most active skill, and daily trends."
+          }
+        }
+      ]
     }
   ],
   "variable": [

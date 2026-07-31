@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuditLogService } from './audit/audit-log.service';
+import { AuditController } from './audit/audit.controller';
 import { ResilienceService } from './core/resilience.service';
 import { SkillRegistryService } from './core/registry.service';
 import { IntegrationsModule } from '../integrations/integrations.module';
@@ -31,6 +32,7 @@ import { KnowledgeSkill } from './skills/knowledge.skill';
     EmailSkill,
     KnowledgeSkill,
   ],
-  exports: [OrchestratorService],
+  controllers: [AuditController],
+  exports: [OrchestratorService, AuditLogService],
 })
 export class HandsModule {}

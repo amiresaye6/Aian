@@ -28,6 +28,7 @@ import {
   Plus,
   Check,
   LogOut,
+  ScrollText,
 } from "lucide-react";
 import { AianMark } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -45,6 +46,7 @@ const NAV = [
   { to: "/dashboard/members", label: "Members", icon: Users },
   { to: "/dashboard/organization", label: "Organization", icon: Building2 },
   { to: "/dashboard/billing", label: "Billing", icon: CreditCard },
+  { to: "/dashboard/audit", label: "Audit Log", icon: ScrollText },
 ];
 
 const SECONDARY = [
