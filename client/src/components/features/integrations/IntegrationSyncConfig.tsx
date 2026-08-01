@@ -41,7 +41,8 @@ export function IntegrationSyncConfig({ providerKey }: { providerKey: string }) 
   const [retention, setRetention] = useState("15");
   const [history, setHistory] = useState("30");
   const [saving, setSaving] = useState(false);
-  const { orgId } = useAuthStore();
+  const { user } = useAuthStore();
+  const orgId = user?.organizationId;
 
   if (!provider) {
     if (isLoading) {
