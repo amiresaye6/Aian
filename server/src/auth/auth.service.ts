@@ -265,6 +265,8 @@ export class AuthService {
       fullName: user.fullName,
       roleId: user.roleId,
       role: (user as any).role?.name || 'unknown',
+      organizationId: user.organizationId,
+      organization: (user as any).organization?.name || 'unknown',
     };
 
     const { access_token, refresh_token } = await this.getTokens(payload);
