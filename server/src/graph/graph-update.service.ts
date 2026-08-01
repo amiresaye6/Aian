@@ -228,4 +228,58 @@ export class GraphUpdateService {
       .update(content.trim().toLowerCase() + orgId)
       .digest('hex');
   }
+
+  async mergeGraphNodes(primaryId: string, secondaryId: string): Promise<void> {
+    const session = this.graph.getSession();
+    try {
+      // 1. Get all relationship types on the secondary node
+      const result = await session.run(`
+        MATCH (n:Entity {id: $secondaryId})-[r]-()
+        RETURN DISTINCT type(r) AS relType
+      `, { secondaryId });
+
+      const relTypes = result.records.map(record => record.get('relType') as string);
+
+      for (const relType of relTypes) {
+        const sanitizedRelType = relType.replace(/[^A-Z0-9_]/ig, '');
+        if (!sanitizedRelType) continue;
+
+        // 2. Transfer incoming rels
+        await session.run(`
+          MATCH (source)-[r:${sanitizedRelType}]->(sec:Entity {id: $secondaryId})
+          MATCH (prim:Entity {id: $primaryId})
+          MERGE (source)-[newR:${sanitizedRelType}]->(prim)
+          SET newR += properties(r)
+          DELETE r
+        `, { primaryId, secondaryId });
+
+        // 3. Transfer outgoing rels
+        await session.run(`
+          MATCH (sec:Entity {id: $secondaryId})-[r:${sanitizedRelType}]->(target)
+          MATCH (prim:Entity {id: $primaryId})
+          MERGE (prim)-[newR:${sanitizedRelType}]->(target)
+          SET newR += properties(r)
+          DELETE r
+        `, { primaryId, secondaryId });
+      }
+
+      // 4. Delete direct relationships between primary and secondary
+      await session.run(`
+        MATCH (prim:Entity {id: $primaryId})-[r]-(sec:Entity {id: $secondaryId})
+        DELETE r
+      `, { primaryId, secondaryId });
+
+      // 5. DETACH DELETE the secondary node
+      await session.run(`
+        MATCH (sec:Entity {id: $secondaryId})
+        DETACH DELETE sec
+      `, { secondaryId });
+
+    } catch (error) {
+      this.logger.error(`Failed to merge graph nodes ${primaryId} and ${secondaryId}: ${error.message}`);
+      throw error;
+    } finally {
+      await session.close();
+    }
+  }
 }

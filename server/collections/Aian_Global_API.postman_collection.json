@@ -442,6 +442,25 @@
             },
             "description": "Re-triggers Stage 3 entity resolution for all artifacts where extraction completed but resolution is pending or failed."
           }
+        },
+        {
+          "name": "Merge Entities",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"primaryEntityId\": \"replace-with-primary-entity-uuid\",\n  \"secondaryEntityId\": \"replace-with-secondary-entity-uuid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities/merge",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities", "merge"]
+            },
+            "description": "Merges two entities of the same type. The secondary entity's mentions, aliases, and graph relationships are transferred to the primary, then the secondary is deleted."
+          }
         }
       ]
     },

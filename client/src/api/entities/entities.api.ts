@@ -1,5 +1,5 @@
 import { api } from "@/api/axios";
-import { PaginatedEntitiesResponse, ResolvedEntity } from "@/types/entities";
+import { PaginatedEntitiesResponse, ResolvedEntity, MergeEntitiesResponse } from "@/types/entities";
 
 export const entitiesApi = {
   getEntities: async (organizationId: string, type?: string, page: number = 1, limit: number = 20): Promise<PaginatedEntitiesResponse> => {
@@ -20,6 +20,14 @@ export const entitiesApi = {
 
   getEntityDetails: async (entityId: string): Promise<ResolvedEntity> => {
     const response = await api.get<any>(`/entities/${entityId}`);
+    return response.data?.data || response.data;
+  },
+
+  mergeEntities: async (primaryEntityId: string, secondaryEntityId: string): Promise<MergeEntitiesResponse> => {
+    const response = await api.post<any>('/entities/merge', {
+      primaryEntityId,
+      secondaryEntityId,
+    });
     return response.data?.data || response.data;
   },
 };

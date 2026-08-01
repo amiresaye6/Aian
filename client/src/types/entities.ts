@@ -40,3 +40,13 @@ export interface PaginatedEntitiesResponse {
     totalPages: number;
   };
 }
+
+export interface MergeEntitiesRequest {
+  primaryEntityId: string;
+  secondaryEntityId: string;
+}
+
+export interface MergeEntitiesResponse {
+  message: string;
+  primaryEntity: ResolvedEntity;
+}

@@ -5,6 +5,7 @@ import { EntityMentionRepository } from './repositories/entity-mention.repositor
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiGatewayModule } from '../ai/ai-gateway.module';
 import { GraphModule } from '../graph/graph.module';
+import { EntityMergeService } from './entity-merge.service';
 
 @Global()
 @Module({
@@ -13,7 +14,8 @@ import { GraphModule } from '../graph/graph.module';
     EntityResolutionService,
     ResolvedEntityRepository,
     EntityMentionRepository,
+    EntityMergeService,
   ],
-  exports: [EntityResolutionService, ResolvedEntityRepository],
+  exports: [EntityResolutionService, ResolvedEntityRepository, EntityMergeService],
 })
 export class ResolutionModule {}
