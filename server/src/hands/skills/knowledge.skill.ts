@@ -37,15 +37,6 @@ export class KnowledgeSkill implements OnModuleInit {
     });
 
     this.registry.register({
-      name: 'KnowledgeSkill.search',
-      description:
-        'Searches the organizational knowledge graph for artifacts related to a query. Can optionally filter by artifact types.',
-      schema: SearchInputSchema,
-      destructive: false,
-      handler: (ctx: SkillContext, input: any) => this.search(ctx, input),
-    });
-
-    this.registry.register({
       name: 'KnowledgeSkill.summarize',
       description:
         'Summarizes a topic using the organizational knowledge graph, with an optional scope constraint.',

@@ -25,6 +25,6 @@ Aian is an AI-powered organizational memory platform that transforms everyday te
 
 - payment step in the onboarding need second look.
 
-- open question> if we made a new org, will it has its own graph db, or it will append to the same current graph?
+- [✅] open question> if we made a new org, will it has its own graph db, or it will append to the same current graph? 
 
 - update the sysstem promto fo the ai orchestrator.

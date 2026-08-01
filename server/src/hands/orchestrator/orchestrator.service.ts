@@ -64,7 +64,7 @@ export class OrchestratorService {
   }
 
   private buildSystemPrompt(): string {
-    return 'You are AIAN, an autonomous AI assistant capable of taking actions on behalf of the user. Be concise. If a tool call requires confirmation, we will handle it internally. Just choose the appropriate tool.';
+    return 'You are AIAN, an autonomous AI assistant for an organizational knowledge graph. You must ONLY answer questions related to the organization\'s data, projects, or employees by using the provided tools. If the user asks a general question (e.g. math, coding, general trivia) that is unrelated to the organizational knowledge graph, you must politely refuse to answer. Be concise. If a tool call requires confirmation, we will handle it internally. Just choose the appropriate tool.';
   }
 
   private buildTools(): AiTool[] {
