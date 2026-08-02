@@ -559,4 +559,111 @@ export class JiraClientService implements ProviderClient {
 
     this.logger.log(`Finished historical sync for Jira resource ${resource.externalResourceId}`);
   }
+
+  // --- Helper Methods ---
+
+  private async getConnection(organizationId: string): Promise<ProviderConnection> {
+    // TODO: Find the connected Jira ProviderConnection
+    // TODO: Validate status
+    // TODO: Throw if not connected
+    return {} as ProviderConnection;
+  }
+
+  // --- Task Orchestration Methods ---
+
+  async createTask(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Build JQL/Assignees if necessary
+    // TODO: Call JiraClientService.createIssue
+    return {};
+  }
+
+  async updateTask(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Call JiraClientService.updateIssue
+    return {};
+  }
+
+  async assignTask(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Call JiraClientService.findUsers to resolve assignee
+    // TODO: Call JiraClientService.updateIssue or assign endpoint
+    return {};
+  }
+
+  async moveTask(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Call JiraClientService.getTransitions to resolve transition
+    // TODO: Call JiraClientService.transitionIssue
+    return {};
+  }
+
+  async commentTask(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Call JiraClientService.addComment
+    return {};
+  }
+
+  async deleteTask(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Call JiraClientService.deleteIssue
+    return {};
+  }
+
+  async listTasks(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Build JQL query from filters
+    // TODO: Call JiraClientService.searchIssues
+    return {};
+  }
+
+  async getTask(organizationId: string, input: any): Promise<any> {
+    // TODO: Find ProviderConnection via PrismaService
+    // TODO: Call JiraClientService.getIssue
+    return {};
+  }
+
+  // --- Task Service Rest Methods ---
+
+  async createIssue(organizationId: string, payload: any): Promise<any> {
+    // TODO: Build headers, URL, and execute HTTP request
+    return {};
+  }
+
+  async updateIssue(organizationId: string, issueIdOrKey: string, payload: any): Promise<void> {
+    // TODO: Build headers, URL, and execute HTTP request
+  }
+
+  async deleteIssue(organizationId: string, issueIdOrKey: string): Promise<void> {
+    // TODO: Build headers, URL, and execute HTTP request
+  }
+
+  async transitionIssue(organizationId: string, issueIdOrKey: string, transitionId: string): Promise<void> {
+    // TODO: Build headers, URL, and execute HTTP request
+  }
+
+  async getTransitions(organizationId: string, issueIdOrKey: string): Promise<any> {
+    // TODO: Build headers, URL, and execute HTTP request
+    return {};
+  }
+
+  async searchIssues(organizationId: string, jql: string, maxResults?: number): Promise<any> {
+    // TODO: Build headers, URL, and execute HTTP request
+    return {};
+  }
+
+  async getIssue(organizationId: string, issueIdOrKey: string): Promise<any> {
+    // TODO: Build headers, URL, and execute HTTP request
+    return {};
+  }
+
+  async findUsers(organizationId: string, query: string): Promise<any> {
+    // TODO: Build headers, URL, and execute HTTP request
+    return {};
+  }
+
+  async addComment(organizationId: string, issueIdOrKey: string, body: string): Promise<any> {
+    // TODO: Build headers, URL, and execute HTTP request
+    return {};
+  }
 }

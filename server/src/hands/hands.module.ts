@@ -14,6 +14,9 @@ import { EmailSkill } from './skills/email.skill';
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { KnowledgeSkill } from './skills/knowledge.skill';
 
+import { JiraModule } from '../integrations/jira/jira.module';
+import { JiraSkill } from './skills/jira.skill';
+
 @Module({
   imports: [
     PrismaModule,
@@ -21,6 +24,7 @@ import { KnowledgeSkill } from './skills/knowledge.skill';
     EmailModule,
     AiGatewayModule,
     RetrievalModule,
+    JiraModule,
   ],
   providers: [
     AuditLogService,
@@ -31,6 +35,7 @@ import { KnowledgeSkill } from './skills/knowledge.skill';
     MessagingSkill,
     EmailSkill,
     KnowledgeSkill,
+    JiraSkill,
   ],
   controllers: [AuditController],
   exports: [OrchestratorService, AuditLogService],

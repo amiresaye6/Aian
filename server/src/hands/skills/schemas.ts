@@ -55,3 +55,59 @@ export const SummarizeInputSchema = z.object({
     .describe('Optional scope constraint, e.g., a project name or team.'),
 });
 export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;
+
+export const CreateTaskInputSchema = z.object({
+  title: z.string().describe('The title/summary of the Jira issue.'),
+  description: z.string().optional().describe('Detailed description of the task.'),
+  assignee: z.string().optional().describe('Name of the person to assign. Will be resolved to a Jira account.'),
+  priority: z.string().optional().describe('Priority level: Highest, High, Medium, Low, Lowest.'),
+  dueDate: z.string().optional().describe('Due date in YYYY-MM-DD format.'),
+  labels: z.array(z.string()).optional().describe('Labels to apply to the issue.'),
+  projectKey: z.string().describe('The Jira project key, e.g., "AIAN" or "DEV".'),
+});
+export type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>;
+
+export const UpdateTaskInputSchema = z.object({
+  taskId: z.string().describe('The Jira issue key, e.g., "AIAN-123".'),
+  fields: z.record(z.string(), z.any()).describe('Fields to update, e.g., { summary: "New title" }.'),
+});
+export type UpdateTaskInput = z.infer<typeof UpdateTaskInputSchema>;
+
+export const AssignTaskInputSchema = z.object({
+  taskId: z.string().describe('The Jira issue key.'),
+  assignee: z.string().describe('Name of the person to assign.'),
+});
+export type AssignTaskInput = z.infer<typeof AssignTaskInputSchema>;
+
+export const MoveTaskInputSchema = z.object({
+  taskId: z.string().describe('The Jira issue key.'),
+  targetStatus: z.string().describe('The target status name, e.g., "In Progress", "Done".'),
+});
+export type MoveTaskInput = z.infer<typeof MoveTaskInputSchema>;
+
+export const CommentTaskInputSchema = z.object({
+  taskId: z.string().describe('The Jira issue key.'),
+  text: z.string().describe('The comment text to add.'),
+});
+export type CommentTaskInput = z.infer<typeof CommentTaskInputSchema>;
+
+export const DeleteTaskInputSchema = z.object({
+  taskId: z.string().describe('The Jira issue key to delete.'),
+});
+export type DeleteTaskInput = z.infer<typeof DeleteTaskInputSchema>;
+
+export const ListTasksInputSchema = z.object({
+  projectKey: z.string().optional().describe('Filter by project key.'),
+  assignee: z.string().optional().describe('Filter by assignee name.'),
+  status: z.string().optional().describe('Filter by status name.'),
+  dateRange: z.object({
+    from: z.string().optional(),
+    to: z.string().optional(),
+  }).optional().describe('Filter by date range.'),
+});
+export type ListTasksInput = z.infer<typeof ListTasksInputSchema>;
+
+export const GetTaskInputSchema = z.object({
+  taskId: z.string().describe('The Jira issue key.'),
+});
+export type GetTaskInput = z.infer<typeof GetTaskInputSchema>;
