@@ -391,6 +391,22 @@ async function main() {
         logoUrl: 'https://logo.clearbit.com/acme.com',
       },
     });
+
+    await prisma.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        fullName: 'Super Admin Amir',
+        email: 'amir.super@example.com',
+        passwordHash: realHash,
+        status: 'active',
+        roleId: adminRole.id,
+        memberStatus: 'active',
+        joinedAt: new Date(),
+        organizationId: targetOrgId,
+        emailVerifiedAt: new Date(),
+        isSuperAdmin: true,
+      },
+    });
   } finally {
     // Always re-enable triggers, even if the inserts above fail,
     // so the schema's integrity enforcement is restored immediately.
