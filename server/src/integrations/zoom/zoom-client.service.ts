@@ -252,4 +252,46 @@ export class ZoomClientService implements ProviderClient {
       throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);
     }
   }
+
+  async createMeeting(connection: any, data: {
+    topic: string;
+    startTime: string;
+    durationMinutes: number;
+    timezone?: string;
+    attendees?: string[];
+  }) {
+    await this.verifyConnection(connection);
+      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+
+      const response = await axios.post(
+        `https://api.zoom.us/v2/users/me/meetings`,
+        {
+          topic: data.topic,
+          type: 2, // 2 = Scheduled meeting
+          start_time: data.startTime,
+          duration: data.durationMinutes,
+          timezone: data.timezone || 'UTC',
+          settings: {
+            host_video: true,
+            participant_video: true,
+            join_before_host: false,
+            mute_upon_entry: true,
+          },
+        },
+        {
+          headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+        },
+      );
+
+      return {
+        id: String(response.data.id),
+        topic: response.data.topic,
+        joinUrl: response.data.join_url,
+        startUrl: response.data.start_url,
+        startTime: response.data.start_time,
+        duration: response.data.duration,
+      };
+  }
 }
