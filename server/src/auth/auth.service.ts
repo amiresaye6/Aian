@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { EmailService } from '../email/email.service';
 import { OtpPurpose } from './dto/verify-otp.dto';
 import { UserStatus } from '@prisma/client';
+import { MemberActivationService } from '../members/member-activation.service';
 
 @Injectable()
 export class AuthService {
@@ -21,6 +22,7 @@ export class AuthService {
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly memberActivationService: MemberActivationService,
   ) { }
 
   private generateOtp() {
@@ -101,32 +103,34 @@ export class AuthService {
     if (!isMatched) {
       throw new UnauthorizedException('invalid email or password');
     }
-
+    const isInvitedFirstLogin = existedUser.memberStatus === 'invited';
     if (
       existedUser.status !== UserStatus.active ||
-      !existedUser.emailVerifiedAt
+      (!existedUser.emailVerifiedAt && !isInvitedFirstLogin)
     ) {
       throw new ForbiddenException(
         'Please verify your email before signing in',
       );
     }
-
+    const userForPayload = isInvitedFirstLogin
+    ? await this.memberActivationService.activateFirstLogin(existedUser.id)
+    : existedUser;
     const payload = {
-      id: existedUser.id,
-      email: existedUser.email,
-      fullName: existedUser.fullName,
-      avatarUrl: existedUser.avatarUrl || null,
-      roleId: existedUser.roleId || 'unkown',
-      role: existedUser.role?.name || 'unkown',
-      organizationId: existedUser.organizationId || 'unkown',
-      organization: existedUser.organization?.name || 'unkown',
-      organizationLogo: existedUser.organization?.logoUrl || null,
+      id: userForPayload.id,
+      email: userForPayload.email,
+      fullName: userForPayload.fullName,
+      avatarUrl: userForPayload.avatarUrl || null,
+      roleId: userForPayload.roleId || 'unkown',
+      role: userForPayload.role?.name || 'unkown',
+      organizationId: userForPayload.organizationId || 'unkown',
+      organization: userForPayload.organization?.name || 'unkown',
+      organizationLogo: userForPayload.organization?.logoUrl || null,
     };
 
     const { access_token, refresh_token } = await this.getTokens(payload);
     await this.updateRefreshToken(existedUser.id, refresh_token);
 
-    return { user: payload, access_token, refresh_token };
+    return { user: payload, access_token, refresh_token , mustChangePassword: userForPayload.mustChangePassword,};
   }
 
   async getTokens(payload: any) {
@@ -237,7 +241,7 @@ export class AuthService {
     const newHash = await bcrypt.hash(newPassword, 10);
     const updatedUser = await this.prismaService.user.update({
       where: { id: userId },
-      data: { passwordHash: newHash },
+      data: { passwordHash: newHash, mustChangePassword: false, },
     });
     return updatedUser;
   }
