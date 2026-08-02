@@ -119,6 +119,21 @@ async createMeeting(@Body()body:any,@Param()params:any) {
   return await this.zoomClient.createMeeting(connection,meetingData)
 }
 
+@Patch('update-meeting/:connectionId/:meetingId')
+async updateMeeting(@Body()body:any,@Param()params:any) {
+  const connection = await this.connectionRepo.findById(params.connectionId);
+  if (!connection) {
+    return { error: 'Connection record not found in database' };
+  }
+  const fieldsToUpdate:any= {
+    topic:body.topic,
+    startTime:body.startTime,
+    durationMinutes:body.durationMinutes,
+    timezone:body.timezone
+  }
+  return await this.zoomClient.updateMeeting(connection, params.meetingId, fieldsToUpdate);
+}
+
 @Delete('delete-meeting/:connectionId/:meetingId')
 async deleteMeeting(@Param()params:any) {
   const connection = await this.connectionRepo.findById(params.connectionId);

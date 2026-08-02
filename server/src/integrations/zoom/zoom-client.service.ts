@@ -334,4 +334,13 @@ export class ZoomClientService implements ProviderClient {
     });
 }
 
+  async updateMeeting(connection: any, meetingId: string, fields: Record<string, any>): Promise<void> {
+    const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+
+    await axios.patch(`https://api.zoom.us/v2/meetings/${meetingId}`, fields, {
+      headers: {
+                Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  }
 }
