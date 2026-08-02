@@ -8,6 +8,23 @@ export type SubscriptionStatus =
   | "unpaid";
 
 export type PaymentStatus = "pending" | "paid" | "failed";
+export type QuotaStatus = "within_limits" | "warning" | "grace_period" | "hard_blocked";
+
+export interface QuotaResult {
+  allowed: boolean;
+  used: number;
+  limit: number;
+  percentage: number;
+  status: QuotaStatus;
+}
+
+export interface FullQuotaSummary {
+  tokens: QuotaResult;
+  storage: QuotaResult;
+  members: QuotaResult;
+  periodStart: string | null;
+  periodEnd: string | null;
+}
 
 export interface SubscriptionPlan {
   id: string;
