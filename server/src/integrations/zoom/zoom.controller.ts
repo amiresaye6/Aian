@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -117,4 +119,12 @@ async createMeeting(@Body()body:any,@Param()params:any) {
   return await this.zoomClient.createMeeting(connection,meetingData)
 }
 
+@Delete('delete-meeting/:connectionId/:meetingId')
+async deleteMeeting(@Param()params:any) {
+  const connection = await this.connectionRepo.findById(params.connectionId);
+  if (!connection) {
+    return { error: 'Connection record not found in database' };
+  }
+  return await this.zoomClient.deleteMeeting(connection, params.meetingId);
+}
 }

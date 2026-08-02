@@ -323,4 +323,15 @@ export class ZoomClientService implements ProviderClient {
       }
     }
   }
+
+  async deleteMeeting(connection: any, meetingId: string): Promise<void> {
+    const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+
+    await axios.delete(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+      headers: {
+                Authorization: `Bearer ${accessToken}`,
+      },
+    });
+}
+
 }
