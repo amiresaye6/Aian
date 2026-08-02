@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -34,6 +30,13 @@ async function main() {
   await prisma.payment.deleteMany();
   await prisma.subscription.deleteMany();
   await prisma.subscriptionPlan.deleteMany();
+  await prisma.entityMention.deleteMany();
+  await prisma.resolvedEntity.deleteMany();
+  await prisma.knowledgeArtifact.deleteMany();
+  await prisma.handsSession.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.aiUsageLog.deleteMany();
+  await prisma.usagePeriodSnapshot.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.user.deleteMany();
 
@@ -422,15 +425,37 @@ async function main() {
   await prisma.subscriptionPlan.createMany({
     data: [
       {
+        name: 'Free Trial',
+        slug: 'freetrial',
+        description: 'Test the AIAN platform with a limited feature set.',
+        monthlyPriceCents: 0,
+        yearlyPriceCents: 0,
+        currency: 'USD',
+        maxMembers: 5,
+        storageLimitMb: 5120,
+        aiTokenLimit: 1_000_000,
+        overageTokenPriceCents: 0,
+        overageStoragePriceCents: 0,
+        overageUserPriceCents: 0,
+        isTrial: true,
+        active: true,
+        sortOrder: 0,
+      },
+      {
         name: 'Starter',
         slug: 'starter',
         description:
           'Perfect for startups and small teams getting started with AIAN.',
-        monthlyPriceCents: 1900,
-        yearlyPriceCents: 19000,
+        monthlyPriceCents: 2900,
+        yearlyPriceCents: 29000,
         currency: 'USD',
         maxMembers: 10,
-        storageLimitMb: 10240,
+        storageLimitMb: 25600,
+        aiTokenLimit: 10_000_000,
+        overageTokenPriceCents: 200,
+        overageStoragePriceCents: 20,
+        overageUserPriceCents: 300,
+        isTrial: false,
         active: true,
         sortOrder: 1,
       },
@@ -439,24 +464,34 @@ async function main() {
         slug: 'growth',
         description:
           'Ideal for growing businesses collaborating across multiple teams.',
-        monthlyPriceCents: 4900,
-        yearlyPriceCents: 49000,
+        monthlyPriceCents: 9900,
+        yearlyPriceCents: 99000,
         currency: 'USD',
         maxMembers: 50,
-        storageLimitMb: 51200,
+        storageLimitMb: 102400,
+        aiTokenLimit: 60_000_000,
+        overageTokenPriceCents: 150,
+        overageStoragePriceCents: 15,
+        overageUserPriceCents: 200,
+        isTrial: false,
         active: true,
         sortOrder: 2,
       },
       {
-        name: 'Enterprise',
-        slug: 'enterprise',
+        name: 'Business',
+        slug: 'business',
         description:
           'Advanced collaboration, security, and scalability for large organizations.',
-        monthlyPriceCents: 9900,
-        yearlyPriceCents: 99000,
+        monthlyPriceCents: 24900,
+        yearlyPriceCents: 249000,
         currency: 'USD',
-        maxMembers: 500,
-        storageLimitMb: 204800,
+        maxMembers: 200,
+        storageLimitMb: 512000,
+        aiTokenLimit: 250_000_000,
+        overageTokenPriceCents: 100,
+        overageStoragePriceCents: 10,
+        overageUserPriceCents: 150,
+        isTrial: false,
         active: true,
         sortOrder: 3,
       },
@@ -494,7 +529,7 @@ async function main() {
         paymentProvider: 'stripe',
         providerPaymentId: 'pi_demo_001',
         invoiceId: 'in_demo_001',
-        amountCents: 1900,
+        amountCents: 2900,
         currency: 'USD',
         billingCycle: 'monthly',
         status: 'paid',

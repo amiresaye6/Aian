@@ -14,22 +14,23 @@ model Organization {
   updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  createdByUser      User                            @relation("OrgCreator", fields: [createdByUserId], references: [id])
-  users              User[]                          @relation("OrgUsers")
-  roles              Role[]
-  subscriptions      Subscription?
-  payments           Payment[]
-  eyes               OrganizationEye[]
-  knowledgeFiles     OrganizationKnowledgeFile[]
-  onboardingProgress OnboardingProgress?
-  knowledgeItems     KnowledgeItem[]
-  ingestionBatches   IngestionBatch[]
-  processingSettings OrganizationProcessingSettings?
-  knowledgeArtifacts KnowledgeArtifact[]
-  resolvedEntities   ResolvedEntity[]
-  handsSessions      HandsSession[]
-  auditLogs          AuditLog[]
-  aiUsageLogs        AiUsageLog[]
+  createdByUser        User                            @relation("OrgCreator", fields: [createdByUserId], references: [id])
+  users                User[]                          @relation("OrgUsers")
+  roles                Role[]
+  subscriptions        Subscription?
+  payments             Payment[]
+  eyes                 OrganizationEye[]
+  knowledgeFiles       OrganizationKnowledgeFile[]
+  onboardingProgress   OnboardingProgress?
+  knowledgeItems       KnowledgeItem[]
+  ingestionBatches     IngestionBatch[]
+  processingSettings   OrganizationProcessingSettings?
+  knowledgeArtifacts   KnowledgeArtifact[]
+  resolvedEntities     ResolvedEntity[]
+  handsSessions        HandsSession[]
+  auditLogs            AuditLog[]
+  aiUsageLogs          AiUsageLog[]
+  usagePeriodSnapshots UsagePeriodSnapshot[]
 
   @@map("organizations")
 }
