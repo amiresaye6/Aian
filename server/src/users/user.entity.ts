@@ -30,6 +30,8 @@ export class UserEntity implements User {
   @Exclude()
   otpExpiresAt: Date | null;
 
+  mustChangePassword: boolean;
+
   constructor(partial: Partial<UserEntity>) {
     Object.assign(this, partial);
   }
