@@ -3,6 +3,7 @@ import { ProviderClient, ProviderConnection, ProviderResource } from '../contrac
 import { EncryptionService } from '../../common/encryption.service';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../email/email.service';
 
 
 export enum MeetingType {
@@ -16,7 +17,8 @@ export class ZoomClientService implements ProviderClient {
 
   constructor(
     private readonly encryptionService: EncryptionService,
-    private readonly prismaService: PrismaService
+    private readonly prismaService: PrismaService,
+    private readonly emailService:EmailService
   ) {}
 
   /**
@@ -260,7 +262,7 @@ export class ZoomClientService implements ProviderClient {
     timezone?: string;
     attendees?: string[];
   }) {
-    await this.verifyConnection(connection);
+      await this.verifyConnection(connection);
       const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
 
       const response = await axios.post(
@@ -276,6 +278,8 @@ export class ZoomClientService implements ProviderClient {
             participant_video: true,
             join_before_host: false,
             mute_upon_entry: true,
+            approval_type: 0,
+            registrants_email_notification: true,
           },
         },
         {
@@ -285,13 +289,38 @@ export class ZoomClientService implements ProviderClient {
         },
       );
 
-      return {
-        id: String(response.data.id),
-        topic: response.data.topic,
-        joinUrl: response.data.join_url,
-        startUrl: response.data.start_url,
-        startTime: response.data.start_time,
-        duration: response.data.duration,
-      };
+      const meetingData = {
+          id: String(response.data.id),
+          topic: response.data.topic,
+          joinUrl: response.data.join_url,
+          startUrl: response.data.start_url,
+          startTime: response.data.start_time,
+          duration: response.data.duration
+        }
+      if (data.attendees && data.attendees.length > 0) {
+        
+        await this.addRegistrants(connection, meetingData, data.attendees);
+      }
+
+      return meetingData;
+  }
+
+  async addRegistrants(connection: any, meeting: any | number, attendees: string[]): Promise<void> {
+      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+      const htmlContent = 
+      `<p>You have been registered for a Zoom meeting.</p><p>Meeting ID: ${meeting.id}</p>
+        <p>Topic: ${meeting.topic}</p>
+        <p>Start Time: ${meeting.startTime}</p>
+        <p>Duration: ${meeting.duration} minutes</p>
+        <p><a href="${meeting.joinUrl}">Join Meeting</a></p>`
+      ;
+
+    for (const email of attendees) {
+      try {
+        await this.emailService.sendBrandedEmail(email, 'Meeting Registration', htmlContent);
+      } catch (error: any) {
+        console.warn(`Failed to add registrant ${email}:`, error.message);
+      }
+    }
   }
 }
