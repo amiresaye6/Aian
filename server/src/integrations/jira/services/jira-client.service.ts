@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import axios, { AxiosError } from 'axios';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProviderConnectionRepository } from '../../../ingestion/repositories/provider-connection.repository';
@@ -11,6 +11,35 @@ import {
   ProviderResource,
   RefreshedCredentials,
 } from '../../contracts';
+
+export interface JiraIssue {
+  id: string;
+  key: string;
+  self: string;
+  fields?: Record<string, any>;
+}
+
+export interface JiraUser {
+  accountId: string;
+  displayName: string;
+  emailAddress?: string;
+  active?: boolean;
+}
+
+export interface JiraTransition {
+  id: string;
+  name: string;
+}
+
+export interface JiraSearchResponse {
+  issues: JiraIssue[];
+  total: number;
+}
+
+export interface JiraCommentResponse {
+  id: string;
+  body?: string;
+}
 
 @Injectable()
 export class JiraClientService implements ProviderClient {
@@ -563,10 +592,109 @@ export class JiraClientService implements ProviderClient {
   // --- Helper Methods ---
 
   private async getConnection(organizationId: string): Promise<ProviderConnection> {
-    // TODO: Find the connected Jira ProviderConnection
-    // TODO: Validate status
-    // TODO: Throw if not connected
-    return {} as ProviderConnection;
+    const provider = await this.prisma.provider.findUnique({
+      where: { key: 'jira' },
+    });
+
+    if (!provider) {
+      throw new NotFoundException('Jira provider configuration not found in the system.');
+    }
+
+    const connection = await this.prisma.providerConnection.findFirst({
+      where: {
+        providerId: provider.id,
+        status: 'connected',
+        organizationEye: {
+          organizationId: organizationId,
+        },
+      },
+      include: {
+        organizationEye: {
+          include: {
+            eyeType: true,
+          },
+        },
+        provider: true,
+      },
+    });
+
+    if (!connection) {
+      throw new BadRequestException('Jira integration is not connected for this organization.');
+    }
+
+    return {
+      id: connection.id,
+      organizationEyeId: connection.organizationEyeId,
+      organizationId: connection.organizationEye.organizationId,
+      provider: connection.provider.key as any,
+      eyeType: connection.organizationEye.eyeType.key as any,
+      accessTokenEncrypted: connection.accessTokenEncrypted,
+      refreshTokenEncrypted: connection.refreshTokenEncrypted,
+      tokenExpiresAt: connection.tokenExpiresAt,
+      scopes: connection.scopes as string[],
+      externalAccountId: connection.externalAccountId,
+      externalAccountName: connection.externalAccountName,
+      connectionMetadata: connection.connectionMetadata as Record<string, unknown>,
+      status: connection.status,
+      lastSyncAt: connection.lastSyncAt,
+      lastVerifiedAt: connection.lastVerifiedAt,
+    } as ProviderConnection;
+  }
+
+  private async executeRequest<T>(
+    connection: ProviderConnection,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    data?: any,
+  ): Promise<T> {
+    const baseUrl = this.getBaseUrl(connection);
+    let token = await this.getValidToken(connection);
+    let headers = this.buildHeaders(token);
+
+    const config = {
+      method,
+      url: `${baseUrl}${path}`,
+      headers,
+      ...(data && { data }),
+    };
+
+    try {
+      const response = await axios.request<T>(config);
+      return response.data;
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        this.logger.warn(`401 Unauthorized in executeRequest. Forcing token refresh...`);
+        token = await this.getValidToken(connection, true);
+        headers = this.buildHeaders(token);
+        config.headers = headers;
+
+        try {
+          const retryResponse = await axios.request<T>(config);
+          return retryResponse.data;
+        } catch (retryErr: unknown) {
+          this.logger.error(`Jira request failed after retry: ${path}`);
+          this.handleHttpError(retryErr);
+        }
+      } else {
+        this.logger.error(`Jira request failed: ${path}`);
+        this.handleHttpError(err);
+      }
+    }
+    throw new Error('Unreachable code in executeRequest');
+  }
+
+  private handleHttpError(err: unknown): never {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const message = err.response?.data?.errorMessages?.join(', ') || err.message;
+      if (status === 400) throw new BadRequestException(`Jira Bad Request: ${message}`);
+      if (status === 403) throw new HttpException(`Jira Forbidden: ${message}`, 403);
+      if (status === 404) throw new NotFoundException(`Jira Not Found: ${message}`);
+      if (status === 409) throw new HttpException(`Jira Conflict: ${message}`, 409);
+      if (status === 429) throw new HttpException(`Jira Too Many Requests: ${message}`, 429);
+      throw new HttpException(`Jira Error (${status}): ${message}`, status || 500);
+    }
+    throw new HttpException('Unknown Jira Error', 500);
   }
 
   // --- Task Orchestration Methods ---
@@ -625,45 +753,74 @@ export class JiraClientService implements ProviderClient {
 
   // --- Task Service Rest Methods ---
 
-  async createIssue(organizationId: string, payload: any): Promise<any> {
-    // TODO: Build headers, URL, and execute HTTP request
-    return {};
+  async createIssue(organizationId: string, payload: any): Promise<JiraIssue> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraIssue>(connection, 'POST', '/rest/api/3/issue', payload);
   }
 
   async updateIssue(organizationId: string, issueIdOrKey: string, payload: any): Promise<void> {
-    // TODO: Build headers, URL, and execute HTTP request
+    const connection = await this.getConnection(organizationId);
+    await this.executeRequest<void>(connection, 'PUT', `/rest/api/3/issue/${issueIdOrKey}`, payload);
   }
 
   async deleteIssue(organizationId: string, issueIdOrKey: string): Promise<void> {
-    // TODO: Build headers, URL, and execute HTTP request
+    const connection = await this.getConnection(organizationId);
+    await this.executeRequest<void>(connection, 'DELETE', `/rest/api/3/issue/${issueIdOrKey}`);
   }
 
   async transitionIssue(organizationId: string, issueIdOrKey: string, transitionId: string): Promise<void> {
-    // TODO: Build headers, URL, and execute HTTP request
+    const connection = await this.getConnection(organizationId);
+    await this.executeRequest<void>(connection, 'POST', `/rest/api/3/issue/${issueIdOrKey}/transitions`, {
+      transition: { id: transitionId },
+    });
   }
 
-  async getTransitions(organizationId: string, issueIdOrKey: string): Promise<any> {
-    // TODO: Build headers, URL, and execute HTTP request
-    return {};
+  async getTransitions(organizationId: string, issueIdOrKey: string): Promise<JiraTransition[]> {
+    const connection = await this.getConnection(organizationId);
+    const res = await this.executeRequest<{ transitions: JiraTransition[] }>(
+      connection,
+      'GET',
+      `/rest/api/3/issue/${issueIdOrKey}/transitions`,
+    );
+    return res.transitions || [];
   }
 
-  async searchIssues(organizationId: string, jql: string, maxResults?: number): Promise<any> {
-    // TODO: Build headers, URL, and execute HTTP request
-    return {};
+  async searchIssues(organizationId: string, jql: string, maxResults: number = 50, startAt: number = 0): Promise<JiraSearchResponse> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraSearchResponse>(connection, 'POST', '/rest/api/3/search', {
+      jql,
+      maxResults,
+      startAt,
+    });
   }
 
-  async getIssue(organizationId: string, issueIdOrKey: string): Promise<any> {
-    // TODO: Build headers, URL, and execute HTTP request
-    return {};
+  async getIssue(organizationId: string, issueIdOrKey: string): Promise<JiraIssue> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraIssue>(connection, 'GET', `/rest/api/3/issue/${issueIdOrKey}`);
   }
 
-  async findUsers(organizationId: string, query: string): Promise<any> {
-    // TODO: Build headers, URL, and execute HTTP request
-    return {};
+  async findUsers(organizationId: string, query: string): Promise<JiraUser[]> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraUser[]>(
+      connection,
+      'GET',
+      `/rest/api/3/user/search?query=${encodeURIComponent(query)}`,
+    );
   }
 
-  async addComment(organizationId: string, issueIdOrKey: string, body: string): Promise<any> {
-    // TODO: Build headers, URL, and execute HTTP request
-    return {};
+  async addComment(organizationId: string, issueIdOrKey: string, body: string): Promise<JiraCommentResponse> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraCommentResponse>(connection, 'POST', `/rest/api/3/issue/${issueIdOrKey}/comment`, {
+      body: {
+        type: 'doc',
+        version: 1,
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: body }],
+          },
+        ],
+      },
+    });
   }
 }
