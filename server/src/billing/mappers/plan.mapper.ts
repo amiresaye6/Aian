@@ -1,6 +1,17 @@
 import type { SubscriptionPlan } from '@prisma/client';
 import type { PlanResponse } from '../types/billing.types';
 
+const UNIVERSAL_FEATURES = [
+  'All 4 Eyes (Chat, Meetings, Coding, Tasks)',
+  'One provider per Eye',
+  'Full Knowledge Graph',
+  'AI Search & AI Assistant',
+  'AI Hands (Autonomous Agent)',
+  'Daily Planning & Reports',
+  'Intelligent Alerts',
+  'All future platform features',
+];
+
 const PLAN_FEATURES: Record<
   string,
   {
@@ -11,45 +22,32 @@ const PLAN_FEATURES: Record<
     highlighted: boolean;
   }
 > = {
+  freetrial: {
+    iconName: 'gift',
+    tagline: 'Test the AIAN platform',
+    features: UNIVERSAL_FEATURES,
+    limits: 'Up to 1M tokens, 5GB storage',
+    highlighted: false,
+  },
   starter: {
     iconName: 'zap',
     tagline: 'Small teams getting started',
-    features: [
-      'Up to 10 members',
-      'Basic AI assistant',
-      '3 integrations',
-      'Basic reports',
-      'Community support',
-    ],
-    limits: 'Up to 5 GB knowledge',
+    features: UNIVERSAL_FEATURES,
+    limits: 'Up to 10M tokens, 25GB storage',
     highlighted: false,
   },
   growth: {
     iconName: 'sparkles',
     tagline: 'Growing companies scaling knowledge',
     highlighted: true,
-    features: [
-      'Up to 100 members',
-      'Advanced AI reasoning',
-      'Unlimited meetings',
-      'Knowledge Search',
-      'Automations',
-      'Priority support',
-    ],
-    limits: 'Up to 250 GB knowledge',
+    features: UNIVERSAL_FEATURES,
+    limits: 'Up to 60M tokens, 100GB storage',
   },
-  enterprise: {
+  business: {
     iconName: 'building-2',
     tagline: 'Large organizations, unlimited scope',
-    features: [
-      'Unlimited members',
-      'Advanced AI Agents',
-      'Knowledge Graph',
-      'Advanced Reports',
-      'Custom Integrations',
-      'Dedicated support & SLA',
-    ],
-    limits: 'Unlimited knowledge',
+    features: UNIVERSAL_FEATURES,
+    limits: 'Up to 250M tokens, 500GB storage',
     highlighted: false,
   },
 };
