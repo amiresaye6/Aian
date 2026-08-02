@@ -25,6 +25,7 @@ model User {
 
   otpHash      String?
   otpExpiresAt DateTime?
+  mustChangePassword Boolean @default(false) @map("must_change_password")
 
   // Relations 
   createdOrganizations Organization[]              @relation("OrgCreator")
