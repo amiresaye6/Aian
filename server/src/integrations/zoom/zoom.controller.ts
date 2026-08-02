@@ -100,5 +100,21 @@ export class ZoomController {
     };
   }
 
+@Post('create-meeting/:connectionId')
+async createMeeting(@Body()body:any,@Param()params:any) {
+  const connection = await this.connectionRepo.findById(params.connectionId);
+  if (!connection) {
+    return { error: 'Connection record not found in database' };
+  }
+  const meetingData:any= {
+    topic:body.type,
+    startTime:body.startTime,
+    durationMinutes:body.durationMinutes,
+    timezone:body.timezone,
+    attendees:body.attendees
+  }
+
+  return await this.zoomClient.createMeeting(connection,meetingData)
+}
 
 }
