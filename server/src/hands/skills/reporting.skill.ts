@@ -117,9 +117,9 @@ export class ReportingSkill implements OnModuleInit {
             const contextString = retrievalResult?.contextString || '';
             
             const summaryAnswer = await this.answerGeneration.generateAnswer(
+              ctx.organizationId,
               `Provide a concise summary regarding: ${scope}`,
-              contextString,
-              {} as any
+              contextString
             );
             knowledgeMarkdown = `## 🧠 Knowledge Context\n${summaryAnswer}`;
 
