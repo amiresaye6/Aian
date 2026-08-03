@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { Users, Shield, Settings } from "lucide-react";
+import { Users, Shield, Network, Zap, MessageSquare } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 const ACTIONS = [
+  { label: "Ask AIAN", href: "/dashboard/chat", icon: MessageSquare },
+  { label: "Data Pipeline", href: "/dashboard/pipeline", icon: Zap },
+  { label: "Knowledge Graph", href: "/dashboard/knowledge/entities", icon: Network },
   { label: "Manage Members", href: "/dashboard/members", icon: Users },
   { label: "Manage Roles", href: "/dashboard/roles", icon: Shield },
-  { label: "Organization Settings", href: "/dashboard/organization", icon: Settings },
 ];
 
 export function QuickActionsRow() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
       {ACTIONS.map((action) => (
         <Link key={action.href} href={action.href}>
           <Card className="flex items-center gap-3 p-4 transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]">
