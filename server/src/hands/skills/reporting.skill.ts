@@ -138,8 +138,8 @@ export class ReportingSkill implements OnModuleInit {
 
         // Assemble the final Markdown Report
         const sourcesFormatted = sourcesList.length > 0 ? sourcesList.join(', ') : 'None';
-        let fullReport = `# Report: ${scope}
-*Period: ${timeframe.from} — ${timeframe.to}*
+        const timeframeText = timeframe ? `*Period: ${timeframe.from} — ${timeframe.to}*` : '*Period: All Time*';
+        let fullReport = `# Report: ${scope}\n${timeframeText}
 
 ${tasksMarkdown}
 

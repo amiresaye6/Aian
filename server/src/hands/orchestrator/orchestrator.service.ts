@@ -211,6 +211,8 @@ CRITICAL RULES:
                 replyText += `\n_Confidence: ${dataObj.confidence}/100_`;
             } else if (dataObj.summary) {
               replyText = `*Summary:*\n${dataObj.summary}`;
+            } else if (dataObj.reportMarkdown) {
+              replyText = dataObj.reportMarkdown;
             } else if (dataObj.results && Array.isArray(dataObj.results)) {
               replyText = `✅ *${def.name}* completed successfully! Found ${dataObj.results.length} relevant items.`;
             } else {

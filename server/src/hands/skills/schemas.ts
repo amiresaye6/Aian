@@ -64,7 +64,7 @@ export const GenerateReportInputSchema = z.object({
   timeframe: z.object({
     from: z.string().describe('Start date in ISO 8601 format.'),
     to: z.string().describe('End date in ISO 8601 format.'),
-  }).describe('The time period for the report.'),
+  }).optional().nullable().describe('The time period for the report.'),
   sections: z
     .array(z.enum(['tasks', 'meetings', 'knowledge']))
     .optional()
