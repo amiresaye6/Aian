@@ -14,6 +14,7 @@ import { MeetingType } from './zoom-client.service'
 import { GetMeetingsDto } from './dto/get-meetings.dto';
 import { CreateMeetingDto } from './dto/create-meetings.dto';
 import { UpdateMeetingDto } from './dto/update-meetings.dto';
+import { AddRegistrantsDto } from './dto/add-registerants.dto';
 /**
  * Handles the Zoom OAuth 2.0 flow.
  */
@@ -142,5 +143,14 @@ async deleteMeeting(@Param()params:any) {
     return { error: 'Connection record not found in database' };
   }
   return await this.zoomClient.deleteMeeting(connection, params.meetingId);
+}
+
+@Post('add-registrants/:connectionId/:meetingId')
+async addRegistrants(@Body()body:AddRegistrantsDto,@Param()params:any) {
+  const connection = await this.connectionRepo.findById(params.connectionId);
+  if (!connection) {
+    return { error: 'Connection record not found in database' };
+  }
+  return await this.zoomClient.addRegistrants(connection, params.meetingId, body.attendees);
 }
 }
