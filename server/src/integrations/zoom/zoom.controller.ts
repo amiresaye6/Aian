@@ -13,6 +13,7 @@ import { ZoomClientService } from './zoom-client.service';
 import { MeetingType } from './zoom-client.service'
 import { GetMeetingsDto } from './dto/get-meetings.dto';
 import { CreateMeetingDto } from './dto/create-meetings.dto';
+import { UpdateMeetingDto } from './dto/update-meetings.dto';
 /**
  * Handles the Zoom OAuth 2.0 flow.
  */
@@ -120,7 +121,7 @@ async createMeeting(@Body()body:CreateMeetingDto,@Param()params:any) {
 }
 
 @Patch('update-meeting/:connectionId/:meetingId')
-async updateMeeting(@Body()body:any,@Param()params:any) {
+async updateMeeting(@Body()body:UpdateMeetingDto,@Param()params:any) {
   const connection = await this.connectionRepo.findById(params.connectionId);
   if (!connection) {
     return { error: 'Connection record not found in database' };
