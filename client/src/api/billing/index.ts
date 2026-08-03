@@ -8,6 +8,7 @@ import {
   AiUsageSummary,
   AiUsageLog,
   PaginatedResponse,
+  FullQuotaSummary,
 } from "@/types/billing/billing";
 
 export const billingApi = {
@@ -41,6 +42,23 @@ export const billingApi = {
     organizationId: string
   ): Promise<{ success: boolean; data: SubscriptionResponse | null }> => {
     const response = await api.get(`/billing/subscription?organizationId=${organizationId}`);
+    return response.data;
+  },
+
+  getQuotaDashboard: async (
+    organizationId: string
+  ): Promise<{ success: boolean; data: FullQuotaSummary }> => {
+    const response = await api.get(`/billing/quota-dashboard?organizationId=${organizationId}`);
+    return response.data;
+  },
+
+  upgradeSubscription: async (
+    organizationId: string,
+    planSlug: string
+  ): Promise<{ success: boolean; newPlan: string }> => {
+    const response = await api.post(`/billing/subscription/upgrade?organizationId=${organizationId}`, {
+      planSlug,
+    });
     return response.data;
   },
 

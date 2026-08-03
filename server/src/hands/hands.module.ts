@@ -13,6 +13,7 @@ import { MessagingSkill } from './skills/messaging.skill';
 import { EmailSkill } from './skills/email.skill';
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { KnowledgeSkill } from './skills/knowledge.skill';
+import { ReportingSkill } from './skills/reporting.skill';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { KnowledgeSkill } from './skills/knowledge.skill';
     MessagingSkill,
     EmailSkill,
     KnowledgeSkill,
+    ReportingSkill,
   ],
   controllers: [AuditController],
   exports: [OrchestratorService, AuditLogService],

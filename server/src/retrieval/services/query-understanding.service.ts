@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
-import { AiUsageService } from '../../ai/ai-usage.service';
 import { z } from 'zod';
 
 export const QueryUnderstandingSchema = z.object({
@@ -31,10 +30,7 @@ export type QueryUnderstandingResult = z.infer<typeof QueryUnderstandingSchema>;
 export class QueryUnderstandingService {
   private readonly logger = new Logger(QueryUnderstandingService.name);
 
-  constructor(
-    private readonly aiGateway: AiGatewayService,
-    private readonly usageService: AiUsageService,
-  ) {}
+  constructor(private readonly aiGateway: AiGatewayService) {}
 
   async analyzeQuery(
     organizationId: string,
@@ -62,20 +58,16 @@ USER QUERY:
 Extract the parameters accurately. If no time range is mentioned, set "timeRange" to null. If no people are mentioned, set "people" to [].
 `;
 
-    const { data: result, usage } =
-      await this.aiGateway.generateStructuredOutput(
-        prompt,
-        QueryUnderstandingSchema,
-        'QueryUnderstanding',
-        'Extracts structured context from a user query for graph retrieval',
-        { temperature: 0.1 }, // Low temperature for consistent extraction
-      );
-
-    await this.usageService.logUsage(
-      organizationId,
-      'retrieval',
-      'us.meta.llama3-3-70b-instruct-v1:0',
-      usage,
+    const { data: result } = await this.aiGateway.generateStructuredOutput(
+      prompt,
+      QueryUnderstandingSchema,
+      'QueryUnderstanding',
+      'Extracts structured context from a user query for graph retrieval',
+      {
+        temperature: 0.1,
+        organizationId,
+        feature: 'retrieval',
+      },
     );
 
     this.logger.debug(`Extraction result: ${JSON.stringify(result)}`);

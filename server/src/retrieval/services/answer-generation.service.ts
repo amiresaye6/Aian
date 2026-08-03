@@ -1,15 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
-import { AiUsageService } from '../../ai/ai-usage.service';
 
 @Injectable()
 export class AnswerGenerationService {
   private readonly logger = new Logger(AnswerGenerationService.name);
 
-  constructor(
-    private readonly aiGateway: AiGatewayService,
-    private readonly usageService: AiUsageService,
-  ) {}
+  constructor(private readonly aiGateway: AiGatewayService) {}
 
   async generateAnswer(
     organizationId: string,
@@ -31,21 +27,17 @@ ${contextString}
 INSTRUCTIONS:
 1. Answer the user's question accurately using ONLY the information provided in the Evidence Chain.
 2. If the context does not contain the answer, politely state that you do not have enough information in the current knowledge graph.
-3. Narrate the timeline of events or logical progression if applicable (e.g., "First discussed in Slack, then a PR was opened").
-4. Be concise, professional, and clear.
+3. ABSOLUTELY DO NOT answer general knowledge questions, math queries, or coding requests. If the user asks for code (e.g., Python) or math (e.g., 2+3), you MUST refuse to answer and state that you are an enterprise AI.
+4. Narrate the timeline of events or logical progression if applicable (e.g., "First discussed in Slack, then a PR was opened").
+5. Be concise, professional, and clear.
 `;
 
     // We can use standard text generation for the conversational answer
-    const { data: result, usage } = await this.aiGateway.generateText(prompt, {
+    const { data: result } = await this.aiGateway.generateText(prompt, {
       temperature: 0.3,
-    });
-
-    await this.usageService.logUsage(
       organizationId,
-      'retrieval',
-      'us.meta.llama3-3-70b-instruct-v1:0',
-      usage,
-    );
+      feature: 'retrieval',
+    });
 
     this.logger.log('Final answer generated successfully.');
     return result;

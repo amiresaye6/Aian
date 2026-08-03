@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Activity } from "lucide-react";
 import { format } from "date-fns";
+import { AiUsageLog } from "@/types/billing/billing";
 
 const AVAILABLE_MODELS = [
   "amazon.nova-2-multimodal-embeddings-v1:0",
@@ -159,7 +160,7 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
                 </td>
               </tr>
             ) : logs.length > 0 ? (
-              logs.map((log: any) => (
+              logs.map((log: AiUsageLog) => (
                 <tr 
                   key={log.id} 
                   className="hover:bg-white/[0.02] hover:-translate-y-[1px] transition-all"

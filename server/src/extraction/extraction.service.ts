@@ -4,7 +4,6 @@ import { KnowledgeArtifactRepository } from './repositories/knowledge-artifact.r
 import { ExtractionResult, ExtractionResultSchema } from './extraction.schema';
 import { KnowledgeArtifact, ArtifactType } from '@prisma/client';
 import { EntityResolutionService } from '../resolution/resolution.service';
-import { AiUsageService } from '../ai/ai-usage.service';
 
 /**
  * The model that has been tested and proven to reliably output
@@ -28,7 +27,6 @@ export class KnowledgeExtractionService {
     private readonly artifactRepository: KnowledgeArtifactRepository,
     private readonly aiGateway: AiGatewayService,
     private readonly resolutionService: EntityResolutionService,
-    private readonly usageService: AiUsageService,
   ) {}
 
   /**
@@ -63,7 +61,7 @@ export class KnowledgeExtractionService {
       const prompt = this.buildExtractionPrompt(artifact);
       const startTime = Date.now();
 
-      const { data: result, usage } =
+      const { data: result } =
         await this.aiGateway.generateStructuredOutput<ExtractionResult>(
           prompt,
           ExtractionResultSchema,
@@ -72,16 +70,10 @@ export class KnowledgeExtractionService {
           {
             model: EXTRACTION_MODEL,
             maxTokens: EXTRACTION_MAX_TOKENS,
+            organizationId: artifact.organizationId,
+            feature: 'knowledge_extraction',
           },
         );
-        
-      // Log AI Usage
-      await this.usageService.logUsage(
-        artifact.organizationId,
-        'knowledge_extraction',
-        EXTRACTION_MODEL,
-        usage,
-      );
 
       let newTitle: string | undefined;
       if (
@@ -92,7 +84,11 @@ export class KnowledgeExtractionService {
         newTitle = result.title;
       }
 
-      await this.artifactRepository.saveExtractionResult(artifactId, result, newTitle);
+      await this.artifactRepository.saveExtractionResult(
+        artifactId,
+        result,
+        newTitle,
+      );
 
       // Stage 3: Trigger entity resolution asynchronously.
       // setImmediate ensures it never blocks Stage 2's error handling or logging.

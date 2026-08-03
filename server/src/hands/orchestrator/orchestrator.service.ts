@@ -7,7 +7,6 @@ import { SkillContext } from '../core/types';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderClientFactory } from '../../integrations/provider-client.factory';
 import { ProviderConnection } from '../../integrations/contracts';
-import { AiUsageService } from '../../ai/ai-usage.service';
 
 export interface HandleDMInput {
   organizationId: string;
@@ -29,7 +28,6 @@ export class OrchestratorService {
     private readonly sessionService: SessionService,
     private readonly prisma: PrismaService,
     private readonly clientFactory: ProviderClientFactory,
-    private readonly usageService: AiUsageService,
   ) {}
 
   /**
@@ -64,7 +62,12 @@ export class OrchestratorService {
   }
 
   private buildSystemPrompt(): string {
-    return 'You are AIAN, an autonomous AI assistant for an organizational knowledge graph. You must ONLY answer questions related to the organization\'s data, projects, or employees by using the provided tools. If the user asks a general question (e.g. math, coding, general trivia) that is unrelated to the organizational knowledge graph, you must politely refuse to answer. Be concise. If a tool call requires confirmation, we will handle it internally. Just choose the appropriate tool.';
+    return `You are AIAN, a strict enterprise organizational intelligence AI.
+CRITICAL RULES:
+1. You MUST ONLY answer questions related to the organization's data, projects, or employees.
+2. You MUST strictly refuse to answer any general knowledge questions, math problems (e.g., "what is 2 + 3"), coding requests (e.g., "write python code"), or anything outside of organizational data. Respond with: "I am an enterprise AI and can only assist with organizational knowledge."
+3. To answer a user's question, you MUST use the KnowledgeSkill.answerQuestion tool. 
+4. Be concise and professional.`;
   }
 
   private buildTools(): AiTool[] {
@@ -142,18 +145,14 @@ export class OrchestratorService {
     // 3. Normal flow: Build messages and call AI
     const messages: AiMessage[] = [{ role: 'user', content: input.text }];
 
-    const { data: aiResult, usage } = await this.aiGateway.generateToolCalls(
+    const { data: aiResult } = await this.aiGateway.generateToolCalls(
       messages,
       this.buildTools(),
       this.buildSystemPrompt(),
-    );
-
-    // Log Usage
-    await this.usageService.logUsage(
-      input.organizationId,
-      'dm_chat',
-      'us.meta.llama3-3-70b-instruct-v1:0', // Ideally passed dynamically if configured
-      usage,
+      {
+        organizationId: input.organizationId,
+        feature: 'dm_chat',
+      },
     );
 
     // 4. Handle Tool Calls
@@ -199,7 +198,9 @@ export class OrchestratorService {
         let replyText = `✅ Executed: *${def.name}*`;
 
         if (!result.success) {
-          this.logger.error(`Skill ${def.name} failed. Error: ${result.error?.message || JSON.stringify(result.error)}`);
+          this.logger.error(
+            `Skill ${def.name} failed. Error: ${result.error?.message || JSON.stringify(result.error)}`,
+          );
           replyText = `❌ *${def.name}* failed to execute. Please check the logs for more details.`;
         } else if (result.data) {
           if (typeof result.data === 'object') {

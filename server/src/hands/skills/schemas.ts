@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { z } from 'zod';
 
 export const SendMessageInputSchema = z.object({
@@ -55,3 +56,20 @@ export const SummarizeInputSchema = z.object({
     .describe('Optional scope constraint, e.g., a project name or team.'),
 });
 export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;
+
+export const GenerateReportInputSchema = z.object({
+  scope: z
+    .string()
+    .describe('What the report is about, e.g., "Project AIAN", "Sprint 5", "Backend team".'),
+  timeframe: z.object({
+    from: z.string().describe('Start date in ISO 8601 format.'),
+    to: z.string().describe('End date in ISO 8601 format.'),
+  }).describe('The time period for the report.'),
+  sections: z
+    .array(z.enum(['tasks', 'meetings', 'knowledge']))
+    .optional()
+    .nullable()
+    .describe('Which sections to include. Defaults to all.'),
+});
+
+export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;

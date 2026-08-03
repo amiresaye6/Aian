@@ -492,6 +492,44 @@
       "name": "Billing & Usage",
       "item": [
         {
+          "name": "Get Quota Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/quota-dashboard?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "quota-dashboard"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}" }
+              ]
+            },
+            "description": "Retrieves the real-time usage quotas for tokens, storage, and members against the organization's plan limits."
+          }
+        },
+        {
+          "name": "Upgrade Subscription Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planSlug\": \"growth\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/subscription/upgrade?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "subscription", "upgrade"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}" }
+              ]
+            },
+            "description": "Upgrades or downgrades the active subscription to the specified plan."
+          }
+        },
+        {
           "name": "Get Usage Summary",
           "request": {
             "method": "GET",

@@ -19,7 +19,9 @@ export class AiUsageService {
     usage: AiUsage,
   ): Promise<void> {
     if (!organizationId) {
-      this.logger.warn(`Missing organizationId, skipping usage log for feature: ${feature}`);
+      this.logger.warn(
+        `Missing organizationId, skipping usage log for feature: ${feature}`,
+      );
       return;
     }
 
@@ -37,7 +39,9 @@ export class AiUsageService {
           budgetState: usage.budgetState,
         },
       });
-      this.logger.debug(`Logged AI usage for org ${organizationId} on feature ${feature}`);
+      this.logger.debug(
+        `Logged AI usage for org ${organizationId} on feature ${feature}`,
+      );
     } catch (error) {
       this.logger.error(`Failed to log AI usage: ${error.message}`);
     }
@@ -58,7 +62,9 @@ export class AiUsageService {
     sorting?: { sortBy?: string; sortOrder?: 'asc' | 'desc' },
   ) {
     const page = pagination?.page ? Math.max(1, pagination.page) : 1;
-    const limit = pagination?.limit ? Math.min(100, Math.max(1, pagination.limit)) : 20;
+    const limit = pagination?.limit
+      ? Math.min(100, Math.max(1, pagination.limit))
+      : 20;
     const skip = (page - 1) * limit;
 
     const where: any = { organizationId };

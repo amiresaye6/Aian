@@ -23,6 +23,7 @@ export class UserEntity implements User {
   memberStatus: any | null;
   joinedAt: Date | null;
   invitedByUserId: string | null;
+  isSuperAdmin: boolean;
 
   @Exclude()
   otpHash: string | null;

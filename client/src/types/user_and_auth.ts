@@ -8,6 +8,7 @@ export interface User {
   organizationId: string;
   organization: string;
   organizationLogo: string | null;
+  isSuperAdmin?: boolean;
 }
 
 export interface AuthResponse {
