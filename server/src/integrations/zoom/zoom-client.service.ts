@@ -201,7 +201,7 @@ export class ZoomClientService implements ProviderClient {
     }
   }
 
-  async getMeetings(
+  async listMeetings(
     connection: ProviderConnection,
     type: MeetingType,
     pageSize = 30,

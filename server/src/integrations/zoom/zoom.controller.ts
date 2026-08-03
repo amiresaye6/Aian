@@ -11,6 +11,7 @@ import {
 import { ProviderConnectionRepository } from '../../ingestion/repositories/provider-connection.repository';
 import { ZoomClientService } from './zoom-client.service';
 import { MeetingType } from './zoom-client.service'
+import { GetMeetingsDto } from './dto/get-meetings.dto';
 /**
  * Handles the Zoom OAuth 2.0 flow.
  */
@@ -25,8 +26,7 @@ export class ZoomController {
 @Get('scheduled/:connectionId')
   async scheduled(
     @Param('connectionId') connectionId: string,
-    @Query('pageSize') pageSize?: string,
-    @Query('nextPageToken') nextPageToken?: string,
+    @Query() query: GetMeetingsDto
   ) {
     const connection = await this.connectionRepo.findById(connectionId);
     if (!connection) {
@@ -35,7 +35,7 @@ export class ZoomController {
 
     const mappedConnection = this.connectionRepo.mapToInterface(connection);
 
-    const parsedPageSize = pageSize ? parseInt(pageSize, 10) : 30;
+    const parsedPageSize = query.pageSize ? query.pageSize : 30;
 
     let result: {
       resources: any[];
@@ -44,11 +44,11 @@ export class ZoomController {
       totalRecords: number;
     };
     try {
-      result = await this.zoomClient.getMeetings(
+      result = await this.zoomClient.listMeetings(
         mappedConnection as any,
         MeetingType.Scheduled,
         parsedPageSize,
-        nextPageToken,
+        query.nextPageToken,
       );
     } catch (err: any) {
       return { error: `Failed to fetch resources: ${err.message}` };
@@ -63,10 +63,9 @@ export class ZoomController {
   }
 
 @Get('live/:connectionId')
-  async liveMeetings(
+  async liveMeetings( 
     @Param('connectionId') connectionId: string,
-    @Query('pageSize') pageSize?: string,
-    @Query('nextPageToken') nextPageToken?: string,
+    @Query() query: GetMeetingsDto
   ) {
     const connection = await this.connectionRepo.findById(connectionId);
     if (!connection) {
@@ -75,7 +74,7 @@ export class ZoomController {
 
     const mappedConnection = this.connectionRepo.mapToInterface(connection);
 
-    const parsedPageSize = pageSize ? parseInt(pageSize, 10) : 30;
+    const parsedPageSize = query.pageSize ? query.pageSize : 30;
 
     let result: {
       resources: any[];
@@ -84,11 +83,11 @@ export class ZoomController {
       totalRecords: number;
     };
     try {
-      result = await this.zoomClient.getMeetings(
+      result = await this.zoomClient.listMeetings(
         mappedConnection as any,
         MeetingType.Live,
         parsedPageSize,
-        nextPageToken,
+        query.nextPageToken,
       );
     } catch (err: any) {
       return { error: `Failed to fetch resources: ${err.message}` };
