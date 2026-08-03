@@ -8,12 +8,14 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { IsFutureDate } from '../../../decorators/is-future-date.decorator';
 
 export class CreateMeetingDto {
   @IsString()
   topic: string;
 
   @IsDateString()
+  @IsFutureDate()
   startTime: string;
 
   @IsInt()

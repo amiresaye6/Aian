@@ -5,6 +5,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { IsFutureDate } from '../../../decorators/is-future-date.decorator';
 
 export class UpdateMeetingDto {
   @IsOptional()
@@ -13,6 +14,7 @@ export class UpdateMeetingDto {
 
   @IsOptional()
   @IsDateString()
+  @IsFutureDate()
   startTime?: string;
 
   @IsOptional()
