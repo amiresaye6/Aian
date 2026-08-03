@@ -1,0 +1,13 @@
+model MeetingRegistrant {
+  id           String   @id @default(cuid())
+  meetingId    String
+  connectionId String
+  email        String
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([meetingId, email])
+  @@index([meetingId])
+  @@index([connectionId])
+}
