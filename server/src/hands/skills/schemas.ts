@@ -55,3 +55,38 @@ export const SummarizeInputSchema = z.object({
     .describe('Optional scope constraint, e.g., a project name or team.'),
 });
 export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;
+
+
+// Zoom Meeting Schemas
+export const CreateMeetingInputSchema = z.object({
+  topic: z.string().describe('The meeting topic or title.'),
+  startTime: z.string().describe('ISO 8601 start time with timezone, e.g., "2026-08-10T14:00:00Z".'),
+  durationMinutes: z.number().describe('Duration of the meeting in minutes.'),
+  timezone: z.string().optional().describe('timezone, e.g., "Africa/Cairo". Defaults to UTC.'),
+  attendees: z.array(z.string().email()).optional().describe('List of attendee email addresses.'),
+});
+
+export const UpdateMeetingInputSchema = z.object({
+  meetingId: z.string().describe('The Zoom meeting ID.'),
+  fields: z.record(z.string(), z.any()).describe('Fields to update: topic, start_time, duration, etc.'),
+});
+
+export const CancelMeetingInputSchema = z.object({
+  meetingId: z.string().describe('The Zoom meeting ID to cancel or delete.'),
+});
+
+export const InviteMeetingInputSchema = z.object({
+  meetingId: z.string().describe('The Zoom meeting ID.'),
+  attendees: z.array(z.string().email()).describe('Email addresses of attendees to add.'),
+});
+
+export const GetMeetingInputSchema = z.object({
+  meetingId: z.string().describe('The Zoom meeting ID.'),
+});
+
+export const ListMeetingsInputSchema = z.object({
+  dateRange: z.object({
+    from: z.string().optional(),
+    to: z.string().optional(),
+  }).optional().describe('Filter meetings by date range.'),
+});

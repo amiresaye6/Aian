@@ -9,6 +9,7 @@ import { EmailService } from '../../email/email.service';
 export enum MeetingType {
   Scheduled = 'scheduled',
   Live = 'live',
+  Upcoming = 'upcoming',
 }
 
 @Injectable()
@@ -343,4 +344,6 @@ export class ZoomClientService implements ProviderClient {
       },
     });
   }
+
+
 }
