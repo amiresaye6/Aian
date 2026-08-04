@@ -13,6 +13,7 @@ import { MessagingSkill } from './skills/messaging.skill';
 import { EmailSkill } from './skills/email.skill';
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { KnowledgeSkill } from './skills/knowledge.skill';
+import { ReportingSkill } from './skills/reporting.skill';
 
 import { JiraModule } from '../integrations/jira/jira.module';
 import { JiraSkill } from './skills/jira.skill';
@@ -36,6 +37,7 @@ import { JiraSkill } from './skills/jira.skill';
     EmailSkill,
     KnowledgeSkill,
     JiraSkill,
+    ReportingSkill,
   ],
   controllers: [AuditController],
   exports: [OrchestratorService, AuditLogService],

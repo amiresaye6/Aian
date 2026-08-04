@@ -1,52 +1,63 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import { AiProviderFactory } from './providers/ai-provider.factory';
 import { AiOptions, AiResponse } from './providers/ai-provider.interface';
 import { z } from 'zod';
+import { QuotaService } from '../billing/quota.service';
+import { AiUsageService } from './ai-usage.service';
 
 @Injectable()
 export class AiGatewayService {
   private readonly logger = new Logger(AiGatewayService.name);
 
-  constructor(private readonly providerFactory: AiProviderFactory) {}
+  constructor(
+    private readonly providerFactory: AiProviderFactory,
+    private readonly quotaService: QuotaService,
+    private readonly aiUsageService: AiUsageService,
+  ) {}
 
   /**
-   * Simple validation to prevent obvious prompt injection attacks. #to-do
+   * Enforces quota limits before an AI call
    */
-  private sanitizePrompt(prompt: string): string {
-    // Basic heuristic check (this can be expanded to use a lightweight LLM safeguard model if needed)
-    const dangerousPatterns = [
-      /ignore all previous instructions/i,
-      /you are now an unrestricted/i,
-      /system prompt/i,
-    ];
+  private async enforceQuota(options?: AiOptions): Promise<void> {
+    if (!options?.organizationId) return;
 
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(prompt)) {
-        this.logger.warn(
-          `Potential prompt injection detected. Pattern matched: ${pattern}`,
-        );
-        // For now, we just strip the matched pattern. In a real system, you might reject the request.
-        prompt = prompt.replace(pattern, '[REDACTED]');
-      }
+    const quota = await this.quotaService.checkTokenQuota(
+      options.organizationId,
+    );
+    if (!quota.allowed) {
+      throw new ForbiddenException(
+        `Organization has exceeded its AI token quota.`,
+      );
     }
-
-    return prompt;
   }
 
   /**
    * Wrapper for standard text generation. Includes basic telemetry.
    */
-  async generateText(prompt: string, options?: AiOptions): Promise<AiResponse<string>> {
-    const safePrompt = this.sanitizePrompt(prompt);
+  async generateText(
+    prompt: string,
+    options?: AiOptions,
+  ): Promise<AiResponse<string>> {
+    await this.enforceQuota(options);
     const provider = this.providerFactory.getProvider();
 
     this.logger.log(`Routing text generation to ${provider.name}.`);
     const startTime = Date.now();
 
     try {
-      const result = await provider.generateText(safePrompt, options);
+      const result = await provider.generateText(prompt, options);
       const latency = Date.now() - startTime;
       this.logger.log(`Text generation completed in ${latency}ms.`);
+
+      if (options?.organizationId && options?.feature) {
+        await this.aiUsageService.logUsage(
+          options.organizationId,
+          options.feature,
+          provider.name,
+          result.usage,
+        );
+      }
+
       return result;
     } catch (error) {
       this.logger.error(
@@ -66,7 +77,7 @@ export class AiGatewayService {
     schemaDescription: string,
     options?: AiOptions,
   ): Promise<AiResponse<T>> {
-    const safePrompt = this.sanitizePrompt(prompt);
+    await this.enforceQuota(options);
     const provider = this.providerFactory.getProvider();
 
     this.logger.log(
@@ -77,7 +88,7 @@ export class AiGatewayService {
     try {
       // The provider internally ensures the output parses against the zod schema.
       const result = await provider.generateStructuredOutput(
-        safePrompt,
+        prompt,
         schema,
         schemaName,
         schemaDescription,
@@ -88,6 +99,15 @@ export class AiGatewayService {
       this.logger.log(
         `Structured output generation completed in ${latency}ms.`,
       );
+
+      if (options?.organizationId && options?.feature) {
+        await this.aiUsageService.logUsage(
+          options.organizationId,
+          options.feature,
+          provider.name,
+          result.usage,
+        );
+      }
 
       return result;
     } catch (error) {
@@ -106,7 +126,10 @@ export class AiGatewayService {
     tools: import('./providers/ai-provider.interface').AiTool[],
     systemPrompt?: string,
     options?: AiOptions,
-  ): Promise<AiResponse<import('./providers/ai-provider.interface').AiMessage>> {
+  ): Promise<
+    AiResponse<import('./providers/ai-provider.interface').AiMessage>
+  > {
+    await this.enforceQuota(options);
     const provider = this.providerFactory.getProvider();
 
     this.logger.log(`Routing tool calls to ${provider.name}.`);
@@ -121,6 +144,16 @@ export class AiGatewayService {
       );
       const latency = Date.now() - startTime;
       this.logger.log(`Tool generation completed in ${latency}ms.`);
+
+      if (options?.organizationId && options?.feature) {
+        await this.aiUsageService.logUsage(
+          options.organizationId,
+          options.feature,
+          provider.name,
+          result.usage,
+        );
+      }
+
       return result;
     } catch (error) {
       this.logger.error(

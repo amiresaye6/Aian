@@ -20,6 +20,13 @@ import { MessagesService } from './messages/messages.service';
   imports: [SlackModule, GithubModule, JiraModule, ZoomModule, ConfigModule],
   controllers: [ProvidersController],
   providers: [ProviderClientFactory, MessagesService],
-  exports: [ProviderClientFactory, MessagesService],
+  exports: [
+    ProviderClientFactory,
+    MessagesService,
+    SlackModule,
+    GithubModule,
+    JiraModule,
+    ZoomModule,
+  ],
 })
 export class IntegrationsModule {}

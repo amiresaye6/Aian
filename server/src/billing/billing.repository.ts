@@ -48,19 +48,17 @@ export class BillingRepository {
   async updateSubscriptionStatus(
     subscriptionId: string,
     status: SubscriptionStatus,
-    periodData?: {
-      currentPeriodStart: Date;
-      currentPeriodEnd: Date;
+    updates?: {
+      currentPeriodStart?: Date;
+      currentPeriodEnd?: Date;
+      planId?: string;
     },
   ) {
     return this.prisma.subscription.update({
       where: { id: subscriptionId },
       data: {
         status,
-        ...(periodData && {
-          currentPeriodStart: periodData.currentPeriodStart,
-          currentPeriodEnd: periodData.currentPeriodEnd,
-        }),
+        ...updates,
       },
     });
   }

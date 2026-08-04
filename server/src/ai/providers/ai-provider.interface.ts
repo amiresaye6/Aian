@@ -4,6 +4,8 @@ export interface AiOptions {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  organizationId?: string;
+  feature?: string;
 }
 
 export interface AiUsage {
@@ -29,7 +31,10 @@ export interface AiProvider {
   /**
    * Generates a plain text response.
    */
-  generateText(prompt: string, options?: AiOptions): Promise<AiResponse<string>>;
+  generateText(
+    prompt: string,
+    options?: AiOptions,
+  ): Promise<AiResponse<string>>;
 
   /**
    * Generates a structured JSON output matching the provided Zod schema.

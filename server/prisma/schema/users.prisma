@@ -7,6 +7,7 @@ model User {
   emailVerifiedAt  DateTime?  @map("email_verified_at") @db.Timestamptz
   status           UserStatus @default(pending_verification)
   refreshTokenHash String?
+  isSuperAdmin     Boolean    @default(false) @map("is_super_admin")
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -25,6 +26,7 @@ model User {
 
   otpHash      String?
   otpExpiresAt DateTime?
+  mustChangePassword Boolean @default(false) @map("must_change_password")
 
   // Relations 
   createdOrganizations Organization[]              @relation("OrgCreator")

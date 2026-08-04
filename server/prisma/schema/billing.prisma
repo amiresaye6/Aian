@@ -15,6 +15,13 @@ model SubscriptionPlan {
 
   storageLimitMb Int @map("storage_limit_mb")
 
+  aiTokenLimit             BigInt @default(0) @map("ai_token_limit")
+  overageTokenPriceCents   Int    @default(0) @map("overage_token_price_cents")
+  overageStoragePriceCents Int    @default(0) @map("overage_storage_price_cents")
+  overageUserPriceCents    Int    @default(0) @map("overage_user_price_cents")
+
+  isTrial Boolean @default(false) @map("is_trial")
+
   active Boolean @default(true)
 
   sortOrder Int @default(0) @map("sort_order")
@@ -25,6 +32,26 @@ model SubscriptionPlan {
   subscriptions Subscription[]
 
   @@map("subscription_plans")
+}
+
+model UsagePeriodSnapshot {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  periodStart       DateTime @map("period_start") @db.Timestamptz
+  periodEnd         DateTime @map("period_end") @db.Timestamptz
+  totalTokensUsed   BigInt   @map("total_tokens_used")
+  totalStorageMb    Int      @map("total_storage_mb")
+  totalMembers      Int      @map("total_members")
+  overageTokens     BigInt   @default(0) @map("overage_tokens")
+  overageStorageMb  Int      @default(0) @map("overage_storage_mb")
+  overageUsers      Int      @default(0) @map("overage_users")
+  overageTotalCents Int      @default(0) @map("overage_total_cents")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, periodStart])
+  @@map("usage_period_snapshots")
 }
 
 model Subscription {
@@ -90,23 +117,23 @@ model Payment {
 }
 
 model AiUsageLog {
-  id              String   @id @default(uuid())
-  organizationId  String   @map("organization_id")
-  feature         String   @db.VarChar(100)
-  modelUsed       String   @map("model_used") @db.VarChar(100)
-  
-  inputTokens     Int      @map("input_tokens")
-  outputTokens    Int      @map("output_tokens")
-  totalTokens     Int      @map("total_tokens")
-  costUsd         Float    @map("cost_usd")
-  
-  stopReason      String?  @map("stop_reason") @db.VarChar(50)
-  budgetState     String?  @map("budget_state") @db.VarChar(50)
-  
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  
+  id             String @id @default(uuid())
+  organizationId String @map("organization_id")
+  feature        String @db.VarChar(100)
+  modelUsed      String @map("model_used") @db.VarChar(100)
+
+  inputTokens  Int   @map("input_tokens")
+  outputTokens Int   @map("output_tokens")
+  totalTokens  Int   @map("total_tokens")
+  costUsd      Float @map("cost_usd")
+
+  stopReason  String? @map("stop_reason") @db.VarChar(50)
+  budgetState String? @map("budget_state") @db.VarChar(50)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
   // Relations
-  organization    Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@map("ai_usage_logs")
 }

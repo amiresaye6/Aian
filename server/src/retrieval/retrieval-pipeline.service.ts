@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { QueryUnderstandingService } from './services/query-understanding.service';
 import { GraphSearchService } from './services/graph-search.service';
 import {
@@ -33,11 +33,17 @@ export class RetrievalPipelineService {
   ): Promise<RetrievalPipelineResult> {
     this.logger.log(`Starting retrieval pipeline for query: "${query}"`);
 
-    // Stage 1: Query Understanding
     const understanding = await this.queryUnderstanding.analyzeQuery(
       organizationId,
       query,
     );
+
+    if (understanding.isInjectionAttempt) {
+      this.logger.warn(
+        `Prompt injection attempt detected for query: "${query}"`,
+      );
+      throw new BadRequestException('I cannot fulfill this request.');
+    }
 
     // Stage 2 & 3: Graph Search & Ranking
     const rankedArtifacts = await this.graphSearch.searchAndRankArtifacts(

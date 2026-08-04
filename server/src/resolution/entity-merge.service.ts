@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GraphUpdateService } from '../graph/graph-update.service';
 
@@ -11,20 +16,30 @@ export class EntityMergeService {
     private readonly graphUpdateService: GraphUpdateService,
   ) {}
 
-  async mergeEntities(primaryId: string, secondaryId: string, actorUserId: string) {
+  async mergeEntities(
+    primaryId: string,
+    secondaryId: string,
+    actorUserId: string,
+  ) {
     if (primaryId === secondaryId) {
       throw new BadRequestException('Cannot merge an entity into itself');
     }
 
-    const primary = await this.prisma.resolvedEntity.findUnique({ where: { id: primaryId } });
-    const secondary = await this.prisma.resolvedEntity.findUnique({ where: { id: secondaryId } });
+    const primary = await this.prisma.resolvedEntity.findUnique({
+      where: { id: primaryId },
+    });
+    const secondary = await this.prisma.resolvedEntity.findUnique({
+      where: { id: secondaryId },
+    });
 
     if (!primary || !secondary) {
       throw new NotFoundException('One or both entities not found');
     }
 
     if (primary.organizationId !== secondary.organizationId) {
-      throw new BadRequestException('Entities must belong to the same organization');
+      throw new BadRequestException(
+        'Entities must belong to the same organization',
+      );
     }
 
     if (primary.type !== secondary.type) {
@@ -33,12 +48,22 @@ export class EntityMergeService {
 
     const primaryEntity = await this.prisma.$transaction(async (tx) => {
       // 1. Find and handle duplicate mentions
-      const primaryMentions = await tx.entityMention.findMany({ where: { resolvedEntityId: primaryId } });
-      const secondaryMentions = await tx.entityMention.findMany({ where: { resolvedEntityId: secondaryId } });
+      const primaryMentions = await tx.entityMention.findMany({
+        where: { resolvedEntityId: primaryId },
+      });
+      const secondaryMentions = await tx.entityMention.findMany({
+        where: { resolvedEntityId: secondaryId },
+      });
 
       const duplicateSecondaryMentionIds = secondaryMentions
-        .filter(sm => primaryMentions.some(pm => pm.artifactId === sm.artifactId && pm.extractedName === sm.extractedName))
-        .map(sm => sm.id);
+        .filter((sm) =>
+          primaryMentions.some(
+            (pm) =>
+              pm.artifactId === sm.artifactId &&
+              pm.extractedName === sm.extractedName,
+          ),
+        )
+        .map((sm) => sm.id);
 
       if (duplicateSecondaryMentionIds.length > 0) {
         await tx.entityMention.deleteMany({
@@ -53,12 +78,16 @@ export class EntityMergeService {
       });
 
       // 3. Merge aliases
-      const primaryAliases = Array.isArray(primary.aliases) ? primary.aliases : [];
-      const secondaryAliases = Array.isArray(secondary.aliases) ? secondary.aliases : [];
-      
+      const primaryAliases = Array.isArray(primary.aliases)
+        ? primary.aliases
+        : [];
+      const secondaryAliases = Array.isArray(secondary.aliases)
+        ? secondary.aliases
+        : [];
+
       const newAliasesSet = new Set([
-        ...primaryAliases as string[],
-        ...secondaryAliases as string[],
+        ...(primaryAliases as string[]),
+        ...(secondaryAliases as string[]),
         secondary.canonicalName,
       ]);
       const newAliases = Array.from(newAliasesSet);
@@ -95,7 +124,11 @@ export class EntityMergeService {
     });
 
     // 6. Merge graph nodes
-    await this.graphUpdateService.mergeGraphNodes(primaryId, secondaryId);
+    await this.graphUpdateService.mergeGraphNodes(
+      primaryId,
+      secondaryId,
+      primaryEntity.aliases as string[],
+    );
 
     return primaryEntity;
   }
