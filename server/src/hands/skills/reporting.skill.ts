@@ -117,9 +117,9 @@ export class ReportingSkill implements OnModuleInit {
             const contextString = retrievalResult?.contextString || '';
             
             const summaryAnswer = await this.answerGeneration.generateAnswer(
+              ctx.organizationId,
               `Provide a concise summary regarding: ${scope}`,
-              contextString,
-              {} as any
+              contextString
             );
             knowledgeMarkdown = `## 🧠 Knowledge Context\n${summaryAnswer}`;
 
@@ -138,8 +138,8 @@ export class ReportingSkill implements OnModuleInit {
 
         // Assemble the final Markdown Report
         const sourcesFormatted = sourcesList.length > 0 ? sourcesList.join(', ') : 'None';
-        let fullReport = `# Report: ${scope}
-*Period: ${timeframe.from} — ${timeframe.to}*
+        const timeframeText = timeframe ? `*Period: ${timeframe.from} — ${timeframe.to}*` : '*Period: All Time*';
+        let fullReport = `# Report: ${scope}\n${timeframeText}
 
 ${tasksMarkdown}
 

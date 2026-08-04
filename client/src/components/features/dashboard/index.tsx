@@ -8,14 +8,14 @@ import { Sparkles, Video, FileText, MessageSquare, CalendarClock } from "lucide-
 import { OrganizationStatusBadge } from "./OrganizationStatusBadge";
 import { QuickActionsRow } from "./QuickActionsRow";
 import { OrganizationDetailsCard } from "./OrganizationDetailsCard";
-import { RecentActivityCard } from "./RecentActivityCard";
+import { RecentSyncJobsCard } from "./RecentSyncJobsCard";
+import { KnowledgeDistributionChart } from "./KnowledgeDistributionChart";
+import { RecentAuditsCard } from "./RecentAuditsCard";
 import { StatsRow } from "./StatsRow";
 import { SubscriptionCard } from "./SubscriptionCard";
 import { ConnectedIntegrationsCard } from "./ConnectedIntegrationsCard";
 import { TeamCard } from "./TeamCard";
 import { AskAianBar } from "./AskAianBar";
-import { PlaceholderListCard } from "./PlaceholderListCard";
-import { UsagePlaceholderCard } from "./UsagePlaceholderCard";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -76,7 +76,13 @@ export default function DashboardPage() {
       </div>
 
       <div className="mb-6">
-        <StatsRow memberCount={data.memberCount} roleCount={data.roleCount} />
+        <StatsRow 
+          memberCount={data.memberCount || 0} 
+          roleCount={data.roleCount || 0} 
+          totalKnowledge={data.integrations?.reduce((acc, curr) => acc + (curr.knowledgeItems || 0), 0) || 0}
+          connectedIntegrations={data.integrations?.length || 0}
+          recentSyncs={data.syncJobs?.length || 0}
+        />
       </div>
 
       <QuickActionsRow />
@@ -84,26 +90,20 @@ export default function DashboardPage() {
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         {/* Main column */}
         <div className="space-y-6 lg:col-span-2">
-          <PlaceholderListCard title="Recent AI Insights" icon={Sparkles} emptyMessage="No insights yet." />
-          <PlaceholderListCard title="Recent Meetings" icon={Video} emptyMessage="No meetings yet." />
-
           <div className="grid gap-6 sm:grid-cols-2">
-            <PlaceholderListCard title="Recent Documents" icon={FileText} emptyMessage="No documents yet." />
-            <RecentActivityCard />
+             <KnowledgeDistributionChart integrations={data.integrations || []} eyes={data.eyes || []} />
+             <RecentSyncJobsCard jobs={data.syncJobs || []} />
           </div>
-
-          <PlaceholderListCard title="Recent Messages" icon={MessageSquare} emptyMessage="No messages yet." />
-           <PlaceholderListCard title="Upcoming" icon={CalendarClock} emptyMessage="Nothing scheduled yet." />
+          
+          <RecentAuditsCard />
         </div>
 
         {/* Right column */}
         <div className="space-y-6">
           <SubscriptionCard subscription={data.subscription} />
           {data.organization && <OrganizationDetailsCard organization={data.organization} />}
-          <UsagePlaceholderCard />
           <ConnectedIntegrationsCard eyes={data.eyes} integrations={data.integrations} />
           {data.organization?.id && <TeamCard organizationId={data.organization.id} />}
-        
         </div>
       </div>
     </AppLayout>

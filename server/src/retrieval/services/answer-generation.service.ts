@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
+import { ANSWER_GENERATION_PROMPT } from '../../ai/prompts';
 
 @Injectable()
 export class AnswerGenerationService {
@@ -14,23 +15,10 @@ export class AnswerGenerationService {
   ): Promise<string> {
     this.logger.log('Generating final answer based on Evidence Chains.');
 
-    const prompt = `
-You are AIAN, an enterprise organizational intelligence AI.
-The user has asked a question. You have been provided with an "Evidence Chain" retrieved from the organizational knowledge graph.
-
-USER QUESTION:
-"${query}"
-
-EVIDENCE CHAIN CONTEXT:
-${contextString}
-
-INSTRUCTIONS:
-1. Answer the user's question accurately using ONLY the information provided in the Evidence Chain.
-2. If the context does not contain the answer, politely state that you do not have enough information in the current knowledge graph.
-3. ABSOLUTELY DO NOT answer general knowledge questions, math queries, or coding requests. If the user asks for code (e.g., Python) or math (e.g., 2+3), you MUST refuse to answer and state that you are an enterprise AI.
-4. Narrate the timeline of events or logical progression if applicable (e.g., "First discussed in Slack, then a PR was opened").
-5. Be concise, professional, and clear.
-`;
+    const prompt = ANSWER_GENERATION_PROMPT.replace('{query}', query).replace(
+      '{contextString}',
+      contextString,
+    );
 
     // We can use standard text generation for the conversational answer
     const { data: result } = await this.aiGateway.generateText(prompt, {

@@ -9,6 +9,8 @@ import { EvidenceChainCard } from "./EvidenceChainCard";
 import { useAskQuestion } from "@/hooks/use-chat";
 import { EvidenceNode } from "@/api/chat";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   role: "user" | "assistant";
@@ -171,8 +173,11 @@ export default function ChatScreen() {
                     : "min-w-0 flex-1 pt-1 text-foreground"
                 )}
               >
-                <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-
+                <div className="prose prose-sm dark:prose-invert max-w-none break-words whitespace-pre-wrap">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
                 {/* Citations block for Assistant */}
                 {msg.evidenceChains && msg.evidenceChains.length > 0 && (
                   <div className="mt-4 flex w-full flex-col gap-2 rounded-2xl border border-black/5 dark:border-white/5 bg-black/[0.03] dark:bg-black/20 p-4">

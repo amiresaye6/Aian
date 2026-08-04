@@ -5,7 +5,8 @@ export const useSubscriptionPlans = () => {
   return useQuery({
     queryKey: ["subscription-plans"],
     queryFn: async () => {
-      return billingApi.getPlans();
+      const res = await billingApi.getPlans();
+      return res.data;
     },
   });
 };

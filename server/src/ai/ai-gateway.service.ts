@@ -32,30 +32,6 @@ export class AiGatewayService {
   }
 
   /**
-   * Simple validation to prevent obvious prompt injection attacks. #to-do
-   */
-  private sanitizePrompt(prompt: string): string {
-    // Basic heuristic check (this can be expanded to use a lightweight LLM safeguard model if needed)
-    const dangerousPatterns = [
-      /ignore all previous instructions/i,
-      /you are now an unrestricted/i,
-      /system prompt/i,
-    ];
-
-    for (const pattern of dangerousPatterns) {
-      if (pattern.test(prompt)) {
-        this.logger.warn(
-          `Potential prompt injection detected. Pattern matched: ${pattern}`,
-        );
-        // For now, we just strip the matched pattern. In a real system, you might reject the request.
-        prompt = prompt.replace(pattern, '[REDACTED]');
-      }
-    }
-
-    return prompt;
-  }
-
-  /**
    * Wrapper for standard text generation. Includes basic telemetry.
    */
   async generateText(
@@ -63,14 +39,13 @@ export class AiGatewayService {
     options?: AiOptions,
   ): Promise<AiResponse<string>> {
     await this.enforceQuota(options);
-    const safePrompt = this.sanitizePrompt(prompt);
     const provider = this.providerFactory.getProvider();
 
     this.logger.log(`Routing text generation to ${provider.name}.`);
     const startTime = Date.now();
 
     try {
-      const result = await provider.generateText(safePrompt, options);
+      const result = await provider.generateText(prompt, options);
       const latency = Date.now() - startTime;
       this.logger.log(`Text generation completed in ${latency}ms.`);
 
@@ -103,7 +78,6 @@ export class AiGatewayService {
     options?: AiOptions,
   ): Promise<AiResponse<T>> {
     await this.enforceQuota(options);
-    const safePrompt = this.sanitizePrompt(prompt);
     const provider = this.providerFactory.getProvider();
 
     this.logger.log(
@@ -114,7 +88,7 @@ export class AiGatewayService {
     try {
       // The provider internally ensures the output parses against the zod schema.
       const result = await provider.generateStructuredOutput(
-        safePrompt,
+        prompt,
         schema,
         schemaName,
         schemaDescription,
