@@ -12,6 +12,8 @@ import { MessagingSkill } from './skills/messaging.skill';
 import { EmailSkill } from './skills/email.skill';
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { KnowledgeSkill } from './skills/knowledge.skill';
+import { MeetingSkill } from './skills/meeting.skill';
+import { ZoomModule } from '../integrations/zoom/zoom.module';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { KnowledgeSkill } from './skills/knowledge.skill';
     EmailModule,
     AiGatewayModule,
     RetrievalModule,
+    ZoomModule
   ],
   providers: [
     AuditLogService,
@@ -30,6 +33,7 @@ import { KnowledgeSkill } from './skills/knowledge.skill';
     MessagingSkill,
     EmailSkill,
     KnowledgeSkill,
+    MeetingSkill
   ],
   exports: [OrchestratorService],
 })

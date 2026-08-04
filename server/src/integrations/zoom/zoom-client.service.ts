@@ -381,7 +381,6 @@ export class ZoomClientService implements ProviderClient {
         continue;
       }
 
-      console.log(htmlContent)
       await this.emailService.sendBrandedEmail(
         email,
         'Meeting Registration',
