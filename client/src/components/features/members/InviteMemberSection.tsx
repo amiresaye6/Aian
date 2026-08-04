@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Plus, AlertCircle } from "lucide-react";
+import { Mail, Plus, AlertCircle, UserPlus } from "lucide-react";
 import { useInviteMember } from "@/hooks/use-members";
 import { useRoles } from "@/hooks/use-roles";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -54,7 +61,17 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
   };
 
   return (
-    <div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-gold/10 rounded-lg">
+          <UserPlus className="w-5 h-5 text-gold-soft drop-shadow-[0_0_5px_rgba(201,152,43,0.8)]" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-foreground">Invite a teammate</h3>
+          <p className="text-xs text-muted-foreground">They'll receive an email with login instructions</p>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="flex-1">
           <div className="relative">
@@ -67,10 +84,10 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
               }}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAdd())}
               placeholder="colleague@company.com"
-              className={`h-12 w-full rounded-2xl border pl-10 pr-4 text-[14px] outline-none transition-all placeholder:text-muted-foreground/60 bg-black/[0.02] dark:bg-white/[0.03] focus:bg-black/[0.03] dark:focus:bg-white/[0.05] ${
+              className={`h-12 w-full rounded-2xl border pl-10 pr-4 text-[14px] outline-none transition-all placeholder:text-muted-foreground/60 bg-white/5 focus:bg-white/[0.07] ${
                 emailError
                   ? "border-destructive/50 focus:border-destructive"
-                  : "border-black/10 dark:border-white/10 focus:border-[color:var(--gold-soft)]/40"
+                  : "border-white/10 focus:border-[color:var(--gold-soft)]/40"
               }`}
             />
           </div>
@@ -81,33 +98,30 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
           )}
         </div>
 
-        <div>
-          <select
+        <div className="sm:w-56">
+          <Select
             value={roleId}
-            onChange={(e) => {
-              setRoleId(e.target.value);
+            onValueChange={(val) => {
+              setRoleId(val);
               if (roleError) setRoleError(null);
             }}
             disabled={rolesLoading || !roles?.length}
-            className={`h-12 appearance-none rounded-2xl border bg-[color:var(--popover)] text-[color:var(--popover-foreground)] px-4 pr-10 text-[14px] outline-none disabled:opacity-50 ${
-              roleError
-                ? "border-destructive/50 focus:border-destructive"
-                : "border-black/10 dark:border-white/10 focus:border-[color:var(--gold-soft)]/40"
-            }`}
           >
-            <option value="" disabled className="bg-[color:var(--popover)] text-[color:var(--popover-foreground)]">
-              {rolesLoading ? "Loading roles..." : "Select role"}
-            </option>
-            {roles?.map((r) => (
-              <option
-                key={r.id}
-                value={r.id}
-                className="bg-[color:var(--popover)] text-[color:var(--popover-foreground)]"
-              >
-                {r.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger
+              className={`h-12 bg-white/5 text-sm ${
+                roleError ? "border-destructive/50" : "border-white/10"
+              }`}
+            >
+              <SelectValue placeholder={rolesLoading ? "Loading roles..." : "Select role"} />
+            </SelectTrigger>
+            <SelectContent>
+              {roles?.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {roleError && (
             <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-destructive">
               <AlertCircle className="h-3.5 w-3.5" /> {roleError}
