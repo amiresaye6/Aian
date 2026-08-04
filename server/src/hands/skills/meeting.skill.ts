@@ -31,6 +31,14 @@ export class MeetingSkill implements OnModuleInit {
             destructive:false,
             handler: (ctx, input) => this.createMeeting(ctx, input)
         } as SkillDefinition  )
+
+        this.registry.register({
+            name:"meetingSkill.updateMeeting",
+            description:"update an existing zoom meeting",
+            schema:UpdateMeetingInputSchema,
+            destructive:false,
+            handler: (ctx, input) => this.updateMeeting(ctx, input)
+        } as SkillDefinition  )
     }
 
     async createMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
@@ -73,4 +81,45 @@ export class MeetingSkill implements OnModuleInit {
         );
     }
 
+
+    async updateMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
+        const parsed = UpdateMeetingInputSchema.safeParse(input);
+        if (!parsed.success) {
+            return {
+                success: false,
+                error: {
+                code: 'VALIDATION_ERROR',
+                message: parsed.error.message,
+                retryable: false,
+                },
+                meta: {
+                skill: 'updateMeeting',
+                provider: 'zoom',
+                durationMs: 0,
+                idempotencyKey: ctx.idempotencyKey,
+                },
+            };
+        }
+
+        const connection = await this.prisma.providerConnection.findFirst({
+            where:{ id:ctx.connectionId}
+        })
+
+        return this.resilience.execute(
+        ctx,
+        'meetingSkill',
+        'updateMeeting',
+        'zoom',
+        parsed.data,
+        async () => {
+            // 3. Delegate to your actual service
+            const result = await this.zoomClient.updateMeeting(
+                connection,
+                input.meetingId,
+                input
+            );
+            return result; // The ResilienceService automatically wraps this in a success result
+        },
+        );
+    }
 }
