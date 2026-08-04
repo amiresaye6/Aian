@@ -12,6 +12,15 @@ export enum MeetingType {
   Upcoming = 'upcoming',
 }
 
+export interface MeetingData {
+  id: string;
+  topic: string;
+  joinUrl: string;
+  startUrl: string;
+  startTime: string;
+  duration: number;
+}
+
 @Injectable()
 export class ZoomClientService implements ProviderClient {
   private readonly logger = new Logger(ZoomClientService.name);
@@ -256,72 +265,136 @@ export class ZoomClientService implements ProviderClient {
     }
   }
 
-  async createMeeting(connection: any, data: {
-    topic: string;
-    startTime: string;
-    durationMinutes: number;
-    timezone?: string;
-    attendees?: string[];
-  }) {
-      await this.verifyConnection(connection);
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+  async createMeeting(
+    connection: any,
+    data: {
+      topic: string;
+      startTime: string;
+      durationMinutes: number;
+      timezone?: string;
+      attendees?: string[];
+    },
+  ) {
+    await this.verifyConnection(connection);
 
-      const response = await axios.post(
-        `https://api.zoom.us/v2/users/me/meetings`,
-        {
-          topic: data.topic,
-          type: 2, // 2 = Scheduled meeting
-          start_time: data.startTime,
-          duration: data.durationMinutes,
-          timezone: data.timezone || 'UTC',
-          settings: {
-            host_video: true,
-            participant_video: true,
-            join_before_host: false,
-            mute_upon_entry: true,
-            approval_type: 0,
-            registrants_email_notification: true,
-          },
+    const accessToken = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    const response = await axios.post(
+      'https://api.zoom.us/v2/users/me/meetings',
+      {
+        topic: data.topic,
+        type: 2,
+        start_time: data.startTime,
+        duration: data.durationMinutes,
+        timezone: data.timezone || 'UTC',
+        settings: {
+          host_video: true,
+          participant_video: true,
+          join_before_host: false,
+          mute_upon_entry: true,
+          approval_type: 0,
+          registrants_email_notification: true,
         },
-        {
-          headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
+      },
+    );
+
+    const meetingData: MeetingData = {
+      id: String(response.data.id),
+      topic: response.data.topic,
+      joinUrl: response.data.join_url,
+      startUrl: response.data.start_url,
+      startTime: response.data.start_time,
+      duration: response.data.duration,
+    };
+
+    // حفظ الميتنج فى DB
+    await this.prismaService.meeting.create({
+      data: {
+        id: meetingData.id,
+        connectionId: connection.id,
+        topic: meetingData.topic,
+        joinUrl: meetingData.joinUrl,
+        startUrl: meetingData.startUrl,
+        startTime: new Date(meetingData.startTime),
+        duration: meetingData.duration,
+      },
+    });
+
+    if (data.attendees?.length) {
+      await this.addRegistrants(
+        connection,
+        meetingData.id,
+        data.attendees,
+        meetingData,
       );
+    }
 
-      const meetingData = {
-          id: String(response.data.id),
-          topic: response.data.topic,
-          joinUrl: response.data.join_url,
-          startUrl: response.data.start_url,
-          startTime: response.data.start_time,
-          duration: response.data.duration
-        }
-      if (data.attendees && data.attendees.length > 0) {
-        
-        await this.addRegistrants(connection, meetingData, data.attendees);
-      }
-
-      return meetingData;
+    return meetingData;
   }
 
-  async addRegistrants(connection: any, meeting: any | number, attendees: string[]): Promise<void> {
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
-      const htmlContent = 
-      `<p>You have been registered for a Zoom meeting.</p><p>Meeting ID: ${meeting.id}</p>
-        <p>Topic: ${meeting.topic}</p>
-        <p>Start Time: ${meeting.startTime}</p>
-        <p>Duration: ${meeting.duration} minutes</p>
-        <p><a href="${meeting.joinUrl}">Join Meeting</a></p>`
-      ;
+  async addRegistrants(
+    connection: any,
+    meetingId: string,
+    attendees: string[],
+    meetingData?: MeetingData,
+  ): Promise<void> {
+    const meeting =
+      meetingData ??
+      (await this.prismaService.meeting.findUniqueOrThrow({
+        where: {
+          id: meetingId,
+        },
+      }));
+
+    const htmlContent = `
+      <p>You have been registered for a Zoom meeting.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Start Time: ${meeting.startTime}</p>
+      <p>Duration: ${meeting.duration} minutes</p>
+      <p><a href="${meeting.joinUrl}">Join Meeting</a></p>
+    `;
+
+    const existingRegistrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+        select: {
+          email: true,
+        },
+      });
+
+    const existingEmails = new Set(
+      existingRegistrants.map((r) => r.email),
+    );
 
     for (const email of attendees) {
-      try {
-        await this.emailService.sendBrandedEmail(email, 'Meeting Registration', htmlContent);
-      } catch (error: any) {
-        console.warn(`Failed to add registrant ${email}:`, error.message);
+      if (existingEmails.has(email)) {
+        continue;
       }
+
+      console.log(htmlContent)
+      await this.emailService.sendBrandedEmail(
+        email,
+        'Meeting Registration',
+        htmlContent,
+      );
+
+      await this.prismaService.meetingRegistrant.create({
+        data: {
+          meetingId,
+          connectionId: connection.id,
+          email,
+        },
+      });
     }
   }
 
@@ -333,7 +406,7 @@ export class ZoomClientService implements ProviderClient {
                 Authorization: `Bearer ${accessToken}`,
       },
     });
-}
+  }
 
   async updateMeeting(connection: any, meetingId: string, fields: Record<string, any>): Promise<void> {
     const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);

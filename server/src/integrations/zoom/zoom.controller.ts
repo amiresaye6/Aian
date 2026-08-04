@@ -17,7 +17,6 @@ import { UpdateMeetingDto } from './dto/update-meetings.dto';
 import { AddRegistrantsDto } from './dto/add-registerants.dto';
 
 
-
 @Controller('zoom')
 export class ZoomController {
 
