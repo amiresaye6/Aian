@@ -398,12 +398,62 @@ export class ZoomClientService implements ProviderClient {
     }
   }
 
-  async deleteMeeting(connection: any, meetingId: string): Promise<void> {
-    const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+  async deleteMeeting(
+    connection: any,
+    meetingId: string,
+  ): Promise<void> {
+    await this.verifyConnection(connection);
 
-    await axios.delete(`https://api.zoom.us/v2/meetings/${meetingId}`, {
-      headers: {
-                Authorization: `Bearer ${accessToken}`,
+    const accessToken = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    const meeting = await this.prismaService.meeting.findUniqueOrThrow({
+      where: {
+        id: meetingId,
+      },
+    });
+
+    const registrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+      });
+
+    const htmlContent = `
+      <p>Your Zoom meeting has been cancelled.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Scheduled Time: ${meeting.startTime}</p>
+    `;
+
+    for (const registrant of registrants) {
+      await this.emailService.sendBrandedEmail(
+        registrant.email,
+        'Meeting Cancelled',
+        htmlContent,
+      );
+    }
+
+    await axios.delete(
+      `https://api.zoom.us/v2/meetings/${meetingId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    await this.prismaService.meetingRegistrant.deleteMany({
+      where: {
+        meetingId,
+      },
+    });
+
+    await this.prismaService.meeting.delete({
+      where: {
+        id: meetingId,
       },
     });
   }
