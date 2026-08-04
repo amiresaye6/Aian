@@ -697,58 +697,123 @@ export class JiraClientService implements ProviderClient {
     throw new HttpException('Unknown Jira Error', 500);
   }
 
+  private async resolveAssignee(organizationId: string, assigneeName: string): Promise<string> {
+    const users = await this.findUsers(organizationId, assigneeName);
+    if (users.length === 0) {
+      throw new BadRequestException('USER_NOT_FOUND');
+    }
+    if (users.length > 1) {
+      const names = users.map(u => u.displayName).join(', ');
+      throw new BadRequestException(`MULTIPLE_USERS_FOUND: ${names}`);
+    }
+    return users[0].accountId;
+  }
+
+  private async resolveTransition(organizationId: string, issueIdOrKey: string, targetStatus: string): Promise<string> {
+    const transitions = await this.getTransitions(organizationId, issueIdOrKey);
+    const target = targetStatus.trim().toLowerCase();
+    
+    const match = transitions.find(t => t.name.trim().toLowerCase() === target);
+    if (!match) {
+      const available = transitions.map(t => t.name).join(', ');
+      throw new BadRequestException(`INVALID_TRANSITION: available are ${available}`);
+    }
+    return match.id;
+  }
+
   // --- Task Orchestration Methods ---
 
   async createTask(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Build JQL/Assignees if necessary
-    // TODO: Call JiraClientService.createIssue
-    return {};
+    const fields: any = {
+      summary: input.title,
+      description: input.description,
+      project: { key: input.projectKey },
+      issuetype: { name: 'Task' }, // Assuming a default for now or input could provide it
+    };
+
+    if (input.priority) {
+      fields.priority = { name: input.priority };
+    }
+    if (input.labels && Array.isArray(input.labels)) {
+      fields.labels = input.labels;
+    }
+    if (input.dueDate) {
+      fields.duedate = input.dueDate;
+    }
+    if (input.assignee) {
+      const accountId = await this.resolveAssignee(organizationId, input.assignee);
+      fields.assignee = { accountId };
+    }
+
+    return this.createIssue(organizationId, { fields });
   }
 
   async updateTask(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Call JiraClientService.updateIssue
-    return {};
+    const { issueIdOrKey, fields } = input;
+    await this.updateIssue(organizationId, issueIdOrKey, { fields });
+    return { success: true };
   }
 
   async assignTask(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Call JiraClientService.findUsers to resolve assignee
-    // TODO: Call JiraClientService.updateIssue or assign endpoint
-    return {};
+    const { issueIdOrKey, assignee } = input;
+    const accountId = await this.resolveAssignee(organizationId, assignee);
+    await this.updateIssue(organizationId, issueIdOrKey, {
+      fields: { assignee: { accountId } },
+    });
+    return { success: true };
   }
 
   async moveTask(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Call JiraClientService.getTransitions to resolve transition
-    // TODO: Call JiraClientService.transitionIssue
-    return {};
+    const { issueIdOrKey, targetStatus } = input;
+    const transitionId = await this.resolveTransition(organizationId, issueIdOrKey, targetStatus);
+    await this.transitionIssue(organizationId, issueIdOrKey, transitionId);
+    return { success: true };
   }
 
   async commentTask(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Call JiraClientService.addComment
-    return {};
+    const { issueIdOrKey, body } = input;
+    return this.addComment(organizationId, issueIdOrKey, body);
   }
 
   async deleteTask(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Call JiraClientService.deleteIssue
-    return {};
+    const { issueIdOrKey } = input;
+    await this.deleteIssue(organizationId, issueIdOrKey);
+    return { success: true };
   }
 
   async listTasks(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Build JQL query from filters
-    // TODO: Call JiraClientService.searchIssues
-    return {};
+    const filters = [];
+
+    if (input.projectKey) {
+      filters.push(`project = "${input.projectKey}"`);
+    }
+    if (input.status) {
+      filters.push(`status = "${input.status}"`);
+    }
+    if (input.assignee) {
+      if (input.assignee === 'currentUser()') {
+        filters.push(`assignee = currentUser()`);
+      } else {
+        const accountId = await this.resolveAssignee(organizationId, input.assignee);
+        filters.push(`assignee = "${accountId}"`);
+      }
+    }
+    if (input.dateRange) {
+      if (input.dateRange.from) {
+        filters.push(`updated >= "${input.dateRange.from}"`);
+      }
+      if (input.dateRange.to) {
+        filters.push(`updated <= "${input.dateRange.to}"`);
+      }
+    }
+
+    const jql = filters.join(' AND ');
+    return this.searchIssues(organizationId, jql || 'order by updated DESC');
   }
 
   async getTask(organizationId: string, input: any): Promise<any> {
-    // TODO: Find ProviderConnection via PrismaService
-    // TODO: Call JiraClientService.getIssue
-    return {};
+    const { issueIdOrKey } = input;
+    return this.getIssue(organizationId, issueIdOrKey);
   }
 
   // --- Task Service Rest Methods ---
