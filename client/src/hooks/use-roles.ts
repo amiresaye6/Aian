@@ -51,3 +51,23 @@ export function useRoles() {
     isDeleting: deleteRoleMutation.isPending,
   };
 }
+export function useRoleDetails(roleId: string | null) {
+  return useQuery({
+    queryKey: ["role-details", roleId],
+    queryFn: async () => {
+      const res = await rolesApi.getRoleById(roleId as string);
+      return res.data;
+    },
+    enabled: !!roleId,
+  });
+}
+export function useAllPermissions() {
+  return useQuery({
+    queryKey: ["all-permissions"],
+    queryFn: async () => {
+      const res = await rolesApi.getAllPermissions();
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000, // catalog barely changes, cache for 5 min
+  });
+}
