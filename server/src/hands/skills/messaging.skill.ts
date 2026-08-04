@@ -20,6 +20,7 @@ export class MessagingSkill implements OnModuleInit {
         'Sends a chat message to a specific user or channel in the provider (e.g. Slack).',
       schema: SendMessageInputSchema,
       destructive: false,
+      requiredProviders: [],
       handler: (ctx: SkillContext, input: any) => this.sendMessage(ctx, input),
     });
   }
@@ -50,7 +51,7 @@ export class MessagingSkill implements OnModuleInit {
       'messaging-provider', // This maps to whichever provider is backing the connectionId
       parsed.data,
       async () => {
-        return this.messagesService.send(ctx.connectionId, {
+        return this.messagesService.send(ctx.triggerConnectionId, {
           targetId: parsed.data.channelId,
           text: parsed.data.text,
         });

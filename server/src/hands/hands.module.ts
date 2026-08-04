@@ -4,6 +4,7 @@ import { AuditLogService } from './audit/audit-log.service';
 import { AuditController } from './audit/audit.controller';
 import { ResilienceService } from './core/resilience.service';
 import { SkillRegistryService } from './core/registry.service';
+import { ConnectionResolverService } from './core/connection-resolver.service';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { EmailModule } from '../email/email.module';
 import { AiGatewayModule } from '../ai/ai-gateway.module';
@@ -27,6 +28,7 @@ import { ReportingSkill } from './skills/reporting.skill';
     AuditLogService,
     ResilienceService,
     SkillRegistryService,
+    ConnectionResolverService,
     SessionService,
     OrchestratorService,
     MessagingSkill,

@@ -6,6 +6,10 @@ export interface SkillDefinition {
   description: string; // What it does, injected into prompt
   schema: z.ZodTypeAny; // The input schema
   destructive: boolean; // Requires human confirmation
+  /** Provider keys that MUST be connected for this skill to execute. Missing = fail with user-friendly error. */
+  requiredProviders: string[];
+  /** Provider keys that are used if available but won't block execution if missing. */
+  optionalProviders?: string[];
   handler: (ctx: any, input: any) => Promise<any>;
 }
 
