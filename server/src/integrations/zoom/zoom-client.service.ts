@@ -408,14 +408,69 @@ export class ZoomClientService implements ProviderClient {
     });
   }
 
-  async updateMeeting(connection: any, meetingId: string, fields: Record<string, any>): Promise<void> {
-    const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+  async updateMeeting(
+    connection: any,
+    meetingId: string,
+    fields: {
+      topic?: string;
+      startTime?: string;
+      durationMinutes?: number;
+      timezone?: string;
+    },
+  ): Promise<void> {
+    await this.verifyConnection(connection);
 
-    await axios.patch(`https://api.zoom.us/v2/meetings/${meetingId}`, fields, {
-      headers: {
-                Authorization: `Bearer ${accessToken}`,
+    const accessToken = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    await axios.patch(
+      `https://api.zoom.us/v2/meetings/${meetingId}`,
+      {
+        topic: fields.topic,
+        start_time: fields.startTime,
+        duration: fields.durationMinutes,
+        timezone: fields.timezone,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    const meeting = await this.prismaService.meeting.update({
+      where: { id: meetingId },
+      data: {
+        ...(fields.topic && { topic: fields.topic }),
+        ...(fields.startTime && { startTime: new Date(fields.startTime) }),
+        ...(fields.durationMinutes && { duration: fields.durationMinutes }),
       },
     });
+
+    const registrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+      });
+
+    const htmlContent = `
+      <p>Your Zoom meeting has been updated.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Start Time: ${meeting.startTime}</p>
+      <p>Duration: ${meeting.duration} minutes</p>
+      <p><a href="${meeting.joinUrl}">Join Meeting</a></p>
+    `;
+
+    for (const registrant of registrants) {
+      await this.emailService.sendBrandedEmail(
+        registrant.email,
+        'Meeting Updated',
+        htmlContent,
+      );
+    }
   }
 
 
