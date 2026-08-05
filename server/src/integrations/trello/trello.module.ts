@@ -3,6 +3,7 @@ import { TrelloAuthController } from './controllers/trello-auth.controller';
 import { TrelloClientService } from './services/trello-client.service';
 import { TrelloAdapterService } from './services/trello-adapter.service';
 import { TrelloAssemblerService } from './services/trello-assembler.service';
+import { TrelloWebhookValidator } from './validators/trello-webhook.validator';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { IngestionModule } from '../../ingestion/ingestion.module';
 
@@ -13,11 +14,13 @@ import { IngestionModule } from '../../ingestion/ingestion.module';
     TrelloClientService,
     TrelloAdapterService,
     TrelloAssemblerService,
+    TrelloWebhookValidator,
   ],
   exports: [
     TrelloClientService,
     TrelloAdapterService,
     TrelloAssemblerService,
+    TrelloWebhookValidator,
   ],
 })
 export class TrelloModule {}
