@@ -82,12 +82,41 @@ private readonly logger = new Logger(MeetingSkill.name);
         'zoom',
         parsed.data,
         async () => {
-            // 3. Delegate to your actual service
-            const result = await this.zoomClient.createMeeting(
+            const createdMeeting = await this.zoomClient.createMeeting(
                 connection,
                 parsed.data
             );
-            return result; // The ResilienceService automatically wraps this in a success result
+            
+            const topic = createdMeeting.topic || 'Untitled Meeting';
+            const id = createdMeeting.id;
+            const duration = createdMeeting.duration ? `${createdMeeting.duration} mins` : 'N/A';
+            const startTime = createdMeeting.startTime
+                ? new Date(createdMeeting.startTime).toLocaleString('en-US', {
+                    dateStyle: 'full',
+                    timeStyle: 'short',
+                    timeZone: 'Africa/Cairo',
+                })
+                : 'N/A';
+
+            const joinUrl = createdMeeting.joinUrl ? `<${createdMeeting.joinUrl}|Join Zoom Meeting>` : 'N/A';
+            const startUrl = createdMeeting.startUrl ? `<${createdMeeting.startUrl}|Start Meeting (Host)>` : null;
+
+            const formattedText = [
+                `🎉 *Meeting Created Successfully!*`,
+                ``,
+                `📌 *Topic:* ${topic}`,
+                `🆔 *Meeting ID:* \`${id}\``,
+                `🕒 *Start Time:* ${startTime}`,
+                `⏱️ *Duration:* ${duration}`,
+                ``,
+                `🔗 *Join Link:* ${joinUrl}`,
+                ...(startUrl ? [`🔑 *Host Link:* ${startUrl}`] : []),
+            ].join('\n');
+
+            return {
+                createdMeeting,
+                meetingSkillMessage: formattedText,
+            };
         },
         );
     }

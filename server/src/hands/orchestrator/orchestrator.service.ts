@@ -282,7 +282,6 @@ CRITICAL RULES:
         } else if (result.data) {
           if (typeof result.data === 'object') {
             const dataObj = result.data as any;
-            console.log(JSON.stringify(dataObj))
             if (dataObj.answer) {
               replyText = `*Answer:*\n${dataObj.answer}`;
               if (dataObj.confidence !== undefined)
@@ -317,6 +316,8 @@ CRITICAL RULES:
 
                 replyText = `📅 *Found ${count} Zoom Meeting${count > 1 ? 's' : ''}:*\n\n${meetingList}`;
               }
+            } else if (dataObj.meetingSkillMessage) {
+              replyText = dataObj.meetingSkillMessage;
             } else {
               replyText = `✅ *${def.name}* executed successfully!`;
             }
