@@ -17,6 +17,8 @@ import { ReportingSkill } from './skills/reporting.skill';
 
 import { JiraModule } from '../integrations/jira/jira.module';
 import { JiraSkill } from './skills/jira.skill';
+import { TrelloModule } from '../integrations/trello/trello.module';
+import { TrelloSkill } from './skills/trello.skill';
 
 @Module({
   imports: [
@@ -26,6 +28,7 @@ import { JiraSkill } from './skills/jira.skill';
     AiGatewayModule,
     RetrievalModule,
     JiraModule,
+    TrelloModule,
   ],
   providers: [
     AuditLogService,
@@ -37,9 +40,10 @@ import { JiraSkill } from './skills/jira.skill';
     EmailSkill,
     KnowledgeSkill,
     JiraSkill,
+    TrelloSkill,
     ReportingSkill,
   ],
   controllers: [AuditController],
-  exports: [OrchestratorService, AuditLogService],
+  exports: [OrchestratorService, SessionService, AuditLogService],
 })
 export class HandsModule {}
