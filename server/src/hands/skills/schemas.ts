@@ -62,9 +62,18 @@ export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;
 export const CreateMeetingInputSchema = z.object({
   topic: z.string().describe('The meeting topic or title.'),
   startTime: z.string().describe('ISO 8601 start time with timezone, e.g., "2026-08-10T14:00:00Z".'),
-  durationMinutes: z.number().describe('Duration of the meeting in minutes.'),
+  durationMinutes: z.coerce.number().describe('Duration of the meeting in minutes.'),
   timezone: z.string().optional().describe('timezone, e.g., "Africa/Cairo". Defaults to UTC.'),
-  attendees: z.array(z.string().email()).optional().describe('List of attendee email addresses.'),
+  attendees: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val;
+      }
+    }
+    return val;
+  }, z.array(z.string().email()).optional()).describe('List of attendee email addresses.'),
 });
 
 export const UpdateMeetingInputSchema = z.object({

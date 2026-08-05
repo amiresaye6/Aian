@@ -29,7 +29,8 @@ export class MeetingSkill implements OnModuleInit {
             description:"schedule or create zoom meeting and add registrants by email",
             schema:CreateMeetingInputSchema,
             destructive:false,
-            handler: (ctx, input) => this.createMeeting(ctx, input)
+            handler: (ctx, input) => this.createMeeting(ctx, input),
+            requiredProviders:["ZOOM"]
         } as SkillDefinition  )
 
         this.registry.register({
@@ -37,7 +38,8 @@ export class MeetingSkill implements OnModuleInit {
             description:"update an existing zoom meeting",
             schema:UpdateMeetingInputSchema,
             destructive:false,
-            handler: (ctx, input) => this.updateMeeting(ctx, input)
+            handler: (ctx, input) => this.updateMeeting(ctx, input),
+            requiredProviders:["ZOOM"]
         } as SkillDefinition  )
     }
 
@@ -60,9 +62,7 @@ export class MeetingSkill implements OnModuleInit {
             };
         }
 
-        const connection = await this.prisma.providerConnection.findFirst({
-            where:{ id:ctx.connectionId}
-        })
+        const connection = ctx.connections['ZOOM'];
 
         return this.resilience.execute(
         ctx,
@@ -74,7 +74,7 @@ export class MeetingSkill implements OnModuleInit {
             // 3. Delegate to your actual service
             const result = await this.zoomClient.createMeeting(
                 connection,
-                input
+                parsed.data
             );
             return result; // The ResilienceService automatically wraps this in a success result
         },
@@ -101,9 +101,7 @@ export class MeetingSkill implements OnModuleInit {
             };
         }
 
-        const connection = await this.prisma.providerConnection.findFirst({
-            where:{ id:ctx.connectionId}
-        })
+        const connection = ctx.connections['ZOOM'];
 
         return this.resilience.execute(
         ctx,

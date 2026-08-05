@@ -264,6 +264,8 @@ CRITICAL RULES:
           idempotencyKey: `${session.id}-${Date.now()}`,
           traceId: `trace-${Date.now()}`,
         };
+        //this.logger.log(`Executing skill ${def.name} with input: ${JSON.stringify(ctx)}`);
+        this.logger.log(`input: ${JSON.stringify(call.input)}`)
         const result = await def.handler(ctx, call.input);
         this.logger.log(
           `Skill ${def.name} executed with success: ${result.success}`,
