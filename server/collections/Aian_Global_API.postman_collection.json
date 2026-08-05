@@ -10,10 +10,19 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes?organizationId={{organizationId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes"
+          ],
           "query": [
-            { "key": "organizationId", "value": "{{organizationId}}" }
+            {
+              "key": "organizationId",
+              "value": "{{organizationId}}"
+            }
           ]
         }
       }
@@ -24,10 +33,20 @@
         "method": "DELETE",
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -38,10 +57,22 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/resources/available",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId", "resources", "available"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "resources",
+            "available"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -52,10 +83,22 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/resources/selected",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId", "resources", "selected"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "resources",
+            "selected"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -65,7 +108,10 @@
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
@@ -73,10 +119,22 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/resources/selected",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId", "resources", "selected"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "resources",
+            "selected"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -86,7 +144,10 @@
       "request": {
         "method": "PUT",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
@@ -94,10 +155,21 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/settings",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId", "settings"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "settings"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -108,10 +180,23 @@
         "method": "POST",
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/sync/historical/start",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId", "sync", "historical", "start"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "sync",
+            "historical",
+            "start"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -122,10 +207,23 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/sync/historical/status",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId", "sync", "historical", "status"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "sync",
+            "historical",
+            "status"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -136,10 +234,22 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/eyes/:connectionId/knowledge/activity",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "eyes", ":connectionId", "knowledge", "activity"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "eyes",
+            ":connectionId",
+            "knowledge",
+            "activity"
+          ],
           "variable": [
-            { "key": "connectionId", "value": "{{connectionId}}" }
+            {
+              "key": "connectionId",
+              "value": "{{connectionId}}"
+            }
           ]
         }
       }
@@ -150,10 +260,19 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/batches?organizationId={{organizationId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "batches"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "batches"
+          ],
           "query": [
-            { "key": "organizationId", "value": "{{organizationId}}" }
+            {
+              "key": "organizationId",
+              "value": "{{organizationId}}"
+            }
           ]
         }
       }
@@ -164,10 +283,20 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/batches/:batchId",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "batches", ":batchId"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "batches",
+            ":batchId"
+          ],
           "variable": [
-            { "key": "batchId", "value": "{{batchId}}" }
+            {
+              "key": "batchId",
+              "value": "{{batchId}}"
+            }
           ]
         }
       }
@@ -178,14 +307,31 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/batches/:batchId/items?page=1&limit=20",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "batches", ":batchId", "items"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "batches",
+            ":batchId",
+            "items"
+          ],
           "query": [
-            { "key": "page", "value": "1" },
-            { "key": "limit", "value": "20" }
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "20"
+            }
           ],
           "variable": [
-            { "key": "batchId", "value": "{{batchId}}" }
+            {
+              "key": "batchId",
+              "value": "{{batchId}}"
+            }
           ]
         }
       }
@@ -196,10 +342,22 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/organizations/:organizationId/settings/processing",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "organizations", ":organizationId", "settings", "processing"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "organizations",
+            ":organizationId",
+            "settings",
+            "processing"
+          ],
           "variable": [
-            { "key": "organizationId", "value": "{{organizationId}}" }
+            {
+              "key": "organizationId",
+              "value": "{{organizationId}}"
+            }
           ]
         }
       }
@@ -209,7 +367,10 @@
       "request": {
         "method": "PUT",
         "header": [
-          { "key": "Content-Type", "value": "application/json" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
         "body": {
           "mode": "raw",
@@ -217,10 +378,22 @@
         },
         "url": {
           "raw": "{{baseUrl}}/api/v1/organizations/:organizationId/settings/processing",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "organizations", ":organizationId", "settings", "processing"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "organizations",
+            ":organizationId",
+            "settings",
+            "processing"
+          ],
           "variable": [
-            { "key": "organizationId", "value": "{{organizationId}}" }
+            {
+              "key": "organizationId",
+              "value": "{{organizationId}}"
+            }
           ]
         }
       }
@@ -231,10 +404,21 @@
         "method": "POST",
         "url": {
           "raw": "{{baseUrl}}/api/v1/sync/:organizationId/now",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "sync", ":organizationId", "now"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "sync",
+            ":organizationId",
+            "now"
+          ],
           "variable": [
-            { "key": "organizationId", "value": "{{organizationId}}" }
+            {
+              "key": "organizationId",
+              "value": "{{organizationId}}"
+            }
           ]
         }
       }
@@ -245,10 +429,21 @@
         "method": "GET",
         "url": {
           "raw": "{{baseUrl}}/api/v1/sync/:organizationId/status",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "v1", "sync", ":organizationId", "status"],
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "sync",
+            ":organizationId",
+            "status"
+          ],
           "variable": [
-            { "key": "organizationId", "value": "{{organizationId}}" }
+            {
+              "key": "organizationId",
+              "value": "{{organizationId}}"
+            }
           ]
         }
       }
@@ -263,8 +458,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/artifacts?status=&organizationId={{organizationId}}&page=1&limit=20",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "artifacts"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "artifacts"
+              ],
               "query": [
                 {
                   "key": "status",
@@ -296,8 +497,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/artifacts/{{artifactId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "artifacts", "{{artifactId}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "artifacts",
+                "{{artifactId}}"
+              ],
               "variable": [
                 {
                   "key": "artifactId",
@@ -316,8 +524,16 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/artifacts/{{artifactId}}/logs",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "artifacts", "{{artifactId}}", "logs"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "artifacts",
+                "{{artifactId}}",
+                "logs"
+              ],
               "variable": [
                 {
                   "key": "artifactId",
@@ -336,8 +552,16 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/artifacts/{{artifactId}}/retry-extraction",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "artifacts", "{{artifactId}}", "retry-extraction"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "artifacts",
+                "{{artifactId}}",
+                "retry-extraction"
+              ],
               "variable": [
                 {
                   "key": "artifactId",
@@ -354,7 +578,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -362,8 +589,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/artifacts/retry-extraction",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "artifacts", "retry-extraction"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "artifacts",
+                "retry-extraction"
+              ]
             },
             "description": "Retries extraction for a specific list of artifact IDs. Maps to a 'Retry Selected' bulk action when multiple rows are checked in the UI."
           }
@@ -373,7 +607,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -381,8 +618,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/artifacts/retry-extraction",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "artifacts", "retry-extraction"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "artifacts",
+                "retry-extraction"
+              ]
             },
             "description": "Retries all failed/pending artifacts for the given organization. If organizationId is omitted, retries across all organizations. Maps to a 'Retry All Failed' button in the UI."
           }
@@ -399,13 +643,33 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/entities?organizationId={{organizationId}}&type=&page=1&limit=50",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "entities"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "entities"
+              ],
               "query": [
-                { "key": "organizationId", "value": "{{organizationId}}", "description": "Scope to a specific organization." },
-                { "key": "type", "value": "", "description": "Filter by entity type: Person | Team | Project | Feature | System | Service | API | Database | Repository | PullRequest | Meeting | Decision | Document | Release. Leave empty for all." },
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "50" }
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}",
+                  "description": "Scope to a specific organization."
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "Filter by entity type: Person | Team | Project | Feature | System | Service | API | Database | Repository | PullRequest | Meeting | Decision | Document | Release. Leave empty for all."
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
               ]
             },
             "description": "Lists all resolved entities with mention counts. Powers the Org Knowledge dashboard."
@@ -418,10 +682,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/entities/{{entityId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "entities", "{{entityId}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "entities",
+                "{{entityId}}"
+              ],
               "variable": [
-                { "key": "entityId", "value": "{{entityId}}", "description": "UUID of the resolved entity." }
+                {
+                  "key": "entityId",
+                  "value": "{{entityId}}",
+                  "description": "UUID of the resolved entity."
+                }
               ]
             },
             "description": "Returns a single resolved entity with its full mention history — every artifact it appeared in, the exact name used, and timestamps."
@@ -434,10 +709,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/entities/retry-resolution?organizationId={{organizationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "entities", "retry-resolution"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "entities",
+                "retry-resolution"
+              ],
               "query": [
-                { "key": "organizationId", "value": "{{organizationId}}", "description": "Scope to one org. Omit to retry across all orgs." }
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}",
+                  "description": "Scope to one org. Omit to retry across all orgs."
+                }
               ]
             },
             "description": "Re-triggers Stage 3 entity resolution for all artifacts where extraction completed but resolution is pending or failed."
@@ -448,7 +734,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -456,8 +745,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/entities/merge",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "entities", "merge"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "entities",
+                "merge"
+              ]
             },
             "description": "Merges two entities of the same type. The secondary entity's mentions, aliases, and graph relationships are transferred to the primary, then the secondary is deleted."
           }
@@ -472,7 +768,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -480,8 +779,15 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/chat/query",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "chat", "query"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "chat",
+                "query"
+              ]
             },
             "description": "Query the graph and knowledge artifacts to generate an answer based on extracted entities."
           }
@@ -498,10 +804,20 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/billing/quota-dashboard?organizationId={{organizationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "billing", "quota-dashboard"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "billing",
+                "quota-dashboard"
+              ],
               "query": [
-                { "key": "organizationId", "value": "{{organizationId}}" }
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}"
+                }
               ]
             },
             "description": "Retrieves the real-time usage quotas for tokens, storage, and members against the organization's plan limits."
@@ -512,7 +828,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -520,10 +839,21 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/billing/subscription/upgrade?organizationId={{organizationId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "billing", "subscription", "upgrade"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "billing",
+                "subscription",
+                "upgrade"
+              ],
               "query": [
-                { "key": "organizationId", "value": "{{organizationId}}" }
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}"
+                }
               ]
             },
             "description": "Upgrades or downgrades the active subscription to the specified plan."
@@ -536,12 +866,31 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/billing/usage/summary?organizationId={{organizationId}}&fromDate=2026-07-01T00:00:00.000Z&toDate=2026-07-31T23:59:59.999Z",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "billing", "usage", "summary"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "billing",
+                "usage",
+                "summary"
+              ],
               "query": [
-                { "key": "organizationId", "value": "{{organizationId}}" },
-                { "key": "fromDate", "value": "2026-07-01T00:00:00.000Z", "description": "Optional. Filter by start date." },
-                { "key": "toDate", "value": "2026-07-31T23:59:59.999Z", "description": "Optional. Filter by end date." }
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}"
+                },
+                {
+                  "key": "fromDate",
+                  "value": "2026-07-01T00:00:00.000Z",
+                  "description": "Optional. Filter by start date."
+                },
+                {
+                  "key": "toDate",
+                  "value": "2026-07-31T23:59:59.999Z",
+                  "description": "Optional. Filter by end date."
+                }
               ]
             },
             "description": "Retrieves an aggregated summary of AI usage grouped by feature and model."
@@ -554,18 +903,59 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/billing/usage/logs?organizationId={{organizationId}}&page=1&limit=20&feature=knowledge_extraction&modelUsed=us.meta.llama3-3-70b-instruct-v1:0",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "billing", "usage", "logs"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "billing",
+                "usage",
+                "logs"
+              ],
               "query": [
-                { "key": "organizationId", "value": "{{organizationId}}" },
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" },
-                { "key": "feature", "value": "knowledge_extraction", "description": "Optional." },
-                { "key": "modelUsed", "value": "us.meta.llama3-3-70b-instruct-v1:0", "description": "Optional." },
-                { "key": "fromDate", "value": "", "description": "Optional." },
-                { "key": "toDate", "value": "", "description": "Optional." },
-                { "key": "sortBy", "value": "createdAt", "description": "Optional." },
-                { "key": "sortOrder", "value": "desc", "description": "Optional. asc | desc" }
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "feature",
+                  "value": "knowledge_extraction",
+                  "description": "Optional."
+                },
+                {
+                  "key": "modelUsed",
+                  "value": "us.meta.llama3-3-70b-instruct-v1:0",
+                  "description": "Optional."
+                },
+                {
+                  "key": "fromDate",
+                  "value": "",
+                  "description": "Optional."
+                },
+                {
+                  "key": "toDate",
+                  "value": "",
+                  "description": "Optional."
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt",
+                  "description": "Optional."
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Optional. asc | desc"
+                }
               ]
             },
             "description": "Retrieves paginated AI usage logs with advanced filtering and sorting."
@@ -583,15 +973,43 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/audit-logs?page=1&limit=20&skill=&success=&dateFrom=&dateTo=",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "audit-logs"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit-logs"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "20" },
-                { "key": "skill", "value": "", "description": "Optional filter by skill name" },
-                { "key": "success", "value": "", "description": "Optional filter by success status (true/false)" },
-                { "key": "dateFrom", "value": "", "description": "Optional start date" },
-                { "key": "dateTo", "value": "", "description": "Optional end date" }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "skill",
+                  "value": "",
+                  "description": "Optional filter by skill name"
+                },
+                {
+                  "key": "success",
+                  "value": "",
+                  "description": "Optional filter by success status (true/false)"
+                },
+                {
+                  "key": "dateFrom",
+                  "value": "",
+                  "description": "Optional start date"
+                },
+                {
+                  "key": "dateTo",
+                  "value": "",
+                  "description": "Optional end date"
+                }
               ]
             },
             "description": "Retrieves paginated audit logs for the organization."
@@ -604,10 +1022,380 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/audit-logs/analytics",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "audit-logs", "analytics"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audit-logs",
+                "analytics"
+              ]
             },
             "description": "Retrieves aggregated audit log statistics including success rate, most active skill, and daily trends."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Graph",
+      "item": [
+        {
+          "name": "Visualize Graph",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graph/visualize?limit=150&minDegree=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graph",
+                "visualize"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "150"
+                },
+                {
+                  "key": "minDegree",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Node Neighbors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graph/nodes/:id/neighbors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graph",
+                "nodes",
+                ":id",
+                "neighbors"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "node-uuid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Node Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graph/nodes/:id/details",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graph",
+                "nodes",
+                ":id",
+                "details"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "node-uuid"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing",
+      "item": [
+        {
+          "name": "Get Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billing/plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "plans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Plan by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/billing/plans/:slug",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "plans",
+                ":slug"
+              ],
+              "variable": [
+                {
+                  "key": "slug",
+                  "value": "pro"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"planSlug\": \"pro\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify Payment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing/verify/:providerPaymentId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "verify",
+                ":providerPaymentId"
+              ],
+              "variable": [
+                {
+                  "key": "providerPaymentId",
+                  "value": "123"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Subscription",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing/subscription?organizationId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "subscription"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upgrade Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"planSlug\": \"pro\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/billing/subscription/upgrade?organizationId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "subscription",
+                "upgrade"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Quota Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing/quota-dashboard?organizationId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "quota-dashboard"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Usage Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing/usage/logs?organizationId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "usage",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Usage Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing/usage/summary?organizationId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "billing",
+                "usage",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
           }
         }
       ]
