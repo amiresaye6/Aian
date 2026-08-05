@@ -120,7 +120,7 @@ describe('JiraClientService Task Workflows', () => {
       });
 
       const reqConfig = mockedAxios.request.mock.calls[1][0];
-      expect(reqConfig.data.jql).toBe('project = "DEV" AND status = "Done" AND assignee = "john123" AND updated >= "2025-01-01" AND updated <= "2025-01-31"');
+      expect((reqConfig.data as any).jql).toBe('project = "DEV" AND status = "Done" AND assignee = "john123" AND updated >= "2025-01-01" AND updated <= "2025-01-31"');
     });
 
     it('bypasses user resolution for currentUser()', async () => {
@@ -129,7 +129,7 @@ describe('JiraClientService Task Workflows', () => {
       await service.listTasks('org_1', { assignee: 'currentUser()' });
 
       const reqConfig = mockedAxios.request.mock.calls[0][0];
-      expect(reqConfig.data.jql).toBe('assignee = currentUser()');
+      expect((reqConfig.data as any).jql).toBe('assignee = currentUser()');
     });
   });
 });

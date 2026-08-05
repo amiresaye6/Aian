@@ -250,6 +250,14 @@ async function main() {
       oauthSupported: true,
     },
   });
+  const trello = await prisma.provider.create({
+    data: {
+      key: 'trello',
+      name: 'Trello',
+      logoUrl: 'https://cdn.simpleicons.org/trello',
+      oauthSupported: true
+    },
+  });
   const linear = await prisma.provider.create({
     data: {
       key: 'linear',
@@ -317,6 +325,7 @@ async function main() {
       },
 
       { eyeTypeId: taskEye.id, providerId: jira.id, isAvailableInV1: true },
+      { eyeTypeId: taskEye.id, providerId: trello.id, isAvailableInV1: true },
       { eyeTypeId: taskEye.id, providerId: linear.id, isAvailableInV1: false },
       { eyeTypeId: taskEye.id, providerId: clickup.id, isAvailableInV1: false },
 
