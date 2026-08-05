@@ -8,7 +8,10 @@ import { GenerateReportInputSchema, GenerateReportInput } from './schemas';
 import { RetrievalPipelineService } from '../../retrieval/retrieval-pipeline.service';
 import { AnswerGenerationService } from '../../retrieval/services/answer-generation.service';
 import { JiraClientService } from '../../integrations/jira/services/jira-client.service';
-import { ZoomClientService, MeetingType } from '../../integrations/zoom/zoom-client.service';
+import {
+  ZoomClientService,
+  MeetingType,
+} from '../../integrations/zoom/zoom-client.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -26,14 +29,21 @@ export class ReportingSkill implements OnModuleInit {
   onModuleInit() {
     this.registry.register({
       name: 'ReportingSkill.generateReport',
-      description: 'Generates a structured markdown report including tasks, meetings, and knowledge context for a given scope and timeframe.',
+      description:
+        'Generates a structured markdown report including tasks, meetings, and knowledge context for a given scope and timeframe.',
       schema: GenerateReportInputSchema,
       destructive: false,
-      handler: (ctx: SkillContext, input: any) => this.generateReport(ctx, input),
+      requiredProviders: [],
+      optionalProviders: ['JIRA', 'ZOOM'],
+      handler: (ctx: SkillContext, input: any) =>
+        this.generateReport(ctx, input),
     });
   }
 
-  async generateReport(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
+  async generateReport(
+    ctx: SkillContext,
+    input: any,
+  ): Promise<SkillResult<any>> {
     const parsed = GenerateReportInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -59,28 +69,41 @@ export class ReportingSkill implements OnModuleInit {
       'multiple',
       parsed.data,
       async () => {
-        const { scope, timeframe, sections } = parsed.data;
-        const activeSections = sections || ['tasks', 'meetings', 'knowledge'];
+        const { scope, timeframe } = parsed.data;
+        const activeSections = ['tasks', 'meetings', 'knowledge'];
 
-        let tasksMarkdown = '## 📋 Tasks\n*No tasks found or integration inactive.*';
-        let meetingsMarkdown = '## 📅 Meetings\n*No meetings found or integration inactive.*';
+        let tasksMarkdown =
+          '## 📋 Tasks\n*No tasks found or integration inactive.*';
+        let meetingsMarkdown =
+          '## 📅 Meetings\n*No meetings found or integration inactive.*';
         let knowledgeMarkdown = '## 🧠 Knowledge Context\n*No context found.*';
         let sourcesList: string[] = [];
 
         // 1. Fetch Tasks (Jira)
         if (activeSections.includes('tasks')) {
           try {
-            const jiraConnection = await this.prisma.providerConnection.findFirst({
-              where: { organizationEyeId: ctx.organizationId, provider: { key: 'jira' }, status: 'connected' },
-            });
+            const jiraConnection = ctx.connections['JIRA'];
             if (jiraConnection) {
-              const issues = (await this.jiraClient.getResources(jiraConnection as any)) || [];
+              const issues: Array<any> = [];
+                // (await this.jiraClient.getRecentIssues(
+                // jiraConnection as any,
+                // )) || [];
 
-              tasksMarkdown = `## 📋 Tasks\n| Key | Summary | Status | Assignee |\n|---|---|---|---|\n` +
+              tasksMarkdown =
+                `*📋 Tasks*\n\`\`\`\n| Key | Summary | Status | Assignee |\n|---|---|---|---|\n` +
                 (issues.length > 0
-                  ? issues.map((i: any) => `| ${i.key || 'N/A'} | ${i.summary || 'N/A'} | ${i.status || 'N/A'} | ${i.assignee || 'N/A'} |`).join('\n')
-                  : `| No issues found | N/A | N/A | N/A |`);
-              
+                  ? issues
+                      .map((i: any) => {
+                        const summary = i.fields?.summary || 'N/A';
+                        const status = i.fields?.status?.name || 'N/A';
+                        const assignee =
+                          i.fields?.assignee?.displayName || 'Unassigned';
+                        return `| ${i.key || 'N/A'} | ${summary.length > 30 ? summary.substring(0, 27) + '...' : summary} | ${status} | ${assignee} |`;
+                      })
+                      .join('\n')
+                  : `| No issues found | N/A | N/A | N/A |`) +
+                `\n\`\`\``;
+
               sourcesList.push(`Jira Connection: ${jiraConnection.id}`);
             }
           } catch (err: any) {
@@ -91,18 +114,26 @@ export class ReportingSkill implements OnModuleInit {
         // 2. Fetch Meetings (Zoom)
         if (activeSections.includes('meetings')) {
           try {
-            const zoomConnection = await this.prisma.providerConnection.findFirst({
-              where: { organizationEyeId: ctx.organizationId, provider: { key: 'zoom' }, status: 'connected' },
-            });
+            const zoomConnection = ctx.connections['ZOOM'];
             if (zoomConnection) {
-              const meetingsResult = await this.zoomClient.getMeetings(zoomConnection as any, MeetingType.Scheduled);
+              const meetingsResult = await this.zoomClient.getMeetings(
+                zoomConnection as any,
+                MeetingType.Scheduled,
+              );
               const meetings = meetingsResult.resources || [];
 
-              meetingsMarkdown = `## 📅 Meetings\n| Topic | Date | Duration | Attendees |\n|---|---|---|---|\n` +
-                (meetings.length > 0 
-                  ? meetings.map((m: any) => `| ${m.name || 'N/A'} | ${m.metadata?.start_time || 'N/A'} | ${m.metadata?.duration || 'N/A'}m | N/A |`).join('\n')
-                  : `| No scheduled meetings | N/A | N/A | N/A |`);
-              
+              meetingsMarkdown =
+                `*📅 Meetings*\n\`\`\`\n| Topic | Date | Duration | Attendees |\n|---|---|---|---|\n` +
+                (meetings.length > 0
+                  ? meetings
+                      .map(
+                        (m: any) =>
+                          `| ${m.name || 'N/A'} | ${m.metadata?.start_time || 'N/A'} | ${m.metadata?.duration || 'N/A'}m | N/A |`,
+                      )
+                      .join('\n')
+                  : `| No scheduled meetings | N/A | N/A | N/A |`) +
+                `\n\`\`\``;
+
               sourcesList.push(`Zoom Connection: ${zoomConnection.id}`);
             }
           } catch (err: any) {
@@ -113,18 +144,25 @@ export class ReportingSkill implements OnModuleInit {
         // 3. Fetch Knowledge Context & Real Evidence Chain Sources
         if (activeSections.includes('knowledge')) {
           try {
-            const retrievalResult = await this.retrievalPipeline.retrieveContext(ctx.organizationId, scope);
+            const retrievalResult =
+              await this.retrievalPipeline.retrieveContext(
+                ctx.organizationId,
+                scope,
+              );
             const contextString = retrievalResult?.contextString || '';
-            
+
             const summaryAnswer = await this.answerGeneration.generateAnswer(
               ctx.organizationId,
               `Provide a concise summary regarding: ${scope}`,
-              contextString
+              contextString,
             );
             knowledgeMarkdown = `## 🧠 Knowledge Context\n${summaryAnswer}`;
 
             // Extract real artifact IDs/names from evidence chains
-            if (retrievalResult?.evidenceChains && Array.isArray(retrievalResult.evidenceChains)) {
+            if (
+              retrievalResult?.evidenceChains &&
+              Array.isArray(retrievalResult.evidenceChains)
+            ) {
               retrievalResult.evidenceChains.forEach((node: any) => {
                 if (node?.artifactId || node?.name) {
                   sourcesList.push(`Artifact: ${node.name || node.artifactId}`);
@@ -137,23 +175,28 @@ export class ReportingSkill implements OnModuleInit {
         }
 
         // Assemble the final Markdown Report
-        const sourcesFormatted = sourcesList.length > 0 ? sourcesList.join(', ') : 'None';
-        const timeframeText = timeframe ? `*Period: ${timeframe.from} — ${timeframe.to}*` : '*Period: All Time*';
-        let fullReport = `# Report: ${scope}\n${timeframeText}
+        const sourcesFormatted =
+          sourcesList.length > 0 ? sourcesList.join(', ') : 'None';
+        const timeframeText = timeframe
+          ? `*Period: ${timeframe}*`
+          : '*Period: All Time*';
+        let fullReport = `*Report: ${scope}*\n${timeframeText}
 
-${tasksMarkdown}
+${tasksMarkdown.replace(/## /g, '*').replace(/ \*\n/g, '*\n')}
 
-${meetingsMarkdown}
+${meetingsMarkdown.replace(/## /g, '*').replace(/ \*\n/g, '*\n')}
 
-${knowledgeMarkdown}
+${knowledgeMarkdown.replace(/## 🧠 /g, '*🧠 ')}
 
 ---
-*Sources: [${sourcesFormatted}]*
+_Sources: [${sourcesFormatted}]_
 `;
 
         // Apply Slack ~4000 characters limit safety chunking
         if (fullReport.length > 3900) {
-          fullReport = fullReport.substring(0, 3900) + '\n\n*(Report truncated due to Slack length limits)*';
+          fullReport =
+            fullReport.substring(0, 3900) +
+            '\n\n*(Report truncated due to Slack length limits)*';
         }
 
         return { reportMarkdown: fullReport };
