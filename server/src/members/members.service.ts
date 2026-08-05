@@ -16,7 +16,7 @@ export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-  ) {}
+  ) { }
 
   private async assertMembership(organizationId: string, userId: string) {
     const requester = await this.prisma.user.findUnique({
@@ -29,6 +29,41 @@ export class MembersService {
         success: false,
         message: 'You are not a member of this organization.',
         error: { type: 'ForbiddenException' },
+      });
+    }
+  }
+  private async assertMemberLimitNotExceeded(organizationId: string) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { organizationId },
+      include: { plan: true },
+    });
+
+    if (!subscription) {
+      throw new ForbiddenException({
+        success: false,
+        message: 'No active subscription found for this organization.',
+        error: { type: 'ForbiddenException', code: 'NO_SUBSCRIPTION' },
+      });
+    }
+
+    const currentMemberCount = await this.prisma.user.count({
+      where: {
+        organizationId,
+        memberStatus: { in: ['active', 'invited'] },
+      },
+    });
+
+    if (currentMemberCount >= subscription.plan.maxMembers) {
+      throw new ForbiddenException({
+        success: false,
+        message: `You've reached your plan's member limit (${subscription.plan.maxMembers}). Upgrade your plan to invite more members.`,
+        error: {
+          type: 'ForbiddenException',
+          code: 'MEMBER_LIMIT_REACHED',
+          currentCount: currentMemberCount,
+          maxMembers: subscription.plan.maxMembers,
+          planName: subscription.plan.name,
+        },
       });
     }
   }
@@ -77,7 +112,7 @@ export class MembersService {
     invitedByUserId: string,
   ) {
     await this.assertMembership(organizationId, invitedByUserId);
-
+    await this.assertMemberLimitNotExceeded(organizationId); 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -284,13 +319,8 @@ export class MembersService {
       }
     }
 
-    await this.prisma.user.update({
+    await this.prisma.user.delete({
       where: { id: memberId },
-      data: {
-        organizationId: null,
-        roleId: null,
-        memberStatus: null,
-      },
     });
 
     return { id: memberId, removed: true };
