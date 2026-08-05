@@ -314,7 +314,6 @@ export class ZoomClientService implements ProviderClient {
       duration: response.data.duration,
     };
 
-    // حفظ الميتنج فى DB
     await this.prismaService.meeting.create({
       data: {
         id: meetingData.id,
@@ -467,6 +466,10 @@ export class ZoomClientService implements ProviderClient {
       timezone?: string;
     },
   ): Promise<void> {
+    console.log(`connection: `,connection);
+    console.log(`meetingId: `,meetingId);
+    console.log(`fields: `,JSON.stringify(fields));
+    
     await this.verifyConnection(connection);
 
     const accessToken = this.encryptionService.decrypt(

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ZoomClientService } from "../../integrations/zoom/zoom-client.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { SkillDefinition, SkillRegistryService } from "../core/registry.service";
@@ -16,6 +16,7 @@ from "../skills/schemas";
 
 @Injectable()
 export class MeetingSkill implements OnModuleInit {
+private readonly logger = new Logger(MeetingSkill.name);
   constructor(
     private readonly zoomClient: ZoomClientService,
     private readonly prisma: PrismaService,
@@ -35,7 +36,7 @@ export class MeetingSkill implements OnModuleInit {
 
         this.registry.register({
             name:"meetingSkill.updateMeeting",
-            description:"update an existing zoom meeting",
+            description:"update/modify an existing zoom meeting",
             schema:UpdateMeetingInputSchema,
             destructive:false,
             handler: (ctx, input) => this.updateMeeting(ctx, input),
@@ -84,6 +85,8 @@ export class MeetingSkill implements OnModuleInit {
 
     async updateMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
         const parsed = UpdateMeetingInputSchema.safeParse(input);
+        //this.logger.log(`Executing skill updateMeeting with input: ${JSON.stringify(ctx)}`);
+        //this.logger.log(`input: ${JSON.stringify(parsed.data)}`)
         if (!parsed.success) {
             return {
                 success: false,
@@ -113,8 +116,8 @@ export class MeetingSkill implements OnModuleInit {
             // 3. Delegate to your actual service
             const result = await this.zoomClient.updateMeeting(
                 connection,
-                input.meetingId,
-                input
+                parsed.data.meetingId,
+                parsed.data.fields
             );
             return result; // The ResilienceService automatically wraps this in a success result
         },

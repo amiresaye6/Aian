@@ -78,7 +78,16 @@ export const CreateMeetingInputSchema = z.object({
 
 export const UpdateMeetingInputSchema = z.object({
   meetingId: z.string().describe('The Zoom meeting ID.'),
-  fields: z.record(z.string(), z.any()).describe('Fields to update: topic, start_time, duration, etc.'),
+  fields: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val;
+      }
+    }
+    return val;
+  }, z.record(z.string(), z.any())).describe('Fields to update: topic, startTime, durationMinutes, etc.'),
 });
 
 export const CancelMeetingInputSchema = z.object({
