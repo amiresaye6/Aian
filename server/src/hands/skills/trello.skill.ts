@@ -28,6 +28,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Create a new Trello card.',
       schema: CreateTaskInputSchema,
       destructive: false,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.createTask(ctx, input),
     });
 
@@ -36,6 +37,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Update an existing Trello card.',
       schema: UpdateTaskInputSchema,
       destructive: false,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.updateTask(ctx, input),
     });
 
@@ -44,6 +46,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Assign a Trello card to a user.',
       schema: AssignTaskInputSchema,
       destructive: false,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.assignTask(ctx, input),
     });
 
@@ -52,6 +55,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Transition a Trello card to a new list (status).',
       schema: MoveTaskInputSchema,
       destructive: false,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.moveTask(ctx, input),
     });
 
@@ -60,6 +64,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Add a comment to a Trello card.',
       schema: CommentTaskInputSchema,
       destructive: false,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.commentTask(ctx, input),
     });
 
@@ -68,6 +73,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Archive a Trello card.',
       schema: DeleteTaskInputSchema,
       destructive: true,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.deleteTask(ctx, input),
     });
 
@@ -76,6 +82,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Search and list Trello cards based on filters.',
       schema: ListTasksInputSchema,
       destructive: false,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.listTasks(ctx, input),
     });
 
@@ -84,6 +91,7 @@ export class TrelloSkill implements OnModuleInit {
       description: 'Get details of a specific Trello card.',
       schema: GetTaskInputSchema,
       destructive: false,
+      requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.getTask(ctx, input),
     });
   }

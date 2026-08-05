@@ -28,6 +28,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Create a new Jira issue.',
       schema: CreateTaskInputSchema,
       destructive: false,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.createTask(ctx, input),
     });
 
@@ -36,6 +37,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Update an existing Jira issue.',
       schema: UpdateTaskInputSchema,
       destructive: false,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.updateTask(ctx, input),
     });
 
@@ -44,6 +46,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Assign a Jira issue to a user.',
       schema: AssignTaskInputSchema,
       destructive: false,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.assignTask(ctx, input),
     });
 
@@ -52,6 +55,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Transition a Jira issue to a new status.',
       schema: MoveTaskInputSchema,
       destructive: false,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.moveTask(ctx, input),
     });
 
@@ -60,6 +64,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Add a comment to a Jira issue.',
       schema: CommentTaskInputSchema,
       destructive: false,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.commentTask(ctx, input),
     });
 
@@ -68,6 +73,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Delete a Jira issue.',
       schema: DeleteTaskInputSchema,
       destructive: true,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.deleteTask(ctx, input),
     });
 
@@ -76,6 +82,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Search and list Jira issues based on filters.',
       schema: ListTasksInputSchema,
       destructive: false,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.listTasks(ctx, input),
     });
 
@@ -84,6 +91,7 @@ export class JiraSkill implements OnModuleInit {
       description: 'Get details of a specific Jira issue.',
       schema: GetTaskInputSchema,
       destructive: false,
+      requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.getTask(ctx, input),
     });
   }
