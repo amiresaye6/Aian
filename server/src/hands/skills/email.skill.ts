@@ -19,6 +19,7 @@ export class EmailSkill implements OnModuleInit {
       description: 'Sends an email wrapped in the company branding template.',
       schema: SendEmailInputSchema,
       destructive: false,
+      requiredProviders: [],
       handler: (ctx: SkillContext, input: any) =>
         this.sendBrandedEmail(ctx, input),
     });

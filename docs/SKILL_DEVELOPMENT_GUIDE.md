@@ -67,6 +67,8 @@ export class MyNewSkill implements OnModuleInit {
       description: 'A detailed prompt describing exactly what this skill does and when the agent should use it.',
       schema: MyNewSkillInputSchema,
       destructive: false, // Set to true if it deletes/mutates data dangerously
+      requiredProviders: ['GITHUB'], // Declare which providers must be linked to execute this skill
+      optionalProviders: [], // Declare any optional providers that enhance the skill if present
       handler: (ctx: SkillContext, input: any) => this.performAction(ctx, input),
     });
   }
@@ -99,9 +101,12 @@ export class MyNewSkill implements OnModuleInit {
       'your-provider-name', // e.g. 'github', 'jira', 'email'
       parsed.data,
       async () => {
-        // 3. Delegate to your actual service
+        // 3. Get the pre-resolved connection provided by the orchestrator
+        const githubConnection = ctx.connections['GITHUB'];
+
+        // 4. Delegate to your actual service using the connection
         const result = await this.targetService.doSomething(
-          ctx.organizationId,
+          githubConnection,
           parsed.data.targetId,
           parsed.data.actionPayload
         );
@@ -116,7 +121,8 @@ export class MyNewSkill implements OnModuleInit {
 The orchestrator automatically passes a `SkillContext` object containing:
 - `organizationId`: The org executing the session.
 - `actorUserId`: The user initiating the workflow.
-- `connectionId`: Useful if connecting to an external integration (Slack, Jira).
+- `triggerConnectionId`: The connection ID of the provider where the user triggered the AI (e.g. Slack). Use this to send replies.
+- `connections`: A map (`Record<string, ResolvedConnection>`) containing the authenticated connections the skill requested in `requiredProviders` and `optionalProviders` (e.g., `ctx.connections['JIRA']`).
 - `sessionId`: Orchestrator session ID.
 - `idempotencyKey` & `traceId`: For logging and resilience.
 
