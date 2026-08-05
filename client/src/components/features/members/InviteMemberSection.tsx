@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Plus, AlertCircle, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { Mail, Plus, AlertCircle, UserPlus ,TrendingUp } from "lucide-react";
 import { useInviteMember } from "@/hooks/use-members";
 import { useRoles } from "@/hooks/use-roles";
 import {
@@ -19,6 +20,10 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
   const [roleId, setRoleId] = useState<string>("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [roleError, setRoleError] = useState<string | null>(null);
+  const [limitError, setLimitError] = useState<{
+    message: string;
+    planName?: string;
+  } | null>(null);
   const { roles, isLoading: rolesLoading } = useRoles();
   const { mutate: invite, isPending } = useInviteMember(organizationId);
 
@@ -55,6 +60,15 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
           setRoleId("");
           setEmailError(null);
           setRoleError(null);
+        },
+        onError: (err: any) => {
+          const errorData = err?.response?.data?.error;
+          if (errorData?.code === "MEMBER_LIMIT_REACHED") {
+            setLimitError({
+              message: err.response.data.message,
+              planName: errorData.planName,
+            });
+          }
         },
       }
     );
@@ -137,6 +151,20 @@ export function InviteMemberSection({ organizationId }: { organizationId: string
           <Plus className="h-4 w-4" /> {isPending ? "Adding..." : "Add"}
         </button>
       </div>
+      {limitError && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-[13px] text-amber-400">
+          <div className="flex items-center gap-2.5">
+            <TrendingUp className="h-4 w-4 shrink-0" />
+            <span>{limitError.message}</span>
+          </div>
+          <Link
+            href="/dashboard/billing"
+            className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1.5 font-semibold text-amber-400 transition-colors hover:bg-amber-500/20"
+          >
+            Upgrade plan
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
