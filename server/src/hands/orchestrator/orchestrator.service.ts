@@ -264,9 +264,10 @@ CRITICAL RULES:
           idempotencyKey: `${session.id}-${Date.now()}`,
           traceId: `trace-${Date.now()}`,
         };
-        //this.logger.log(`Executing skill ${def.name} with input: ${JSON.stringify(ctx)}`);
-        //this.logger.log(`input: ${JSON.stringify(call.input)}`)
+        this.logger.log(`Executing skill ${def.name} with input: ${JSON.stringify(ctx)}`);
+        this.logger.log(`input: ${JSON.stringify(call.input)}`)
         const result = await def.handler(ctx, call.input);
+        //console.log(JSON.stringify(result))
         this.logger.log(
           `Skill ${def.name} executed with success: ${result.success}`,
         );
@@ -281,6 +282,7 @@ CRITICAL RULES:
         } else if (result.data) {
           if (typeof result.data === 'object') {
             const dataObj = result.data as any;
+            console.log(JSON.stringify(dataObj))
             if (dataObj.answer) {
               replyText = `*Answer:*\n${dataObj.answer}`;
               if (dataObj.confidence !== undefined)
@@ -291,6 +293,30 @@ CRITICAL RULES:
               replyText = dataObj.reportMarkdown;
             } else if (dataObj.results && Array.isArray(dataObj.results)) {
               replyText = `✅ *${def.name}* completed successfully! Found ${dataObj.results.length} relevant items.`;
+            } else if (dataObj.resources && Array.isArray(dataObj.resources)) {
+              const count = dataObj.resources.length;
+
+              if (count === 0) {
+                replyText = `📅 *Zoom Meetings*\nNo meetings found.`;
+              } else {
+                const meetingList = dataObj.resources.map((m: any, index: number) => {
+                  const name = m.name || 'Untitled Meeting';
+                  const id = m.externalResourceId;
+                  const startTime = m.metadata?.start_time 
+                    ? new Date(m.metadata.start_time).toLocaleString('en-US', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                        timeZone: m.metadata.timezone || 'Africa/Cairo'
+                      }) 
+                    : 'N/A';
+                  const duration = m.metadata?.duration ? `${m.metadata.duration} mins` : 'N/A';
+                  const joinUrl = m.metadata?.join_url ? `<${m.metadata.join_url}|Join Meeting>` : '';
+
+                  return `${index + 1}. *${name}* (ID: \`${id}\`)\n   🕒 ${startTime} (${duration}) | 🔗 ${joinUrl}`;
+                }).join('\n\n');
+
+                replyText = `📅 *Found ${count} Zoom Meeting${count > 1 ? 's' : ''}:*\n\n${meetingList}`;
+              }
             } else {
               replyText = `✅ *${def.name}* executed successfully!`;
             }

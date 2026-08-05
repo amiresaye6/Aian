@@ -104,11 +104,18 @@ export const GetMeetingInputSchema = z.object({
 });
 
 export const ListMeetingsInputSchema = z.object({
+  type: z.enum(['scheduled', 'live', 'upcoming'])
+    .optional()
+    .default('scheduled')
+    .describe('Type of meetings to fetch: scheduled, live, upcoming, etc.'),
+  pageSize: z.coerce.number().optional().default(30).describe('Number of records to return.'),
+  nextPageToken: z.string().optional().describe('Token for pagination.'),
   dateRange: z.object({
     from: z.string().optional(),
     to: z.string().optional(),
-  }).optional().describe('Filter meetings by date range.'),
+  }).optional(),
 });
+
 export const GenerateReportInputSchema = z.object({
   scope: z
     .string()

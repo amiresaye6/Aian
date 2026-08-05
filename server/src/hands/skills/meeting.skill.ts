@@ -13,6 +13,7 @@ import {
     ListMeetingsInputSchema,
 }
 from "../skills/schemas";
+import { ProviderConnection } from "../../integrations/contracts";
 
 @Injectable()
 export class MeetingSkill implements OnModuleInit {
@@ -40,6 +41,15 @@ private readonly logger = new Logger(MeetingSkill.name);
             schema:UpdateMeetingInputSchema,
             destructive:false,
             handler: (ctx, input) => this.updateMeeting(ctx, input),
+            requiredProviders:["ZOOM"]
+        } as SkillDefinition  )
+
+        this.registry.register({
+            name:"meetingSkill.listMeetings",
+            description:"list zoom meetings",
+            schema:ListMeetingsInputSchema,
+            destructive:false,
+            handler: (ctx, input) => this.listMeetings(ctx, input),
             requiredProviders:["ZOOM"]
         } as SkillDefinition  )
     }
@@ -82,7 +92,6 @@ private readonly logger = new Logger(MeetingSkill.name);
         );
     }
 
-
     async updateMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
         const parsed = UpdateMeetingInputSchema.safeParse(input);
         //this.logger.log(`Executing skill updateMeeting with input: ${JSON.stringify(ctx)}`);
@@ -121,6 +130,62 @@ private readonly logger = new Logger(MeetingSkill.name);
             );
             return result; // The ResilienceService automatically wraps this in a success result
         },
+        );
+    }
+
+    async listMeetings(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
+        const parsed = ListMeetingsInputSchema.safeParse(input);
+        if (!parsed.success) {
+            return {
+            success: false,
+            error: {
+                code: 'VALIDATION_ERROR',
+                message: parsed.error.message,
+                retryable: false,
+            },
+            meta: {
+                skill: 'listMeetings',
+                provider: 'zoom',
+                durationMs: 0,
+                idempotencyKey: ctx.idempotencyKey,
+            },
+            };
+        }
+
+        const connection = ctx.connections?.['ZOOM']
+
+        if (!connection) {
+            return {
+            success: false,
+            error: {
+                code: 'CONNECTION_NOT_FOUND',
+                message: `Provider connection not found for Zoom`,
+                retryable: false,
+            },
+            meta: {
+                skill: 'listMeetings',
+                provider: 'zoom',
+                durationMs: 0,
+                idempotencyKey: ctx.idempotencyKey,
+            },
+            };
+        }
+
+        return this.resilience.execute(
+            ctx,
+            'meetingSkill',
+            'listMeetings',
+            'zoom',
+            parsed.data,
+            async () => {
+            const result = await this.zoomClient.listMeetings(
+                connection as any,
+                parsed.data.type as any,
+                parsed.data.pageSize,
+                parsed.data.nextPageToken
+            );
+            return result;
+            },
         );
     }
 }
