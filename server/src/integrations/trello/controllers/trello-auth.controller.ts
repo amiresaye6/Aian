@@ -122,8 +122,11 @@ export class TrelloAuthController {
         oauth_verifier,
         async (error, access_token, access_token_secret) => {
           if (error) {
-            this.logger.error('Failed to get Trello access token', error);
-            return res.redirect(`${frontendUrl}/eyes/trello/redirect?status=error&message=TokenExchangeFailed`);
+            this.logger.error(
+              'Trello OAuth callback failed',
+              error instanceof Error ? error.message : String(error)
+            );
+            return res.redirect(`${frontendUrl}/eyes/trello/error?provider=trello&error=oauth_failed`);
           }
 
           try {
@@ -178,16 +181,28 @@ export class TrelloAuthController {
               this.logger.log(`Created new Trello connection for orgEye: ${orgEyeId}`);
             }
 
-            res.redirect(`${frontendUrl}/eyes/trello/redirect?status=success`);
+            await this.prisma.organizationEye.update({
+              where: { id: orgEyeId },
+              data: { status: 'connected' },
+            });
+
+            res.redirect(`${frontendUrl}/eyes/trello/redirect`);
           } catch (profileError) {
-            this.logger.error('Failed to fetch Trello profile', profileError);
-            res.redirect(`${frontendUrl}/eyes/trello/redirect?status=error&message=ProfileFetchFailed`);
+            this.logger.error(
+              'Trello OAuth callback failed',
+              profileError instanceof Error ? profileError.message : String(profileError)
+            );
+            res.redirect(`${frontendUrl}/eyes/trello/error?provider=trello&error=oauth_failed`);
           }
         }
       );
-    } catch (err: any) {
-      this.logger.error(`Trello callback error: ${err.message}`, err.stack);
-      res.redirect(`${frontendUrl}/eyes/trello/redirect?status=error`);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        this.logger.error('Trello OAuth callback failed', err.message);
+      } else {
+        this.logger.error('Trello OAuth callback failed', 'Unknown error');
+      }
+      res.redirect(`${frontendUrl}/eyes/trello/error?provider=trello&error=oauth_failed`);
     }
   }
 
