@@ -442,6 +442,25 @@
             },
             "description": "Re-triggers Stage 3 entity resolution for all artifacts where extraction completed but resolution is pending or failed."
           }
+        },
+        {
+          "name": "Merge Entities",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"primaryEntityId\": \"replace-with-primary-entity-uuid\",\n  \"secondaryEntityId\": \"replace-with-secondary-entity-uuid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/entities/merge",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "entities", "merge"]
+            },
+            "description": "Merges two entities of the same type. The secondary entity's mentions, aliases, and graph relationships are transferred to the primary, then the secondary is deleted."
+          }
         }
       ]
     },
@@ -472,6 +491,44 @@
     {
       "name": "Billing & Usage",
       "item": [
+        {
+          "name": "Get Quota Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/quota-dashboard?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "quota-dashboard"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}" }
+              ]
+            },
+            "description": "Retrieves the real-time usage quotas for tokens, storage, and members against the organization's plan limits."
+          }
+        },
+        {
+          "name": "Upgrade Subscription Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planSlug\": \"growth\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/billing/subscription/upgrade?organizationId={{organizationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "billing", "subscription", "upgrade"],
+              "query": [
+                { "key": "organizationId", "value": "{{organizationId}}" }
+              ]
+            },
+            "description": "Upgrades or downgrades the active subscription to the specified plan."
+          }
+        },
         {
           "name": "Get Usage Summary",
           "request": {
@@ -512,6 +569,45 @@
               ]
             },
             "description": "Retrieves paginated AI usage logs with advanced filtering and sorting."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "item": [
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs?page=1&limit=20&skill=&success=&dateFrom=&dateTo=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-logs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "skill", "value": "", "description": "Optional filter by skill name" },
+                { "key": "success", "value": "", "description": "Optional filter by success status (true/false)" },
+                { "key": "dateFrom", "value": "", "description": "Optional start date" },
+                { "key": "dateTo", "value": "", "description": "Optional end date" }
+              ]
+            },
+            "description": "Retrieves paginated audit logs for the organization."
+          }
+        },
+        {
+          "name": "Get Audit Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/audit-logs/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "audit-logs", "analytics"]
+            },
+            "description": "Retrieves aggregated audit log statistics including success rate, most active skill, and daily trends."
           }
         }
       ]

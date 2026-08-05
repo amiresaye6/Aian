@@ -6,7 +6,9 @@ import {
   Query,
   Logger,
   NotFoundException,
+  Body,
 } from '@nestjs/common';
+import { EntityMergeService } from '../../../resolution/entity-merge.service';
 import { ResolvedEntityRepository } from '../../../resolution/repositories/resolved-entity.repository';
 import { EntityResolutionService } from '../../../resolution/resolution.service';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -26,6 +28,7 @@ export class EntitiesController {
     private readonly entityRepo: ResolvedEntityRepository,
     private readonly resolutionService: EntityResolutionService,
     private readonly prisma: PrismaService,
+    private readonly mergeService: EntityMergeService,
   ) {}
 
   /**
@@ -123,5 +126,21 @@ export class EntitiesController {
     return {
       message: 'Resolution retry dispatched. Check server logs for progress.',
     };
+  }
+
+  /**
+   * POST /api/v1/entities/merge
+   * 
+   * Manually merges a secondary entity into a primary entity.
+   */
+  @Post('merge')
+  async mergeEntities(
+    @Body() body: { primaryEntityId: string; secondaryEntityId: string; actorUserId?: string },
+  ) {
+    return this.mergeService.mergeEntities(
+      body.primaryEntityId,
+      body.secondaryEntityId,
+      body.actorUserId || 'manual',
+    );
   }
 }

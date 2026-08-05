@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { z } from 'zod';
 
 export const SendMessageInputSchema = z.object({
@@ -90,3 +91,14 @@ export const ListMeetingsInputSchema = z.object({
     to: z.string().optional(),
   }).optional().describe('Filter meetings by date range.'),
 });
+export const GenerateReportInputSchema = z.object({
+  scope: z
+    .string()
+    .describe('The primary subject of the report (e.g. user name, project name, or general topic).'),
+  timeframe: z
+    .string()
+    .describe('Human readable timeframe, e.g., "last 3 days", "this month".')
+    .optional(),
+});
+
+export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;

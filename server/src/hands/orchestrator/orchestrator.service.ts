@@ -4,10 +4,10 @@ import { SkillRegistryService } from '../core/registry.service';
 import { SessionService } from './session.service';
 import { AiMessage, AiTool } from '../../ai/providers/ai-provider.interface';
 import { SkillContext } from '../core/types';
+import { ConnectionResolverService } from '../core/connection-resolver.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderClientFactory } from '../../integrations/provider-client.factory';
 import { ProviderConnection } from '../../integrations/contracts';
-import { AiUsageService } from '../../ai/ai-usage.service';
 
 export interface HandleDMInput {
   organizationId: string;
@@ -29,7 +29,7 @@ export class OrchestratorService {
     private readonly sessionService: SessionService,
     private readonly prisma: PrismaService,
     private readonly clientFactory: ProviderClientFactory,
-    private readonly usageService: AiUsageService,
+    private readonly connectionResolver: ConnectionResolverService,
   ) {}
 
   /**
@@ -64,18 +64,58 @@ export class OrchestratorService {
   }
 
   private buildSystemPrompt(): string {
-    return 'You are AIAN, an autonomous AI assistant capable of taking actions on behalf of the user. Be concise. If a tool call requires confirmation, we will handle it internally. Just choose the appropriate tool.';
+    return `You are AIAN, a strict enterprise organizational intelligence AI.
+CRITICAL RULES:
+1. You have access to various tools (skills) like sending emails, sending messages, fetching reports, and querying organizational knowledge.
+2. If the user asks you to perform an action that matches one of your tools, you MUST use the appropriate tool to fulfill their request.
+3. If the user asks a question about the organization's data, projects, or employees, you MUST use the KnowledgeSkill.answerQuestion tool.
+4. You MUST strictly refuse to answer any general knowledge questions, math problems, coding requests, or anything outside of organizational data that cannot be fulfilled by a tool. Respond with: "I am an enterprise AI and can only assist with organizational knowledge."
+5. Be concise and professional.`;
+  }
+
+  private simpleZodToJsonSchema(schema: any): any {
+    if (schema._def.typeName === 'ZodObject' || schema.shape) {
+      const properties: any = {};
+      const required: string[] = [];
+      const shape = schema.shape;
+      for (const key in shape) {
+        properties[key] = this.simpleZodToJsonSchema(shape[key]);
+        if (!shape[key].isOptional()) {
+          required.push(key);
+        }
+      }
+      return { type: 'object', properties, required };
+    } else if (
+      schema._def.typeName === 'ZodString' ||
+      schema.constructor.name === 'ZodString'
+    ) {
+      return {
+        type: 'string',
+        description: schema.description || 'string value',
+      };
+    } else if (schema._def.typeName === 'ZodArray') {
+      return {
+        type: 'array',
+        items: this.simpleZodToJsonSchema(schema._def.type),
+      };
+    } else if (schema._def.typeName === 'ZodEnum') {
+      return { type: 'string', enum: schema._def.values };
+    } else if (
+      schema._def.typeName === 'ZodOptional' ||
+      schema._def.typeName === 'ZodNullable'
+    ) {
+      return this.simpleZodToJsonSchema(schema._def.innerType);
+    }
+    return { type: 'string' }; // fallback
   }
 
   private buildTools(): AiTool[] {
     const definitions = this.skillRegistry.getAllDefinitions();
     return definitions.map((def) => {
-      // Basic conversion of zod to json-schema. In a real scenario, use zodToJsonSchema.
-      // Assuming def.schema has a describe method or we just use any
       return {
         name: def.name,
         description: def.description,
-        schema: (def.schema as any)._def, // mock json schema for now
+        schema: this.simpleZodToJsonSchema(def.schema),
       };
     });
   }
@@ -104,10 +144,29 @@ export class OrchestratorService {
         if (pendingAction && pendingAction.name) {
           const def = this.skillRegistry.resolve(pendingAction.name);
           if (def) {
+            const { connections, missing } =
+              await this.connectionResolver.resolveForSkill(
+                input.organizationId,
+                def.requiredProviders || [],
+                def.optionalProviders || [],
+              );
+
+            if (missing.length > 0) {
+              await this.sendReply(
+                input.connectionId,
+                input.channelId,
+                `❌ This action requires the following integrations: *${missing.join(', ')}*. Please link them in your dashboard.`,
+                input.threadTs,
+              );
+              await this.sessionService.updateSessionState(session.id, 'idle');
+              return;
+            }
+
             const ctx: SkillContext = {
               organizationId: input.organizationId,
               actorUserId: input.userId,
-              connectionId: input.connectionId,
+              triggerConnectionId: input.connectionId,
+              connections,
               sessionId: session.id,
               idempotencyKey: `${session.id}-${Date.now()}`,
               traceId: `trace-${Date.now()}`,
@@ -142,18 +201,14 @@ export class OrchestratorService {
     // 3. Normal flow: Build messages and call AI
     const messages: AiMessage[] = [{ role: 'user', content: input.text }];
 
-    const { data: aiResult, usage } = await this.aiGateway.generateToolCalls(
+    const { data: aiResult } = await this.aiGateway.generateToolCalls(
       messages,
       this.buildTools(),
       this.buildSystemPrompt(),
-    );
-
-    // Log Usage
-    await this.usageService.logUsage(
-      input.organizationId,
-      'dm_chat',
-      'us.meta.llama3-3-70b-instruct-v1:0', // Ideally passed dynamically if configured
-      usage,
+      {
+        organizationId: input.organizationId,
+        feature: 'dm_chat',
+      },
     );
 
     // 4. Handle Tool Calls
@@ -182,11 +237,29 @@ export class OrchestratorService {
           return;
         }
 
+        const { connections, missing } =
+          await this.connectionResolver.resolveForSkill(
+            input.organizationId,
+            def.requiredProviders || [],
+            def.optionalProviders || [],
+          );
+
+        if (missing.length > 0) {
+          await this.sendReply(
+            input.connectionId,
+            input.channelId,
+            `❌ This action requires the following integrations: *${missing.join(', ')}*. Please link them in your dashboard.`,
+            input.threadTs,
+          );
+          continue;
+        }
+
         // Execute non-destructive skill immediately
         const ctx: SkillContext = {
           organizationId: input.organizationId,
           actorUserId: input.userId,
-          connectionId: input.connectionId,
+          triggerConnectionId: input.connectionId,
+          connections,
           sessionId: session.id,
           idempotencyKey: `${session.id}-${Date.now()}`,
           traceId: `trace-${Date.now()}`,
@@ -199,7 +272,9 @@ export class OrchestratorService {
         let replyText = `✅ Executed: *${def.name}*`;
 
         if (!result.success) {
-          this.logger.error(`Skill ${def.name} failed. Error: ${result.error?.message || JSON.stringify(result.error)}`);
+          this.logger.error(
+            `Skill ${def.name} failed. Error: ${result.error?.message || JSON.stringify(result.error)}`,
+          );
           replyText = `❌ *${def.name}* failed to execute. Please check the logs for more details.`;
         } else if (result.data) {
           if (typeof result.data === 'object') {
@@ -210,6 +285,8 @@ export class OrchestratorService {
                 replyText += `\n_Confidence: ${dataObj.confidence}/100_`;
             } else if (dataObj.summary) {
               replyText = `*Summary:*\n${dataObj.summary}`;
+            } else if (dataObj.reportMarkdown) {
+              replyText = dataObj.reportMarkdown;
             } else if (dataObj.results && Array.isArray(dataObj.results)) {
               replyText = `✅ *${def.name}* completed successfully! Found ${dataObj.results.length} relevant items.`;
             } else {

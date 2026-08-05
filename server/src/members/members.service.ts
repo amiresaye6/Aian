@@ -117,6 +117,7 @@ export class MembersService {
         roleId: dto.roleId,
         memberStatus: 'invited',
         invitedByUserId,
+        mustChangePassword: true,
       },
       select: {
         id: true,

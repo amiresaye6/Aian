@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AiOptions, AiProvider, AiResponse, AiUsage } from './ai-provider.interface';
+import {
+  AiOptions,
+  AiProvider,
+  AiResponse,
+  AiUsage,
+} from './ai-provider.interface';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import axios from 'axios';
@@ -34,11 +39,14 @@ export class StudentBedrockProvider implements AiProvider {
     };
   }
 
-  async generateText(prompt: string, options?: AiOptions): Promise<AiResponse<string>> {
+  async generateText(
+    prompt: string,
+    options?: AiOptions,
+  ): Promise<AiResponse<string>> {
     const model = options?.model || this.DEFAULT_MODEL;
 
     this.logger.debug(`Generating text using model: ${model}`);
-    
+
     const payload = {
       model_id: model,
       messages: [{ role: 'user', content: prompt }],
@@ -214,7 +222,8 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
       );
 
       const usage = this.extractUsage(response.data);
-      const content = response.data.output_text || JSON.stringify(response.data);
+      const content =
+        response.data.output_text || JSON.stringify(response.data);
 
       if (response.data.tool_calls) {
         return {
@@ -223,16 +232,24 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
             content: response.data.output_text,
             toolCalls: response.data.tool_calls,
           },
-          usage
+          usage,
         };
       }
 
       try {
         const match = content.match(/\{[\s\S]*\}/);
-        const cleanContent = match ? match[0] : content.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const cleanContent = match
+          ? match[0]
+          : content
+              .replace(/```json/gi, '')
+              .replace(/```/g, '')
+              .trim();
         const parsed = JSON.parse(cleanContent);
         if (parsed.toolCalls && Array.isArray(parsed.toolCalls)) {
-          return { data: { role: 'assistant', toolCalls: parsed.toolCalls }, usage };
+          return {
+            data: { role: 'assistant', toolCalls: parsed.toolCalls },
+            usage,
+          };
         }
       } catch (e) {
         // Not JSON
@@ -240,7 +257,7 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
 
       return {
         data: { role: 'assistant', content: content },
-        usage
+        usage,
       };
     } catch (error: any) {
       const status = error.response?.status;

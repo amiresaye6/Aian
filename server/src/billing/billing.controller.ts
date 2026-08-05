@@ -12,6 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { BillingService } from './billing.service';
+import { QuotaService } from './quota.service';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { AuthGaurd } from '../auth/auth.gaurd';
@@ -25,6 +26,7 @@ export class BillingController {
   constructor(
     private readonly billingService: BillingService,
     private readonly aiUsageService: AiUsageService,
+    private readonly quotaService: QuotaService,
   ) {}
 
   @Get('plans')
@@ -68,6 +70,23 @@ export class BillingController {
   @RequiredPermissions('billing.manage')
   async getSubscription(@Query('organizationId') organizationId: string) {
     return this.billingService.getActiveSubscription(organizationId);
+  }
+
+  @Post('subscription/upgrade')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async upgradePlan(
+    @Query('organizationId') organizationId: string,
+    @Body('planSlug') planSlug: string,
+  ) {
+    return this.billingService.upgradePlan(organizationId, planSlug);
+  }
+
+  @Get('quota-dashboard')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.read')
+  async getQuotaDashboard(@Query('organizationId') organizationId: string) {
+    return this.quotaService.getQuotaDashboard(organizationId);
   }
 
   @Get('usage/logs')

@@ -1,7 +1,8 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
 import { UploadModule } from './upload/upload.module';
 import { TestModule } from './test/test.module';
@@ -23,13 +24,14 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { CollectionModule } from './ingestion/collection/collection.module';
 import { SchedulerModule } from './ingestion/scheduler/scheduler.module';
 import { ProcessorModule } from './processor/processor.module';
-import { ZoomModule } from './integrations/zoom/zoom.module';
+// import { ZoomModule } from './integrations/zoom/zoom.module';
 import { AiGatewayModule } from './ai/ai-gateway.module';
 import { KnowledgeExtractionModule } from './extraction/extraction.module';
 import { ResolutionModule } from './resolution/resolution.module';
 import { GraphModule } from './graph/graph.module';
 import { RetrievalModule } from './retrieval/retrieval.module';
 import { HandsModule } from './hands/hands.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -38,6 +40,7 @@ import { HandsModule } from './hands/hands.module';
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
+    ScheduleModule.forRoot(),
     JwtModule.register({
       global: true,
     }),
@@ -67,6 +70,7 @@ import { HandsModule } from './hands/hands.module';
     PaymobModule,
     BillingModule,
     HandsModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

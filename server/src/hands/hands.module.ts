@@ -1,8 +1,10 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuditLogService } from './audit/audit-log.service';
+import { AuditController } from './audit/audit.controller';
 import { ResilienceService } from './core/resilience.service';
 import { SkillRegistryService } from './core/registry.service';
+import { ConnectionResolverService } from './core/connection-resolver.service';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { EmailModule } from '../email/email.module';
 import { AiGatewayModule } from '../ai/ai-gateway.module';
@@ -14,6 +16,7 @@ import { RetrievalModule } from '../retrieval/retrieval.module';
 import { KnowledgeSkill } from './skills/knowledge.skill';
 import { MeetingSkill } from './skills/meeting.skill';
 import { ZoomModule } from '../integrations/zoom/zoom.module';
+import { ReportingSkill } from './skills/reporting.skill';
 
 @Module({
   imports: [
@@ -28,13 +31,16 @@ import { ZoomModule } from '../integrations/zoom/zoom.module';
     AuditLogService,
     ResilienceService,
     SkillRegistryService,
+    ConnectionResolverService,
     SessionService,
     OrchestratorService,
     MessagingSkill,
     EmailSkill,
     KnowledgeSkill,
-    MeetingSkill
+    MeetingSkill,
+    ReportingSkill,
   ],
-  exports: [OrchestratorService],
+  controllers: [AuditController],
+  exports: [OrchestratorService, AuditLogService],
 })
 export class HandsModule {}

@@ -23,12 +23,15 @@ export class UserEntity implements User {
   memberStatus: any | null;
   joinedAt: Date | null;
   invitedByUserId: string | null;
+  isSuperAdmin: boolean;
 
   @Exclude()
   otpHash: string | null;
 
   @Exclude()
   otpExpiresAt: Date | null;
+
+  mustChangePassword: boolean;
 
   constructor(partial: Partial<UserEntity>) {
     Object.assign(this, partial);

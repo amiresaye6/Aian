@@ -32,7 +32,10 @@ export class GraphSearchService {
       const query = `
         MATCH path = (start:Entity)-[*0..${RETRIEVAL_CONSTANTS.GRAPH_MAX_HOPS}]-(related)
         WHERE start.organizationId = $organizationId 
-          AND toLower(start.canonicalName) IN [e IN $entities | toLower(e)]
+          AND (
+            toLower(start.canonicalName) IN [e IN $entities | toLower(e)] 
+            OR any(alias IN coalesce(start.aliases, []) WHERE toLower(alias) IN [e IN $entities | toLower(e)])
+          )
         
         UNWIND nodes(path) AS n
         UNWIND coalesce(n.artifactIds, []) AS artifactId
@@ -92,9 +95,17 @@ export class GraphSearchService {
       }
 
       // Sort by score descending
-      const ranked = Array.from(artifactScores.values())
-        .sort((a, b) => b.score - a.score)
-        .slice(0, RETRIEVAL_CONSTANTS.MAX_EVIDENCE_CHAINS);
+      let ranked = Array.from(artifactScores.values()).sort(
+        (a, b) => b.score - a.score,
+      );
+
+      if (ranked.length > 0) {
+        const topScore = ranked[0].score;
+        const threshold = Math.max(0.5, topScore * 0.3);
+        ranked = ranked.filter((item) => item.score >= threshold);
+      }
+
+      ranked = ranked.slice(0, RETRIEVAL_CONSTANTS.MAX_EVIDENCE_CHAINS);
 
       this.logger.log(
         `Found and ranked ${ranked.length} artifacts from graph search.`,

@@ -15,7 +15,9 @@ export class GraphUpdateService {
   ) {}
 
   async updateArtifactInGraph(artifactId: string): Promise<void> {
-    this.logger.log(`[Stage 4] Starting Graph update for artifact: ${artifactId}`);
+    this.logger.log(
+      `[Stage 4] Starting Graph update for artifact: ${artifactId}`,
+    );
 
     const artifact = await this.prisma.knowledgeArtifact.findUnique({
       where: { id: artifactId },
@@ -37,7 +39,9 @@ export class GraphUpdateService {
     }
 
     if (!artifact.extractedData) {
-      this.logger.warn(`Artifact ${artifactId} has no extractedData. Skipping.`);
+      this.logger.warn(
+        `Artifact ${artifactId} has no extractedData. Skipping.`,
+      );
       return;
     }
 
@@ -70,6 +74,7 @@ export class GraphUpdateService {
               n.canonicalName = $canonicalName,
               n.organizationId = $organizationId,
               n.type = $type,
+              n.aliases = $aliases,
               n.artifactIds = CASE WHEN NOT $artifactId IN coalesce(n.artifactIds, []) THEN coalesce(n.artifactIds, []) + $artifactId ELSE coalesce(n.artifactIds, []) END
         `;
         await session.run(query, {
@@ -77,6 +82,7 @@ export class GraphUpdateService {
           canonicalName: entity.canonicalName,
           organizationId,
           type: entity.type,
+          aliases: Array.isArray(entity.aliases) ? entity.aliases : [],
           artifactId,
         });
       }
@@ -141,11 +147,14 @@ export class GraphUpdateService {
         if (dec.madeBy) {
           const madeById = getResolvedId(dec.madeBy);
           if (madeById) {
-            await session.run(`
+            await session.run(
+              `
               MATCH (p:Entity {id: $madeById}), (d:Decision {id: $id})
               MERGE (p)-[r:MADE_DECISION]->(d)
               SET r.artifactIds = CASE WHEN NOT $artifactId IN coalesce(r.artifactIds, []) THEN coalesce(r.artifactIds, []) + $artifactId ELSE coalesce(r.artifactIds, []) END
-            `, { madeById, id: hash, artifactId });
+            `,
+              { madeById, id: hash, artifactId },
+            );
           }
         }
       }
@@ -172,11 +181,14 @@ export class GraphUpdateService {
         if (item.assignee) {
           const assigneeId = getResolvedId(item.assignee);
           if (assigneeId) {
-            await session.run(`
+            await session.run(
+              `
               MATCH (p:Entity {id: $assigneeId}), (a:ActionItem {id: $id})
               MERGE (p)-[r:ASSIGNED_TO]->(a)
               SET r.artifactIds = CASE WHEN NOT $artifactId IN coalesce(r.artifactIds, []) THEN coalesce(r.artifactIds, []) + $artifactId ELSE coalesce(r.artifactIds, []) END
-            `, { assigneeId, id: hash, artifactId });
+            `,
+              { assigneeId, id: hash, artifactId },
+            );
           }
         }
       }
@@ -189,9 +201,13 @@ export class GraphUpdateService {
         },
       });
 
-      this.logger.log(`[Stage 4] Graph updated successfully for artifact ${artifactId}`);
+      this.logger.log(
+        `[Stage 4] Graph updated successfully for artifact ${artifactId}`,
+      );
     } catch (error) {
-      this.logger.error(`[Stage 4] Graph update failed for artifact ${artifactId}: ${error.message}`);
+      this.logger.error(
+        `[Stage 4] Graph update failed for artifact ${artifactId}: ${error.message}`,
+      );
       await this.prisma.knowledgeArtifact.update({
         where: { id: artifactId },
         data: { graphStatus: ExtractionStatus.failed },
@@ -205,7 +221,9 @@ export class GraphUpdateService {
     const orphans = await this.prisma.knowledgeArtifact.findMany({
       where: {
         resolutionStatus: ExtractionStatus.completed,
-        graphStatus: { in: [ExtractionStatus.pending, ExtractionStatus.failed] },
+        graphStatus: {
+          in: [ExtractionStatus.pending, ExtractionStatus.failed],
+        },
       },
       select: { id: true },
       orderBy: { resolvedAt: 'asc' },
@@ -213,11 +231,15 @@ export class GraphUpdateService {
 
     if (orphans.length === 0) return;
 
-    this.logger.log(`[Stage 4] Scheduler found ${orphans.length} orphaned artifact(s) to sync to Graph.`);
+    this.logger.log(
+      `[Stage 4] Scheduler found ${orphans.length} orphaned artifact(s) to sync to Graph.`,
+    );
 
     for (const { id } of orphans) {
       await this.updateArtifactInGraph(id).catch((err) =>
-        this.logger.error(`[Stage 4] Orphan sync failed for ${id}: ${err.message}`),
+        this.logger.error(
+          `[Stage 4] Orphan sync failed for ${id}: ${err.message}`,
+        ),
       );
     }
   }
@@ -227,5 +249,89 @@ export class GraphUpdateService {
       .createHash('sha256')
       .update(content.trim().toLowerCase() + orgId)
       .digest('hex');
+  }
+
+  async mergeGraphNodes(
+    primaryId: string,
+    secondaryId: string,
+    primaryAliases: string[] = [],
+  ): Promise<void> {
+    const session = this.graph.getSession();
+    try {
+      // 0. Update primary node aliases
+      await session.run(
+        `
+        MATCH (prim:Entity {id: $primaryId})
+        SET prim.aliases = $primaryAliases
+      `,
+        { primaryId, primaryAliases },
+      );
+      // 1. Get all relationship types on the secondary node
+      const result = await session.run(
+        `
+        MATCH (n:Entity {id: $secondaryId})-[r]-()
+        RETURN DISTINCT type(r) AS relType
+      `,
+        { secondaryId },
+      );
+
+      const relTypes = result.records.map(
+        (record) => record.get('relType') as string,
+      );
+
+      for (const relType of relTypes) {
+        const sanitizedRelType = relType.replace(/[^A-Z0-9_]/gi, '');
+        if (!sanitizedRelType) continue;
+
+        // 2. Transfer incoming rels
+        await session.run(
+          `
+          MATCH (source)-[r:${sanitizedRelType}]->(sec:Entity {id: $secondaryId})
+          MATCH (prim:Entity {id: $primaryId})
+          MERGE (source)-[newR:${sanitizedRelType}]->(prim)
+          SET newR += properties(r)
+          DELETE r
+        `,
+          { primaryId, secondaryId },
+        );
+
+        // 3. Transfer outgoing rels
+        await session.run(
+          `
+          MATCH (sec:Entity {id: $secondaryId})-[r:${sanitizedRelType}]->(target)
+          MATCH (prim:Entity {id: $primaryId})
+          MERGE (prim)-[newR:${sanitizedRelType}]->(target)
+          SET newR += properties(r)
+          DELETE r
+        `,
+          { primaryId, secondaryId },
+        );
+      }
+
+      // 4. Delete direct relationships between primary and secondary
+      await session.run(
+        `
+        MATCH (prim:Entity {id: $primaryId})-[r]-(sec:Entity {id: $secondaryId})
+        DELETE r
+      `,
+        { primaryId, secondaryId },
+      );
+
+      // 5. DETACH DELETE the secondary node
+      await session.run(
+        `
+        MATCH (sec:Entity {id: $secondaryId})
+        DETACH DELETE sec
+      `,
+        { secondaryId },
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to merge graph nodes ${primaryId} and ${secondaryId}: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      await session.close();
+    }
   }
 }

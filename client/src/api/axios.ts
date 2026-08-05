@@ -9,7 +9,7 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 120000, // Increased to 120 seconds for long AI generation requests
 });
 
 api.interceptors.request.use(

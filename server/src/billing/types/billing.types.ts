@@ -73,3 +73,18 @@ export interface PaymentVerificationResult {
   currency: string;
   paidAt: Date | null;
 }
+
+// ─── Quota Types ─────────────────────────────────────────────────────────────
+
+export interface QuotaStatusResponse {
+  status: 'ok' | 'warning' | 'exceeded';
+  used: number;
+  limit: number;
+  percentage: number;
+}
+
+export interface FullQuotaSummary {
+  tokens: QuotaStatusResponse;
+  storage: QuotaStatusResponse;
+  members: QuotaStatusResponse;
+}

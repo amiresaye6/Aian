@@ -46,8 +46,11 @@ export class BillingService {
     return toPlanResponse(plan);
   }
 
-  async getActiveSubscription(organizationId: string): Promise<SubscriptionResponse | null> {
-    const subscription = await this.repository.findSubscriptionByOrganizationId(organizationId);
+  async getActiveSubscription(
+    organizationId: string,
+  ): Promise<SubscriptionResponse | null> {
+    const subscription =
+      await this.repository.findSubscriptionByOrganizationId(organizationId);
     if (!subscription) return null;
 
     return {
@@ -61,6 +64,29 @@ export class BillingService {
       currentPeriodEnd: subscription.currentPeriodEnd,
       plan: toPlanResponse(subscription.plan),
     };
+  }
+
+  async upgradePlan(organizationId: string, newPlanSlug: string) {
+    const plan = await this.repository.findPlanBySlug(newPlanSlug);
+    if (!plan) {
+      throw new NotFoundException(`Plan "${newPlanSlug}" not found`);
+    }
+
+    const subscription =
+      await this.repository.findSubscriptionByOrganizationId(organizationId);
+    if (!subscription) {
+      throw new BadRequestException('No active subscription found to upgrade');
+    }
+
+    await this.repository.updateSubscriptionStatus(
+      subscription.id,
+      subscription.status,
+      {
+        planId: plan.id,
+      },
+    );
+
+    return { success: true, newPlan: plan.name };
   }
 
   // ─── Checkout ──────────────────────────────────────────────────────────────
@@ -139,6 +165,13 @@ export class BillingService {
     if (!payment) {
       this.logger.warn(
         `Payment not found for merchant order: ${result.merchantOrderId}`,
+      );
+      return;
+    }
+
+    if (payment.status === 'paid') {
+      this.logger.log(
+        `Payment ${payment.id} already processed as paid. Ignoring duplicate webhook.`,
       );
       return;
     }

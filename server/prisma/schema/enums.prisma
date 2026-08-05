@@ -135,3 +135,12 @@ enum ExtractionStatus {
 
   @@map("extraction_status")
 }
+
+enum QuotaStatus {
+  within_limits
+  warning
+  grace_period
+  hard_blocked
+
+  @@map("quota_status")
+}

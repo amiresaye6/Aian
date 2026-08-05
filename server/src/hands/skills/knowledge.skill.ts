@@ -32,17 +32,9 @@ export class KnowledgeSkill implements OnModuleInit {
         'Answers a question using the organizational knowledge graph. Returns the answer, sources, and a confidence score.',
       schema: AnswerQuestionInputSchema,
       destructive: false,
+      requiredProviders: [],
       handler: (ctx: SkillContext, input: any) =>
         this.answerQuestion(ctx, input),
-    });
-
-    this.registry.register({
-      name: 'KnowledgeSkill.search',
-      description:
-        'Searches the organizational knowledge graph for artifacts related to a query. Can optionally filter by artifact types.',
-      schema: SearchInputSchema,
-      destructive: false,
-      handler: (ctx: SkillContext, input: any) => this.search(ctx, input),
     });
 
     this.registry.register({
@@ -51,6 +43,7 @@ export class KnowledgeSkill implements OnModuleInit {
         'Summarizes a topic using the organizational knowledge graph, with an optional scope constraint.',
       schema: SummarizeInputSchema,
       destructive: false,
+      requiredProviders: [],
       handler: (ctx: SkillContext, input: any) => this.summarize(ctx, input),
     });
   }
