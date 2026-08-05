@@ -52,6 +52,15 @@ private readonly logger = new Logger(MeetingSkill.name);
             handler: (ctx, input) => this.listMeetings(ctx, input),
             requiredProviders:["ZOOM"]
         } as SkillDefinition  )
+
+        this.registry.register({
+            name:"meetingSkill.cancelMeetings",
+            description:"cancel/remove/delete zoom meeting",
+            schema:CancelMeetingInputSchema,
+            destructive:true,
+            handler: (ctx, input) => this.cancelMeeting(ctx, input),
+            requiredProviders:["ZOOM"]
+        } as SkillDefinition  )
     }
 
     async createMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
@@ -285,4 +294,44 @@ private readonly logger = new Logger(MeetingSkill.name);
             },
         );
     }
+
+    async cancelMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
+        const parsed = CancelMeetingInputSchema.safeParse(input);
+        if (!parsed.success) {
+            return {
+                success: false,
+                error: {
+                code: 'VALIDATION_ERROR',
+                message: parsed.error.message,
+                retryable: false,
+                },
+                meta: {
+                skill: 'deleteMeeting',
+                provider: 'zoom',
+                durationMs: 0,
+                idempotencyKey: ctx.idempotencyKey,
+                },
+            };
+        }
+
+        const connection = ctx.connections['ZOOM'];
+
+        return this.resilience.execute(
+        ctx,
+        'meetingSkill',
+        'deleteMeeting',
+        'zoom',
+        parsed.data,
+        async () => {
+            const result = await this.zoomClient.deleteMeeting(
+                connection,
+                parsed.data.meetingId
+            );
+
+            return {
+                meetingSkillMessage:result,
+            };
+        },
+        );
+    } 
 }
