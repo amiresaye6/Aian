@@ -158,7 +158,44 @@ private readonly logger = new Logger(MeetingSkill.name);
                 parsed.data.fields
             );
             
-            return result; // The ResilienceService automatically wraps this in a success result
+            const fieldsUpdated = parsed.data.fields || {};
+            const updatedFieldsList = Object.entries(fieldsUpdated)
+                .map(([key, val]) => {
+                const formattedKey = key
+                    .replace(/_/g, ' ')
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/^./, (str) => str.toUpperCase());
+
+                let displayVal = val;
+                if (key === 'start_time' || key === 'startTime') {
+                    displayVal = new Date(val as string).toLocaleString('en-US', {
+                    dateStyle: 'full',
+                    timeStyle: 'short',
+                    timeZone: 'Africa/Cairo',
+                    });
+                } else if (key === 'duration' || key === 'durationMinutes') {
+                    displayVal = `${val} mins`;
+                }
+
+                return `• *${formattedKey}:* ${displayVal}`;
+                })
+                .join('\n');
+
+            const formattedText = [
+                `📝 *Meeting Updated Successfully!*`,
+                ``,
+                `🆔 *Meeting ID:* \`${parsed.data.meetingId}\``,
+                ``,
+                `*Updated Fields:*`,
+                updatedFieldsList || '• General settings updated.',
+            ].join('\n');
+
+            return {
+                result,
+                meetingId: parsed.data.meetingId,
+                updatedFields: fieldsUpdated,
+                meetingSkillMessage: formattedText
+            };
         },
         );
     }
