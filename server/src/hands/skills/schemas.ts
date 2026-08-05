@@ -96,9 +96,13 @@ export const CancelMeetingInputSchema = z.object({
 
 export const InviteMeetingInputSchema = z.object({
   meetingId: z.string().describe('The Zoom meeting ID.'),
-  attendees: z.array(z.string().email()).describe('Email addresses of attendees to add.'),
+    attendees: z
+    .preprocess((val) => {
+      if (typeof val === 'string') return [val];
+      return val;
+    }, z.array(z.string().email()))
+    .describe('List of email addresses of attendees to invite to the meeting. Example: ["user@example.com"]'),
 });
-
 export const GetMeetingInputSchema = z.object({
   meetingId: z.string().describe('The Zoom meeting ID.'),
 });

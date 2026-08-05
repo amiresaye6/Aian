@@ -61,6 +61,15 @@ private readonly logger = new Logger(MeetingSkill.name);
             handler: (ctx, input) => this.cancelMeeting(ctx, input),
             requiredProviders:["ZOOM"]
         } as SkillDefinition  )
+
+        this.registry.register({
+            name:"meetingSkill.inviteToMeetings",
+            description:"invite people to zoom meeting or add registerants",
+            schema:CancelMeetingInputSchema,
+            destructive:false,
+            handler: (ctx, input) => this.inviteToMeeting(ctx, input),
+            requiredProviders:["ZOOM"]
+        } as SkillDefinition  )
     }
 
     async createMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
@@ -326,6 +335,47 @@ private readonly logger = new Logger(MeetingSkill.name);
             const result = await this.zoomClient.deleteMeeting(
                 connection,
                 parsed.data.meetingId
+            );
+
+            return {
+                meetingSkillMessage:result,
+            };
+        },
+        );
+    } 
+
+    async inviteToMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
+        const parsed = InviteMeetingInputSchema.safeParse(input);
+        if (!parsed.success) {
+            return {
+                success: false,
+                error: {
+                code: 'VALIDATION_ERROR',
+                message: parsed.error.message,
+                retryable: false,
+                },
+                meta: {
+                skill: 'inviteToMeeting',
+                provider: 'zoom',
+                durationMs: 0,
+                idempotencyKey: ctx.idempotencyKey,
+                },
+            };
+        }
+
+        const connection = ctx.connections['ZOOM'];
+
+        return this.resilience.execute(
+        ctx,
+        'meetingSkill',
+        'inviteToMeeting',
+        'zoom',
+        parsed.data,
+        async () => {
+            const result = await this.zoomClient.addRegistrants(
+                connection,
+                parsed.data.meetingId,
+                parsed.data.attendees
             );
 
             return {
