@@ -157,6 +157,7 @@ private readonly logger = new Logger(MeetingSkill.name);
                 parsed.data.meetingId,
                 parsed.data.fields
             );
+            
             return result; // The ResilienceService automatically wraps this in a success result
         },
         );
@@ -213,7 +214,37 @@ private readonly logger = new Logger(MeetingSkill.name);
                 parsed.data.pageSize,
                 parsed.data.nextPageToken
             );
-            return result;
+            const count = result.resources?.length || 0;
+                let formattedText = '';
+
+                if (count === 0) {
+                    formattedText = `📅 *Zoom Meetings*\nNo meetings found.`;
+                } else {
+                    const meetingList = result.resources
+                    .map((m: any, index: number) => {
+                        const name = m.name || 'Untitled Meeting';
+                        const id = m.externalResourceId;
+                        const startTime = m.metadata?.start_time
+                        ? new Date(m.metadata.start_time).toLocaleString('en-US', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                            timeZone: m.metadata.timezone || 'Africa/Cairo',
+                            })
+                        : 'N/A';
+                        const duration = m.metadata?.duration ? `${m.metadata.duration} mins` : 'N/A';
+                        const joinUrl = m.metadata?.join_url ? `<${m.metadata.join_url}|Join Meeting>` : '';
+
+                        return `${index + 1}. *${name}* (ID: \`${id}\`)\n   🕒 ${startTime} (${duration}) | 🔗 ${joinUrl}`;
+                    })
+                    .join('\n\n');
+
+                    formattedText = `📅 *Found ${count} Zoom Meeting${count > 1 ? 's' : ''}:*\n\n${meetingList}`;
+                }
+
+                return {
+                    ...result,
+                    meetingSkillMessage: formattedText, 
+                };
             },
         );
     }
