@@ -43,7 +43,7 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
   }
 
   async getRankedGraph(orgId: string, query: GraphQueryDto): Promise<GraphResponse> {
-    const limit = query.limit || 1  0;
+    const limit = query.limit || 1  ;
     const minDegree = query.minDegree || 0;
 
     const session = this.getSession();
@@ -194,7 +194,7 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
       return null;
     }
 
-    let artifacts = [];
+    let artifacts: any[] = [];
     if (entity) {
       const artifactMap = new Map();
       entity.mentions.forEach((mention) => {
@@ -212,7 +212,7 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
       try {
         const artifactIds = JSON.parse(neo4jNode.artifactIds);
         if (Array.isArray(artifactIds) && artifactIds.length > 0) {
-          const dbArtifacts = await this.prisma.artifact.findMany({
+          const dbArtifacts = await this.prisma.knowledgeArtifact.findMany({
             where: { id: { in: artifactIds }, organizationId: orgId }
           });
           artifacts = dbArtifacts.map(a => ({
