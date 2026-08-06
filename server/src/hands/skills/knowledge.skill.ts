@@ -32,6 +32,7 @@ export class KnowledgeSkill implements OnModuleInit {
         'Answers a question using the organizational knowledge graph. Returns the answer, sources, and a confidence score.',
       schema: AnswerQuestionInputSchema,
       destructive: false,
+      requiredProviders: [],
       handler: (ctx: SkillContext, input: any) =>
         this.answerQuestion(ctx, input),
     });
@@ -42,6 +43,7 @@ export class KnowledgeSkill implements OnModuleInit {
         'Summarizes a topic using the organizational knowledge graph, with an optional scope constraint.',
       schema: SummarizeInputSchema,
       destructive: false,
+      requiredProviders: [],
       handler: (ctx: SkillContext, input: any) => this.summarize(ctx, input),
     });
   }
