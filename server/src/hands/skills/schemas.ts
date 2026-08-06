@@ -64,16 +64,25 @@ export const CreateMeetingInputSchema = z.object({
   startTime: z.string().describe('ISO 8601 start time with timezone, e.g., "2026-08-10T14:00:00Z".'),
   durationMinutes: z.coerce.number().describe('Duration of the meeting in minutes.'),
   timezone: z.string().optional().describe('timezone, e.g., "Africa/Cairo". Defaults to UTC.'),
-  attendees: z.preprocess((val) => {
-    if (typeof val === 'string') {
-      try {
-        return JSON.parse(val);
-      } catch {
-        return val;
+  
+  attendees: z
+    .preprocess((val) => {
+      if (val === undefined || val === null || val === '') {
+        return undefined;
       }
-    }
-    return val;
-  }, z.array(z.string().email()).optional()).describe('List of attendee email addresses.'),
+
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+          return [val];
+        }
+      }
+
+      return val;
+    }, z.array(z.string().email({ message: 'Invalid email address' })).optional())
+    .describe('Optional list of attendee email addresses or a single email address.'),
 });
 
 export const UpdateMeetingInputSchema = z.object({
@@ -94,15 +103,49 @@ export const CancelMeetingInputSchema = z.object({
   meetingId: z.string().describe('The Zoom meeting ID to cancel or delete.'),
 });
 
-export const InviteMeetingInputSchema = z.object({
-  meetingId: z.string().describe('The Zoom meeting ID.'),
+export const InviteMeetingInputSchema = z
+  .preprocess((input: any) => {
+    if (input && typeof input === 'object') {
+      const rawValue = input.attendees ?? input.email ?? input.emails;
+
+      if (rawValue !== undefined && rawValue !== null && rawValue !== '') {
+        let attendeesArray: string[] = [];
+
+        if (typeof rawValue === 'string') {
+          const trimmed = rawValue.trim();
+          if (trimmed.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) attendeesArray = parsed;
+            } catch {
+              // ignore JSON error and fallback to comma split
+            }
+          }
+          if (attendeesArray.length === 0) {
+            attendeesArray = trimmed.split(',').map((e) => e.trim()).filter(Boolean);
+          }
+        } else if (Array.isArray(rawValue)) {
+          attendeesArray = rawValue
+            .flatMap((item) => (typeof item === 'string' ? item.split(',') : item))
+            .map((e) => (typeof e === 'string' ? e.trim() : e))
+            .filter(Boolean);
+        }
+
+        return {
+          ...input,
+          attendees: attendeesArray,
+        };
+      }
+    }
+    return input;
+  }, z.object({
+    meetingId: z.string().describe('The Zoom meeting ID.'),
     attendees: z
-    .preprocess((val) => {
-      if (typeof val === 'string') return [val];
-      return val;
-    }, z.array(z.string().email()))
-    .describe('List of email addresses of attendees to invite to the meeting. Example: ["user@example.com"]'),
-});
+      .array(z.string().email({ message: 'Invalid email address' }))
+      .optional()
+      .describe('List of attendee email addresses.'),
+  }));
+
 export const GetMeetingInputSchema = z.object({
   meetingId: z.string().describe('The Zoom meeting ID.'),
 });

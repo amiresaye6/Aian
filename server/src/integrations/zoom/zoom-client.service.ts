@@ -343,7 +343,7 @@ export class ZoomClientService implements ProviderClient {
     meetingId: string,
     attendees: string[],
     meetingData?: MeetingData,
-  ): Promise<void> {
+  ): Promise<any> {
     const meeting =
       meetingData ??
       (await this.prismaService.meeting.findUniqueOrThrow({
@@ -351,6 +351,9 @@ export class ZoomClientService implements ProviderClient {
           id: meetingId,
         },
       }));
+
+    let count =0;
+    let alreadyExists=0;
 
     const htmlContent = `
       <p>You have been registered for a Zoom meeting.</p>
@@ -377,6 +380,7 @@ export class ZoomClientService implements ProviderClient {
 
     for (const email of attendees) {
       if (existingEmails.has(email)) {
+        alreadyExists++;
         continue;
       }
 
@@ -386,6 +390,8 @@ export class ZoomClientService implements ProviderClient {
         htmlContent,
       );
 
+      count++;
+
       await this.prismaService.meetingRegistrant.create({
         data: {
           meetingId,
@@ -394,6 +400,7 @@ export class ZoomClientService implements ProviderClient {
         },
       });
     }
+    return {count, alreadyExists}
   }
 
   async deleteMeeting(

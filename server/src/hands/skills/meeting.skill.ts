@@ -364,6 +364,7 @@ private readonly logger = new Logger(MeetingSkill.name);
         }
 
         const connection = ctx.connections['ZOOM'];
+        const attendees = parsed.data.attendees ?? [];
 
         return this.resilience.execute(
         ctx,
@@ -375,11 +376,37 @@ private readonly logger = new Logger(MeetingSkill.name);
             const result = await this.zoomClient.addRegistrants(
                 connection,
                 parsed.data.meetingId,
-                parsed.data.attendees
+                attendees
             );
 
+            const newAdded = result?.count || 0;
+            const alreadyExists = result?.alreadyExists || 0;
+            const attendeesList = (parsed.data?.attendees as any)
+                .map((email: string) => `• \`${email}\``)
+                .join('\n');
+
+            let statusHeader = '📩 *Meeting Invitations Processed!*';
+            if (newAdded > 0 && alreadyExists === 0) {
+                statusHeader = '🎉 *Attendees Invited Successfully!*';
+            } else if (newAdded === 0 && alreadyExists > 0) {
+                statusHeader = 'ℹ️ *Attendees Already Invited*';
+            }
+
+            const formattedText = [
+                statusHeader,
+                ``,
+                `🆔 *Meeting ID:* \`${parsed.data.meetingId}\``,
+                `👥 *Submitted Email(s):*`,
+                attendeesList,
+                ``,
+                `📊 *Summary:*`,
+                `• *Newly Added:* ${newAdded}`,
+                `• *Already Registered:* ${alreadyExists}`,
+            ].join('\n');
+
             return {
-                meetingSkillMessage:result,
+                ...result,
+                meetingSkillMessage: formattedText,
             };
         },
         );
