@@ -6,4 +6,4 @@ import { EyesService } from './eyes.service';
   controllers: [EyesController],
   providers: [EyesService],
 })
-export class EyesModule {}
+export class EyesModule { }
