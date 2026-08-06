@@ -75,14 +75,14 @@ export class JiraIntegrationError extends Error {
 }
 
 import {
-  CreateTaskInput,
-  UpdateTaskInput,
-  AssignTaskInput,
-  MoveTaskInput,
-  CommentTaskInput,
-  DeleteTaskInput,
-  ListTasksInput,
-  GetTaskInput,
+  JiraCreateTaskInput,
+  JiraUpdateTaskInput,
+  JiraAssignTaskInput,
+  JiraMoveTaskInput,
+  JiraCommentTaskInput,
+  JiraDeleteTaskInput,
+  JiraListTasksInput,
+  JiraGetTaskInput,
 } from '../../../hands/skills/schemas';
 
 /**
@@ -673,9 +673,13 @@ export class JiraClientService implements ProviderClient {
     let token = await this.getValidToken(connection);
     let headers = this.buildHeaders(token);
 
+    
+    const normalizedPath = path.startsWith('/rest/api/3') ? path.substring(11) : path;
+    const finalPath = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
+
     const config = {
       method,
-      url: `${baseUrl}${path}`,
+      url: `${baseUrl}${finalPath}`,
       headers,
       ...(data && { data }),
     };
@@ -707,6 +711,9 @@ export class JiraClientService implements ProviderClient {
         }
 
         this.logger.error(`Jira request failed: ${path}`);
+        if (axios.isAxiosError(err) && err.response) {
+          this.logger.error(`Jira Error Response Data: ${JSON.stringify(err.response.data)}`);
+        }
         this.handleHttpError(err, path);
       }
     }
@@ -764,14 +771,86 @@ export class JiraClientService implements ProviderClient {
     }
   }
 
+  // --- Private Helpers ---
+
+  private async resolveProject(connection: ProviderConnection, projectName: string): Promise<string> {
+    const token = await this.getValidToken(connection);
+    const baseUrl = this.getBaseUrl(connection);
+    const headers = this.buildHeaders(token);
+    
+    try {
+      const projectsResponse = await axios.get<{
+        values: { id: string; name: string; key: string; }[];
+      }>(`${baseUrl}/project/search`, { headers });
+      
+      const projects = projectsResponse.data.values || [];
+      const lowerName = projectName.toLowerCase();
+      
+      const exactMatch = projects.find(p => p.key.toLowerCase() === lowerName || p.name.toLowerCase() === lowerName);
+      if (exactMatch) return exactMatch.key;
+      
+      const partialMatch = projects.find(p => p.name.toLowerCase().includes(lowerName) || p.key.toLowerCase().includes(lowerName));
+      if (partialMatch) return partialMatch.key;
+    } catch (e) {
+      this.logger.warn(`Failed to resolve project by name: ${projectName}`);
+    }
+    
+    return projectName;
+  }
+
+  private async resolveIssue(connection: ProviderConnection, taskIdentifier: string): Promise<string> {
+    if (/^[A-Za-z0-9]+-[0-9]+$/.test(taskIdentifier)) {
+      return taskIdentifier;
+    }
+    
+    const safeName = taskIdentifier.replace(/"/g, '\\"');
+    const jql = `summary ~ "${safeName}" ORDER BY updated DESC`;
+    
+    try {
+      const response = await this.executeRequest<{ issues: { key: string }[] }>(connection, 'POST', '/rest/api/3/search/jql', {
+        jql,
+        maxResults: 1,
+        fields: ['summary'],
+      });
+      
+      if (response.issues && response.issues.length > 0) {
+        return response.issues[0].key;
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to resolve issue by name: ${taskIdentifier}`);
+    }
+    
+    // If we reach here, we didn't find the issue and it doesn't look like a valid key
+    throw new JiraIntegrationError(
+      'ISSUE_NOT_FOUND',
+      `Could not find an issue matching: '${taskIdentifier}'. Note: recently created issues may take a few seconds to become searchable.`,
+      false
+    );
+  }
+
   private async resolveAssignee(organizationId: string, assigneeName: string): Promise<string> {
     const users = await this.findUsers(organizationId, assigneeName);
     if (users.length === 0) {
       throw new JiraIntegrationError('ASSIGNEE_NOT_FOUND', `Assignee '${assigneeName}' not found in Jira.`, false);
     }
     if (users.length > 1) {
-      const names = users.map(u => u.displayName).join(', ');
-      throw new JiraIntegrationError('MULTIPLE_ASSIGNEES', `Multiple assignees found for '${assigneeName}': ${names}`, false);
+      const lowerQuery = assigneeName.toLowerCase();
+      
+      // 1. Try exact match on displayName
+      let match = users.find(u => u.displayName.toLowerCase() === lowerQuery);
+      
+      // 2. Try exact match on emailAddress
+      if (!match) {
+        match = users.find(u => u.emailAddress?.toLowerCase() === lowerQuery);
+      }
+      
+      // 3. Fallback to the first (most relevant) result
+      if (match) {
+        return match.accountId;
+      } else {
+        this.logger.log(`Multiple assignees found for '${assigneeName}', defaulting to first result: ${users[0].displayName}`);
+        return users[0].accountId;
+      }
     }
     return users[0].accountId;
   }
@@ -795,36 +874,69 @@ export class JiraClientService implements ProviderClient {
 
   // --- Task Orchestration Methods ---
 
+  private async normalizeIssueFields(organizationId: string, fields: any): Promise<any> {
+    const normalized: any = { ...fields };
+
+    if (typeof normalized.description === 'string') {
+      normalized.description = {
+        type: 'doc',
+        version: 1,
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: normalized.description }],
+          },
+        ],
+      };
+    }
+
+    if (typeof normalized.priority === 'string') {
+      normalized.priority = { name: normalized.priority };
+    }
+
+    if (typeof normalized.labels === 'string') {
+      normalized.labels = [normalized.labels];
+    }
+
+    if (normalized.dueDate) {
+      normalized.duedate = normalized.dueDate;
+      delete normalized.dueDate;
+    }
+
+    if (typeof normalized.assignee === 'string') {
+      const accountId = await this.resolveAssignee(organizationId, normalized.assignee);
+      normalized.assignee = { accountId };
+    }
+
+    return normalized;
+  }
+
   /**
    * Creates a new task in Jira.
    * @param organizationId The ID of the organization.
    * @param input Task creation details.
    * @returns A promise resolving to the created Jira issue details.
    */
-  async createTask(organizationId: string, input: CreateTaskInput): Promise<JiraCreateIssueResponse> {
+  async createTask(organizationId: string, input: JiraCreateTaskInput): Promise<JiraCreateIssueResponse> {
     return this.withLogging('createTask', organizationId, undefined, async () => {
-      const fields: any = {
+      const connection = await this.getConnection(organizationId);
+      const projectKey = await this.resolveProject(connection, input.projectName);
+      
+      const rawFields: any = {
         summary: input.title,
-        description: input.description,
-        project: { key: input.projectKey },
-        issuetype: { name: 'Task' }, // Assuming a default for now or input could provide it
+        project: { key: projectKey },
+        issuetype: { name: 'Task' },
       };
 
-      if (input.priority) {
-        fields.priority = { name: input.priority };
-      }
-      if (input.labels && Array.isArray(input.labels)) {
-        fields.labels = input.labels;
-      }
-      if (input.dueDate) {
-        fields.duedate = input.dueDate;
-      }
-      if (input.assignee) {
-        const accountId = await this.resolveAssignee(organizationId, input.assignee);
-        fields.assignee = { accountId };
-      }
+      if (input.description) rawFields.description = input.description;
+      if (input.priority) rawFields.priority = input.priority;
+      if (input.labels) rawFields.labels = input.labels;
+      if (input.dueDate) rawFields.dueDate = input.dueDate;
+      if (input.assignee) rawFields.assignee = input.assignee;
 
-      return this.createIssue(organizationId, { fields });
+      const normalizedFields = await this.normalizeIssueFields(organizationId, rawFields);
+
+      return this.createIssue(organizationId, { fields: normalizedFields });
     });
   }
 
@@ -834,10 +946,15 @@ export class JiraClientService implements ProviderClient {
    * @param input Task update details.
    * @returns A promise resolving to a success boolean.
    */
-  async updateTask(organizationId: string, input: UpdateTaskInput): Promise<{ success: boolean }> {
-    return this.withLogging('updateTask', organizationId, input.taskId, async () => {
-      const { taskId, fields } = input;
-      await this.updateIssue(organizationId, taskId, { fields });
+  async updateTask(organizationId: string, input: JiraUpdateTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('updateTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, fields } = input;
+      
+      const normalizedFields = await this.normalizeIssueFields(organizationId, fields);
+      
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      await this.updateIssue(organizationId, issueKey, { fields: normalizedFields });
       return { success: true };
     });
   }
@@ -848,11 +965,13 @@ export class JiraClientService implements ProviderClient {
    * @param input Task assignment details.
    * @returns A promise resolving to a success boolean.
    */
-  async assignTask(organizationId: string, input: AssignTaskInput): Promise<{ success: boolean }> {
-    return this.withLogging('assignTask', organizationId, input.taskId, async () => {
-      const { taskId, assignee } = input;
+  async assignTask(organizationId: string, input: JiraAssignTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('assignTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, assignee } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
       const accountId = await this.resolveAssignee(organizationId, assignee);
-      await this.updateIssue(organizationId, taskId, {
+      await this.updateIssue(organizationId, issueKey, {
         fields: { assignee: { accountId } },
       });
       return { success: true };
@@ -865,11 +984,13 @@ export class JiraClientService implements ProviderClient {
    * @param input Task move details.
    * @returns A promise resolving to a success boolean.
    */
-  async moveTask(organizationId: string, input: MoveTaskInput): Promise<{ success: boolean }> {
-    return this.withLogging('moveTask', organizationId, input.taskId, async () => {
-      const { taskId, targetStatus } = input;
-      const transitionId = await this.resolveTransition(organizationId, taskId, targetStatus);
-      await this.transitionIssue(organizationId, taskId, transitionId);
+  async moveTask(organizationId: string, input: JiraMoveTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('moveTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, targetStatus } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      const transitionId = await this.resolveTransition(organizationId, issueKey, targetStatus);
+      await this.transitionIssue(organizationId, issueKey, transitionId);
       return { success: true };
     });
   }
@@ -880,10 +1001,12 @@ export class JiraClientService implements ProviderClient {
    * @param input Comment details.
    * @returns A promise resolving to the created comment details.
    */
-  async commentTask(organizationId: string, input: CommentTaskInput): Promise<JiraCommentResponse> {
-    return this.withLogging('commentTask', organizationId, input.taskId, async () => {
-      const { taskId, text } = input;
-      return this.addComment(organizationId, taskId, text);
+  async commentTask(organizationId: string, input: JiraCommentTaskInput): Promise<JiraCommentResponse> {
+    return this.withLogging('commentTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, text } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      return this.addComment(organizationId, issueKey, text);
     });
   }
 
@@ -893,10 +1016,12 @@ export class JiraClientService implements ProviderClient {
    * @param input Task deletion details.
    * @returns A promise resolving to a success boolean.
    */
-  async deleteTask(organizationId: string, input: DeleteTaskInput): Promise<{ success: boolean }> {
-    return this.withLogging('deleteTask', organizationId, input.taskId, async () => {
-      const { taskId } = input;
-      await this.deleteIssue(organizationId, taskId);
+  async deleteTask(organizationId: string, input: JiraDeleteTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('deleteTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      await this.deleteIssue(organizationId, issueKey);
       return { success: true };
     });
   }
@@ -907,12 +1032,14 @@ export class JiraClientService implements ProviderClient {
    * @param input Filter details.
    * @returns A promise resolving to search results containing tasks.
    */
-  async listTasks(organizationId: string, input: ListTasksInput): Promise<JiraSearchResult> {
+  async listTasks(organizationId: string, input: JiraListTasksInput): Promise<JiraSearchResult> {
     return this.withLogging('listTasks', organizationId, undefined, async () => {
       const filters = [];
 
-      if (input.projectKey) {
-        filters.push(`project = "${input.projectKey}"`);
+      const connection = await this.getConnection(organizationId);
+      if (input.projectName) {
+        const projectKey = await this.resolveProject(connection, input.projectName);
+        filters.push(`project = "${projectKey}"`);
       }
       if (input.status) {
         filters.push(`status = "${input.status}"`);
@@ -923,14 +1050,6 @@ export class JiraClientService implements ProviderClient {
         } else {
           const accountId = await this.resolveAssignee(organizationId, input.assignee);
           filters.push(`assignee = "${accountId}"`);
-        }
-      }
-      if (input.dateRange) {
-        if (input.dateRange.from) {
-          filters.push(`updated >= "${input.dateRange.from}"`);
-        }
-        if (input.dateRange.to) {
-          filters.push(`updated <= "${input.dateRange.to}"`);
         }
       }
 
@@ -945,10 +1064,12 @@ export class JiraClientService implements ProviderClient {
    * @param input Task retrieval details.
    * @returns A promise resolving to the issue details.
    */
-  async getTask(organizationId: string, input: GetTaskInput): Promise<JiraIssue> {
-    return this.withLogging('getTask', organizationId, input.taskId, async () => {
-      const { taskId } = input;
-      return this.getIssue(organizationId, taskId);
+  async getTask(organizationId: string, input: JiraGetTaskInput): Promise<JiraIssue> {
+    return this.withLogging('getTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      return this.getIssue(organizationId, issueKey);
     });
   }
 
@@ -988,7 +1109,7 @@ export class JiraClientService implements ProviderClient {
 
   async searchIssues(organizationId: string, jql: string, maxResults: number = 50, startAt: number = 0): Promise<JiraSearchResult> {
     const connection = await this.getConnection(organizationId);
-    return this.executeRequest<JiraSearchResult>(connection, 'POST', '/rest/api/3/search', {
+    return this.executeRequest<JiraSearchResult>(connection, 'POST', '/rest/api/3/search/jql', {
       jql,
       maxResults,
       startAt,
