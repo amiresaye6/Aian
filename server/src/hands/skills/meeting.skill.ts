@@ -70,6 +70,15 @@ private readonly logger = new Logger(MeetingSkill.name);
             handler: (ctx, input) => this.inviteToMeeting(ctx, input),
             requiredProviders:["ZOOM"]
         } as SkillDefinition  )
+
+        this.registry.register({
+            name:"meetingSkill.getMeetingDetails",
+            description:"get meeting details",
+            schema:GetMeetingInputSchema,
+            destructive:false,
+            handler: (ctx, input) => this.getMeetingDetails(ctx, input),
+            requiredProviders:["ZOOM"]
+        } as SkillDefinition  )
     }
 
     async createMeeting(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
@@ -408,6 +417,68 @@ private readonly logger = new Logger(MeetingSkill.name);
                 ...result,
                 meetingSkillMessage: formattedText,
             };
+        },
+        );
+    } 
+
+    async getMeetingDetails(ctx:SkillContext, input:any): Promise<SkillResult<any>>{
+        const parsed = GetMeetingInputSchema.safeParse(input);
+        if (!parsed.success) {
+            return {
+                success: false,
+                error: {
+                code: 'VALIDATION_ERROR',
+                message: parsed.error.message,
+                retryable: false,
+                },
+                meta: {
+                skill: 'getMeetingDetails',
+                provider: 'zoom',
+                durationMs: 0,
+                idempotencyKey: ctx.idempotencyKey,
+                },
+            };
+        }
+
+        const connection = ctx.connections['ZOOM'];
+
+        return this.resilience.execute(
+        ctx,
+        'meetingSkill',
+        'getMeetingDetails',
+        'zoom',
+        parsed.data,
+        async () => {
+            const result = await this.zoomClient.getMeetingDetails(
+                connection as any,
+                parsed.data.meetingId
+            );
+            const startTimeFormatted = result.start_time
+                    ? new Date(result.start_time).toLocaleString('en-US', {
+                        dateStyle: 'full',
+                        timeStyle: 'short',
+                        timeZone: result.timezone || 'UTC',
+                    })
+                    : 'N/A';
+
+                const formattedMessage = [
+                    `📅 *Zoom Meeting Details*`,
+                    ``,
+                    `📌 *Topic:* ${result.topic || 'N/A'}`,
+                    `🆔 *Meeting ID:* \`${result.id}\``,
+                    `🕒 *Start Time:* ${startTimeFormatted}`,
+                    `⏱️ *Duration:* ${result.duration || 0} minutes`,
+                    `🌍 *Timezone:* ${result.timezone || 'UTC'}`,
+                    `👤 *Host Email:* \`${result.host_email || 'N/A'}\``,
+                    `🔑 *Passcode:* \`${result.password || 'N/A'}\``,
+                    ``,
+                    `🔗 *Join Link:* ${result.join_url}`,
+                ].join('\n');
+
+                return {
+                    ...result,
+                    meetingSkillMessage: formattedMessage,
+                };
         },
         );
     } 
