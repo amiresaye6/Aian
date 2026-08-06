@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import useSWR from "swr";
 import { useAuthStore } from "@/store/auth/auth.store";
+import { pipelineApi } from "@/api/pipeline/pipeline.api";
 import { SyncTrigger } from "./_components/SyncTrigger";
 import { ProcessingSettingsForm } from "./_components/ProcessingSettings";
 import { BatchesTable } from "./_components/BatchesTable";
@@ -9,10 +11,24 @@ import { BatchDetailsSheet } from "./_components/BatchDetailsSheet";
 import { DataJourneyAnimation } from "./_components/DataJourneyAnimation";
 import { Database } from "lucide-react";
 import { AppLayout } from "@/layouts/AppLayout";
+import { PipelineStatusResponse } from "@/types/pipeline";
 
 export default function PipelinePage() {
   const organizationId = useAuthStore((s) => s.user?.organizationId);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+
+  const { data: statusResponse, mutate } = useSWR<PipelineStatusResponse>(
+    organizationId ? `/api/v1/sync/${organizationId}/pipeline-status` : null,
+    () => pipelineApi.getPipelineStatus(organizationId!),
+    {
+      refreshInterval: (data: any) => {
+        const status = data?.status || data?.data?.status;
+        return (status === 'batching' || status === 'processing') ? 3000 : 0;
+      },
+    }
+  );
+
+  const status = statusResponse?.data || statusResponse;
 
   if (!organizationId) {
     return (
@@ -39,8 +55,12 @@ export default function PipelinePage() {
       {/* Top Section: Trigger & Settings */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 space-y-6">
-          <SyncTrigger organizationId={organizationId} />
-          <DataJourneyAnimation />
+          <SyncTrigger 
+            organizationId={organizationId} 
+            status={status} 
+            onSync={mutate} 
+          />
+          <DataJourneyAnimation status={status} />
         </div>
         <div className="lg:col-span-1">
           <ProcessingSettingsForm organizationId={organizationId} />

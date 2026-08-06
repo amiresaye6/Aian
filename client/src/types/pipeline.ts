@@ -11,7 +11,7 @@ export interface ProcessingSettings {
 export interface IngestionBatch {
   id: string;
   organizationId: string;
-  status: 'pending' | 'locked' | 'handed_off' | 'failed' | string;
+  status: 'pending' | 'locked' | 'handed_off' | 'acknowledged' | 'failed' | string;
   triggerType: string;
   itemCount: number;
   createdAt: string;
@@ -21,6 +21,7 @@ export interface IngestionBatch {
   failedAt: string | null;
   errorMessage: string | null;
   retryCount: number;
+  syncRunId: string | null;
 }
 
 export interface KnowledgeItem {
@@ -37,6 +38,66 @@ export interface KnowledgeItem {
   timestamp: string;
 }
 
+// ── Pipeline Status Types ───────────────────────────────────────────
+
+export interface StageStatus {
+  status: 'idle' | 'active' | 'completed' | 'partial';
+  total: number;
+  pending: number;
+  processing: number;
+  completed: number;
+  failed: number;
+}
+
+export interface BatchingStageStatus {
+  status: 'idle' | 'active' | 'completed';
+  batchCount: number;
+  batchesCompleted: number;
+  totalItems: number;
+}
+
+export interface AssemblyStageStatus {
+  status: 'idle' | 'active' | 'completed';
+  totalArtifacts: number;
+  assembled: number;
+}
+
+export type PipelineOverallStatus =
+  | 'idle'
+  | 'batching'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'partial';
+
+export interface PipelineStatusResponse {
+  status: PipelineOverallStatus;
+  syncRunId: string | null;
+  currentStage: string | null;
+  overallProgress: number;
+  stages: {
+    batching: BatchingStageStatus;
+    assembly: AssemblyStageStatus;
+    extraction: StageStatus;
+    resolution: StageStatus;
+    graphSync: StageStatus;
+  };
+  startedAt: string | null;
+  lastCompletedAt: string | null;
+  totalItems: number;
+  totalArtifacts: number;
+  failedCount: number;
+  pendingItemCount: number;
+}
+
+export interface SyncNowResponse {
+  success: boolean;
+  message: string;
+  syncRunId: string | null;
+  pendingItems: number;
+}
+
+/** @deprecated Use PipelineStatusResponse instead */
 export interface SyncStatusResponse {
   isRunning: boolean;
   progress: number;
