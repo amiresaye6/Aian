@@ -57,6 +57,7 @@ model KnowledgeArtifact {
   graphSyncedAt    DateTime?        @map("graph_synced_at") @db.Timestamptz
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  syncRunId        String?          @map("sync_run_id")
 
   // One artifact is made of many raw items
   sourceItems    KnowledgeItem[]
