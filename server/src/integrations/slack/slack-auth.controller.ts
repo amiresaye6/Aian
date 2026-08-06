@@ -28,8 +28,7 @@ export class SlackAuthController {
   private readonly clientId = process.env.SLACK_CLIENT_ID;
   private readonly clientSecret = process.env.SLACK_CLIENT_SECRET;
   private readonly signingSecret = process.env.SLACK_SIGNING_SECRET;
-  private readonly redirectUri = `https://unsaddle-junkie-snowdrift.ngrok-free.dev/api/v1/integrations/slack/callback`;
- // private readonly redirectUri = `http://localhost:${process.env.PORT || 1234}/api/v1/integrations/slack/callback`;
+  private readonly redirectUri = `http://localhost:${process.env.PORT || 1234}/api/v1/integrations/slack/callback`;
 
   constructor(
     private readonly connectionRepo: ProviderConnectionRepository,
