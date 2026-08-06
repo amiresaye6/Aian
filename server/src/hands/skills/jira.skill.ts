@@ -4,14 +4,14 @@ import { SkillRegistryService } from '../core/registry.service';
 import { SkillContext, SkillResult } from '../core/types';
 import { JiraClientService } from '../../integrations/jira/services/jira-client.service';
 import {
-  CreateTaskInputSchema,
-  UpdateTaskInputSchema,
-  AssignTaskInputSchema,
-  MoveTaskInputSchema,
-  CommentTaskInputSchema,
-  DeleteTaskInputSchema,
-  ListTasksInputSchema,
-  GetTaskInputSchema,
+  JiraCreateTaskInputSchema,
+  JiraUpdateTaskInputSchema,
+  JiraAssignTaskInputSchema,
+  JiraMoveTaskInputSchema,
+  JiraCommentTaskInputSchema,
+  JiraDeleteTaskInputSchema,
+  JiraListTasksInputSchema,
+  JiraGetTaskInputSchema,
 } from './schemas';
 
 @Injectable()
@@ -24,72 +24,72 @@ export class JiraSkill implements OnModuleInit {
 
   onModuleInit() {
     this.registry.register({
-      name: 'TaskSkill.createTask',
+      name: 'Jira.createTask',
       description: 'Create a new Jira issue.',
-      schema: CreateTaskInputSchema,
+      schema: JiraCreateTaskInputSchema,
       destructive: false,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.createTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.updateTask',
+      name: 'Jira.updateTask',
       description: 'Update an existing Jira issue.',
-      schema: UpdateTaskInputSchema,
+      schema: JiraUpdateTaskInputSchema,
       destructive: false,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.updateTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.assignTask',
+      name: 'Jira.assignTask',
       description: 'Assign a Jira issue to a user.',
-      schema: AssignTaskInputSchema,
+      schema: JiraAssignTaskInputSchema,
       destructive: false,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.assignTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.moveTask',
-      description: 'Transition a Jira issue to a new status.',
-      schema: MoveTaskInputSchema,
+      name: 'Jira.moveTask',
+      description: 'Move a Jira issue to a different status.',
+      schema: JiraMoveTaskInputSchema,
       destructive: false,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.moveTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.comment',
+      name: 'Jira.commentTask',
       description: 'Add a comment to a Jira issue.',
-      schema: CommentTaskInputSchema,
+      schema: JiraCommentTaskInputSchema,
       destructive: false,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.commentTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.deleteTask',
+      name: 'Jira.deleteTask',
       description: 'Delete a Jira issue.',
-      schema: DeleteTaskInputSchema,
+      schema: JiraDeleteTaskInputSchema,
       destructive: true,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.deleteTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.listTasks',
-      description: 'Search and list Jira issues based on filters.',
-      schema: ListTasksInputSchema,
+      name: 'Jira.listTasks',
+      description: 'List Jira issues with optional filtering.',
+      schema: JiraListTasksInputSchema,
       destructive: false,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.listTasks(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.getTask',
+      name: 'Jira.getTask',
       description: 'Get details of a specific Jira issue.',
-      schema: GetTaskInputSchema,
+      schema: JiraGetTaskInputSchema,
       destructive: false,
       requiredProviders: ['jira'],
       handler: (ctx: SkillContext, input: any) => this.getTask(ctx, input),
@@ -97,12 +97,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async createTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = CreateTaskInputSchema.safeParse(input);
+    const parsed = JiraCreateTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.createTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.createTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -112,12 +112,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async updateTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = UpdateTaskInputSchema.safeParse(input);
+    const parsed = JiraUpdateTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.updateTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.updateTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -127,12 +127,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async assignTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = AssignTaskInputSchema.safeParse(input);
+    const parsed = JiraAssignTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.assignTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.assignTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -142,12 +142,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async moveTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = MoveTaskInputSchema.safeParse(input);
+    const parsed = JiraMoveTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.moveTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.moveTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -157,12 +157,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async commentTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = CommentTaskInputSchema.safeParse(input);
+    const parsed = JiraCommentTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.comment', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.commentTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -172,12 +172,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async deleteTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = DeleteTaskInputSchema.safeParse(input);
+    const parsed = JiraDeleteTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.deleteTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.deleteTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -187,12 +187,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async listTasks(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = ListTasksInputSchema.safeParse(input);
+    const parsed = JiraListTasksInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.listTasks', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.listTasks', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -202,12 +202,12 @@ export class JiraSkill implements OnModuleInit {
   }
 
   async getTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = GetTaskInputSchema.safeParse(input);
+    const parsed = JiraGetTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.getTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Jira.getTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
