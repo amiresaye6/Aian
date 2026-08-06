@@ -13,10 +13,12 @@ import { CollectionModule } from '../../ingestion/collection/collection.module';
 import { ZoomController } from './zoom.controller';
 import { AssemblerFactory } from '../../processor/assemblers/assembler.factory';
 import { ZoomAssemblerService } from './zoom-assembler.service';
+import { EmailModule } from '../../email/email.module';
 
 @Module({
   imports:[
     //CollectionModule
+    EmailModule
   ],
   controllers: [
     ZoomAuthController,

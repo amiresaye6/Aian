@@ -116,7 +116,7 @@ export class ReportingSkill implements OnModuleInit {
           try {
             const zoomConnection = ctx.connections['ZOOM'];
             if (zoomConnection) {
-              const meetingsResult = await this.zoomClient.getMeetings(
+              const meetingsResult = await this.zoomClient.listMeetings(
                 zoomConnection as any,
                 MeetingType.Scheduled,
               );
