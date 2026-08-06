@@ -4,14 +4,14 @@ import { SkillRegistryService } from '../core/registry.service';
 import { SkillContext, SkillResult } from '../core/types';
 import { TrelloClientService } from '../../integrations/trello/services/trello-client.service';
 import {
-  CreateTaskInputSchema,
-  UpdateTaskInputSchema,
-  AssignTaskInputSchema,
-  MoveTaskInputSchema,
-  CommentTaskInputSchema,
-  DeleteTaskInputSchema,
-  ListTasksInputSchema,
-  GetTaskInputSchema,
+  TrelloCreateTaskInputSchema,
+  TrelloUpdateTaskInputSchema,
+  TrelloAssignTaskInputSchema,
+  TrelloMoveTaskInputSchema,
+  TrelloCommentTaskInputSchema,
+  TrelloDeleteTaskInputSchema,
+  TrelloListTasksInputSchema,
+  TrelloGetTaskInputSchema,
 } from './schemas';
 
 @Injectable()
@@ -24,72 +24,72 @@ export class TrelloSkill implements OnModuleInit {
 
   onModuleInit() {
     this.registry.register({
-      name: 'TaskSkill.createTask',
+      name: 'Trello.createTask',
       description: 'Create a new Trello card.',
-      schema: CreateTaskInputSchema,
+      schema: TrelloCreateTaskInputSchema,
       destructive: false,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.createTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.updateTask',
+      name: 'Trello.updateTask',
       description: 'Update an existing Trello card.',
-      schema: UpdateTaskInputSchema,
+      schema: TrelloUpdateTaskInputSchema,
       destructive: false,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.updateTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.assignTask',
+      name: 'Trello.assignTask',
       description: 'Assign a Trello card to a user.',
-      schema: AssignTaskInputSchema,
+      schema: TrelloAssignTaskInputSchema,
       destructive: false,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.assignTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.moveTask',
-      description: 'Transition a Trello card to a new list (status).',
-      schema: MoveTaskInputSchema,
+      name: 'Trello.moveTask',
+      description: 'Move a Trello card to a different list.',
+      schema: TrelloMoveTaskInputSchema,
       destructive: false,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.moveTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.comment',
+      name: 'Trello.commentTask',
       description: 'Add a comment to a Trello card.',
-      schema: CommentTaskInputSchema,
+      schema: TrelloCommentTaskInputSchema,
       destructive: false,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.commentTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.deleteTask',
-      description: 'Archive a Trello card.',
-      schema: DeleteTaskInputSchema,
+      name: 'Trello.deleteTask',
+      description: 'Delete a Trello card.',
+      schema: TrelloDeleteTaskInputSchema,
       destructive: true,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.deleteTask(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.listTasks',
-      description: 'Search and list Trello cards based on filters.',
-      schema: ListTasksInputSchema,
+      name: 'Trello.listTasks',
+      description: 'List Trello cards with optional filtering.',
+      schema: TrelloListTasksInputSchema,
       destructive: false,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.listTasks(ctx, input),
     });
 
     this.registry.register({
-      name: 'TaskSkill.getTask',
+      name: 'Trello.getTask',
       description: 'Get details of a specific Trello card.',
-      schema: GetTaskInputSchema,
+      schema: TrelloGetTaskInputSchema,
       destructive: false,
       requiredProviders: ['trello'],
       handler: (ctx: SkillContext, input: any) => this.getTask(ctx, input),
@@ -97,12 +97,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async createTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = CreateTaskInputSchema.safeParse(input);
+    const parsed = TrelloCreateTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.createTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.createTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -112,12 +112,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async updateTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = UpdateTaskInputSchema.safeParse(input);
+    const parsed = TrelloUpdateTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.updateTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.updateTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -127,12 +127,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async assignTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = AssignTaskInputSchema.safeParse(input);
+    const parsed = TrelloAssignTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.assignTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.assignTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -142,12 +142,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async moveTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = MoveTaskInputSchema.safeParse(input);
+    const parsed = TrelloMoveTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.moveTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.moveTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -157,12 +157,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async commentTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = CommentTaskInputSchema.safeParse(input);
+    const parsed = TrelloCommentTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.comment', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.commentTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -172,12 +172,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async deleteTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = DeleteTaskInputSchema.safeParse(input);
+    const parsed = TrelloDeleteTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.deleteTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.deleteTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -187,12 +187,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async listTasks(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = ListTasksInputSchema.safeParse(input);
+    const parsed = TrelloListTasksInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.listTasks', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.listTasks', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 
@@ -202,12 +202,12 @@ export class TrelloSkill implements OnModuleInit {
   }
 
   async getTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
-    const parsed = GetTaskInputSchema.safeParse(input);
+    const parsed = TrelloGetTaskInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
         success: false,
         error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'TaskSkill.getTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        meta: { skill: 'Trello.getTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
       };
     }
 

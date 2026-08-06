@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Head,
   Req,
   HttpCode,
   HttpStatus,
@@ -11,6 +12,7 @@ import type { RawBodyRequest } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { WebhookService } from '../../../ingestion/collection/webhooks/webhook.service';
 import { ProviderResourceSelectionRepository } from '../../../ingestion/repositories/provider-resource-selection.repository';
+import { Request } from 'express';
 
 @Controller('integrations/trello')
 export class TrelloEventsController {
@@ -22,9 +24,16 @@ export class TrelloEventsController {
     private readonly resourceSelectionRepo: ProviderResourceSelectionRepository,
   ) {}
 
+  @Head('events')
+  @HttpCode(HttpStatus.OK)
+  handleHeadEvent() {
+    this.logger.debug('Received HEAD request for Trello webhook registration validation.');
+    return { received: true };
+  }
+
   @Post('events')
   @HttpCode(HttpStatus.OK)
-  async handleEvent(@Req() req: RawBodyRequest<any>) {
+  async handleEvent(@Req() req: RawBodyRequest<Request>) {
     const trelloProvider = await this.prismaService.provider.findUnique({
       where: { key: 'trello' },
     });
@@ -46,10 +55,10 @@ export class TrelloEventsController {
       connectionId = providerConnection?.id || 'null';
     }
 
-    this.logger.debug('connectionId:' + connectionId);
+    this.logger.debug(`connectionId: ${connectionId}`);
 
     if (connectionId !== 'null') {
-      const body = req.body as any;
+      const body = req.body as Record<string, any>;
       
       // Extract the board ID (Trello's main resource container, equivalent to Jira Project)
       const boardId = body?.action?.data?.board?.id || body?.model?.id;
@@ -64,7 +73,7 @@ export class TrelloEventsController {
         }
       }
 
-      await this.webhookService.processWebhook(connectionId, req as any);
+      await this.webhookService.processWebhook(connectionId, req);
     } else {
       this.logger.warn('Received Trello webhook but no connection could be found.');
     }

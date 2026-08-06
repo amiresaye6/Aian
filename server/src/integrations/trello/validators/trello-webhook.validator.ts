@@ -2,10 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Request } from 'express';
 import * as crypto from 'crypto';
 import { WebhookSignatureValidator } from '../../../ingestion/collection/webhooks/webhook-signature-validator.interface';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class TrelloWebhookValidator implements WebhookSignatureValidator {
   private readonly logger = new Logger(TrelloWebhookValidator.name);
+
+  constructor(private readonly configService: ConfigService) {}
 
   async validate(
     req: Request,
@@ -15,7 +18,12 @@ export class TrelloWebhookValidator implements WebhookSignatureValidator {
     try {
       this.logger.debug('Received Trello webhook validation request');
 
-      if (!secret) {
+      let actualSecret = secret;
+      if (!actualSecret) {
+        actualSecret = this.configService.get<string>('TRELLO_CLIENT_SECRET') || '';
+      }
+
+      if (!actualSecret) {
         this.logger.error('Missing secret for Trello webhook validation');
         return false;
       }
@@ -41,7 +49,7 @@ export class TrelloWebhookValidator implements WebhookSignatureValidator {
       const content = rawBody.toString('utf8') + callbackUrl;
 
       const expectedSignature = crypto
-        .createHmac('sha1', secret)
+        .createHmac('sha1', actualSecret)
         .update(content)
         .digest('base64');
 

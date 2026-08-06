@@ -64,11 +64,11 @@ export class TrelloAssemblerService implements KnowledgeAssembler {
     return chunks;
   }
 
-  private extractParticipants(items: KnowledgeItem[]): any[] {
-    const map = new Map<string, any>();
+  private extractParticipants(items: KnowledgeItem[]): Array<{ externalId: string, name: string, email?: string, role?: string }> {
+    const map = new Map<string, { externalId: string, name: string, email?: string, role?: string }>();
     
     items.forEach((item) => {
-      const author = item.author as any;
+      const author = item.author as { externalId: string, name?: string, email?: string };
       if (author && author.externalId) {
         if (!map.has(author.externalId) || (author.name && author.name !== 'Unknown')) {
           map.set(author.externalId, {
@@ -79,7 +79,7 @@ export class TrelloAssemblerService implements KnowledgeAssembler {
         }
       }
 
-      const parts = (item.participants || []) as any[];
+      const parts = (item.participants || []) as Array<{ externalId?: string, name?: string, email?: string, role?: string }>;
       if (Array.isArray(parts)) {
         parts.forEach((p) => {
           if (p.externalId) {
@@ -150,8 +150,9 @@ export class TrelloAssemblerService implements KnowledgeAssembler {
     const membersList = activeMembers.size > 0 ? Array.from(activeMembers).join(', ') : 'None';
     const status = closed ? 'Archived/Closed' : 'Active';
 
-    return `# ${cardId} - ${title}
+    return `# ${title}
 
+**Resource ID:** ${cardId}
 **Board:** ${boardName}
 **List:** ${listName}
 **Status:** ${status}

@@ -130,8 +130,7 @@ export class TrelloAdapterService implements ProviderAdapter {
         if (action.data) {
           const data = action.data as Record<string, unknown>;
           if (data.card && data.label) {
-            // Map as a card update since the card's labels changed
-            items.push(this.mapCard(input, data.card as Record<string, unknown>, action, 'card_updated'));
+            items.push(this.mapLabel(input, data.card as Record<string, unknown>, data.label as Record<string, unknown>, action, eventType));
           }
         }
       }
@@ -206,13 +205,63 @@ export class TrelloAdapterService implements ProviderAdapter {
     const url = card.shortUrl as string | undefined;
     const id = card.id as string | undefined;
 
-    let content = `Title: ${title || ''}\n`;
-    if (description) {
-      content += `\nDescription: ${description}`;
+    let content = '';
+    let displayTitle = title || 'Untitled Card';
+    const actionType = action.type as string;
+
+    if (actionType === 'updateCard') {
+      const old = data?.old as Record<string, unknown> | undefined;
+      const listAfter = data?.listAfter as Record<string, unknown> | undefined;
+      const listBefore = data?.listBefore as Record<string, unknown> | undefined;
+      
+      if (old?.idList && listAfter && listBefore) {
+        displayTitle = `Card moved to list: ${listAfter.name}`;
+        content = `Card "${title}" was moved from list "${listBefore.name}" to "${listAfter.name}".`;
+      } else if (old?.closed !== undefined) {
+        const isClosed = card.closed as boolean;
+        displayTitle = `Card ${isClosed ? 'Archived' : 'Unarchived'}: ${title}`;
+        content = `Card "${title}" was ${isClosed ? 'archived' : 'unarchived'}.`;
+      } else if (old?.desc !== undefined) {
+        displayTitle = `Card Description Updated: ${title}`;
+        content = `Description updated.\nNew Description: ${description || '(empty)'}`;
+      } else if (old?.name !== undefined) {
+        displayTitle = `Card Renamed to: ${title}`;
+        content = `Card was renamed from "${old.name}" to "${title}".`;
+      } else {
+        displayTitle = `Card Updated: ${title}`;
+        content = `Card "${title}" was updated.`;
+      }
+    } else if (actionType === 'createCard') {
+      displayTitle = `Card Created: ${title}`;
+      content = `Card created in list "${list?.name || 'Unknown'}".\nTitle: ${title || ''}`;
+      if (description) {
+        content += `\nDescription: ${description}`;
+      }
+    } else {
+      displayTitle = `${actionType}: ${title}`;
+      content = `Title: ${title || ''}\n`;
+      if (description) {
+        content += `\nDescription: ${description}`;
+      }
     }
 
     const memberCreator = action.memberCreator as Record<string, unknown> | undefined;
     const actionDate = (action.date as string) || new Date().toISOString();
+
+    const participants = [];
+    if (memberCreator) {
+      participants.push({
+        externalId: memberCreator.id as string,
+        name: (memberCreator.fullName as string) || (memberCreator.username as string) || 'Unknown',
+      });
+    }
+    const member = action.member as Record<string, unknown> | undefined;
+    if (member && actionType === 'addMemberToCard') {
+        participants.push({
+            externalId: member.id as string,
+            name: (member.fullName as string) || (member.username as string) || (member.name as string) || 'Unknown',
+        });
+    }
 
     return {
       id: crypto.randomUUID(),
@@ -224,14 +273,14 @@ export class TrelloAdapterService implements ProviderAdapter {
       externalResourceId: id || 'unknown',
       externalEventId: (action.id as string | undefined) || null,
       parentExternalResourceId: (board?.id as string | undefined) || (list?.id as string | undefined) || null,
-      title: title || 'Untitled Card',
+      title: displayTitle,
       content: content.trim(),
       author: {
         externalId: (memberCreator?.id as string) || '',
         name: (memberCreator?.fullName as string) || (memberCreator?.username as string) || 'Unknown',
         email: undefined,
       },
-      participants: [], // Webhooks typically don't include full member list on the card payload unless specified
+      participants: participants,
       contextLocation: board?.name ? `Board: ${board.name}${list?.name ? ` -> List: ${list.name}` : ''}` : null,
       sourceUrl: url || null,
       occurredAt: new Date(actionDate),
@@ -272,7 +321,7 @@ export class TrelloAdapterService implements ProviderAdapter {
       provider: Provider.TRELLO,
       sourceType: 'comment',
       eventType,
-      externalResourceId: (commentData.id as string | undefined) || 'unknown',
+      externalResourceId: (action.id as string | undefined) || 'unknown',
       externalEventId: (action.id as string | undefined) || null,
       parentExternalResourceId: (card.id as string | undefined) || null,
       title: `Comment on Card: ${card.name || 'Unknown'}`,
@@ -282,7 +331,10 @@ export class TrelloAdapterService implements ProviderAdapter {
         name: (memberCreator?.fullName as string) || (memberCreator?.username as string) || 'Unknown',
         email: undefined,
       },
-      participants: [],
+      participants: memberCreator ? [{
+        externalId: (memberCreator.id as string) || '',
+        name: (memberCreator.fullName as string) || (memberCreator.username as string) || 'Unknown',
+      }] : [],
       contextLocation: board?.name ? `Board: ${board.name}` : null,
       sourceUrl: null,
       occurredAt: new Date(actionDate),
@@ -372,7 +424,12 @@ export class TrelloAdapterService implements ProviderAdapter {
         name: (memberCreator?.fullName as string) || (memberCreator?.username as string) || 'Unknown',
         email: undefined,
       },
-      participants: [],
+      participants: [
+        {
+          externalId: (member.id as string) || '',
+          name: (member.fullName as string) || (member.username as string) || (member.name as string) || 'Unknown',
+        }
+      ],
       contextLocation: null,
       sourceUrl: null,
       occurredAt: new Date(actionDate),
@@ -380,6 +437,55 @@ export class TrelloAdapterService implements ProviderAdapter {
       visibility: 'ORGANIZATION',
       metadata: {
         memberId: member.id,
+        cardId: card.id,
+        action: actionType,
+      },
+      rawPayloadReference: input.rawEventReference,
+      version: '1',
+    };
+  }
+
+  private mapLabel(
+    input: ProviderEventInput,
+    card: Record<string, unknown>,
+    label: Record<string, unknown>,
+    action: Record<string, unknown>,
+    eventType: string,
+  ): KnowledgeItem {
+    const memberCreator = action.memberCreator as Record<string, unknown> | undefined;
+    const actionDate = (action.date as string) || new Date().toISOString();
+    const actionType = action.type as string;
+
+    const actionText = actionType === 'addLabelToCard' ? 'added to' : 'removed from';
+    const labelName = (label.name as string) || (label.color as string) || 'Unknown Label';
+
+    return {
+      id: crypto.randomUUID(),
+      organizationId: input.organizationId,
+      eyeType: 'task_management' as EyeType,
+      provider: Provider.TRELLO,
+      sourceType: 'label',
+      eventType,
+      externalResourceId: (label.id as string | undefined) || 'unknown',
+      externalEventId: (action.id as string | undefined) || null,
+      parentExternalResourceId: (card.id as string | undefined) || null,
+      title: `Label ${actionText} Card: ${card.name || 'Untitled'}`,
+      content: `Label "${labelName}" was ${actionText} the card.`,
+      author: {
+        externalId: (memberCreator?.id as string) || '',
+        name: (memberCreator?.fullName as string) || (memberCreator?.username as string) || 'Unknown',
+        email: undefined,
+      },
+      participants: [],
+      contextLocation: null,
+      sourceUrl: null,
+      occurredAt: new Date(actionDate),
+      receivedAt: new Date(),
+      visibility: 'ORGANIZATION',
+      metadata: {
+        labelId: label.id,
+        labelName: label.name,
+        labelColor: label.color,
         cardId: card.id,
         action: actionType,
       },

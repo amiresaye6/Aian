@@ -18,6 +18,7 @@ import { OAuth } from 'oauth';
 @Controller('integrations/trello')
 export class TrelloAuthController {
   private readonly logger = new Logger(TrelloAuthController.name);
+  private static readonly requestTokenCache = new Map<string, string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -81,10 +82,11 @@ export class TrelloAuthController {
       };
       
       const state = this.encryptionService.encrypt(JSON.stringify(stateObj));
+      TrelloAuthController.requestTokenCache.set(oauth_token, state);
+      
       const authUrlBase = this.configService.get<string>('TRELLO_AUTH_URL') || 'https://trello.com/1/OAuthAuthorizeToken';
       
-      const callbackWithState = `${redirectUri}?state=${encodeURIComponent(state)}`;
-      const authUrl = `${authUrlBase}?oauth_token=${oauth_token}&name=AIAN&scope=read,write,account&expiration=never&return_url=${encodeURIComponent(callbackWithState)}`;
+      const authUrl = `${authUrlBase}?oauth_token=${oauth_token}&name=AIAN&scope=read,write,account&expiration=never`;
       
       res.redirect(authUrl);
     });
@@ -94,15 +96,20 @@ export class TrelloAuthController {
   async callback(
     @Query('oauth_token') oauth_token: string,
     @Query('oauth_verifier') oauth_verifier: string,
-    @Query('state') state: string,
     @Res() res: Response,
   ) {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
 
     try {
-      if (!oauth_token || !oauth_verifier || !state) {
+      if (!oauth_token || !oauth_verifier) {
         throw new BadRequestException('Missing required OAuth parameters');
       }
+      
+      const state = TrelloAuthController.requestTokenCache.get(oauth_token);
+      if (!state) {
+        throw new BadRequestException('OAuth flow expired or invalid state');
+      }
+      TrelloAuthController.requestTokenCache.delete(oauth_token);
 
       let stateObj: { orgEyeId: string; secret: string };
       try {
