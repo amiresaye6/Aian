@@ -16,7 +16,7 @@ export class BatchService {
     private readonly connectionRepo: ProviderConnectionRepository,
     @Inject('KNOWLEDGE_PROCESSOR_GATEWAY')
     private readonly processorGateway: KnowledgeProcessorGateway,
-  ) {}
+  ) { }
 
   /**
    * Processes pending items for an organization.

@@ -14,7 +14,7 @@ export class SchedulerService {
     private readonly batchService: BatchService,
     private readonly resolutionService: EntityResolutionService,
     private readonly graphUpdateService: GraphUpdateService,
-  ) {}
+  ) { }
 
   /**
    * Runs every minute to check if any organization needs a new batch created.
