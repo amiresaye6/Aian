@@ -163,7 +163,14 @@ export function AnimatedEye({
             className="font-display text-[13px] font-bold flex items-center justify-center"
             style={{ color: "rgba(255,255,255,0.75)", textShadow: "0 0 10px rgba(0,0,0,0.6)" }}
           >
-            {typeof glyph === 'string' ? glyph : (() => { const Glyph = glyph; return <Glyph className="h-8 w-8" />; })()}
+            {typeof glyph === 'string' && glyph.startsWith('http') ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={glyph} alt="Logo" className="h-7 w-7 object-contain filter invert opacity-90 drop-shadow-md" />
+            ) : typeof glyph === 'string' ? (
+              glyph
+            ) : (
+              (() => { const Glyph = glyph; return <Glyph className="h-8 w-8" />; })()
+            )}
           </span>
         </div>
       )}

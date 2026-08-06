@@ -18,7 +18,8 @@ export function IntegrationIndex() {
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   
   const { providers, fetchIntegrations, isLoading } = useIntegrationsStore();
-  const { orgId } = useAuthStore();
+  const { orgId: storeOrgId, user } = useAuthStore();
+  const orgId = storeOrgId || user?.organizationId;
 
   useEffect(() => {
     fetchIntegrations();

@@ -1,78 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Check, ArrowRight, ArrowLeft, MessageSquare, Video, ListChecks, Code2, Plug } from "lucide-react";
 import { OnboardingLayout } from "@/layouts/OnboardingLayout";
 import { cn } from "@/lib/utils";
 import { onboardingApi, type ProviderSelection, type EyeTypeKey } from "@/api/onboarding";
+import { eyesApi, type EyeCatalogResponse } from "@/api/eyes";
 
-const EYES: {
-  key: EyeTypeKey;
-  label: string;
-  icon: typeof MessageSquare;
-  providers: { key: string; name: string; desc: string; color: string; initial: string; availableInV1: boolean }[];
-}[] = [
-  {
-    key: "chat",
-    label: "Chat Eye",
-    icon: MessageSquare,
-    providers: [
-      { key: "slack", name: "Slack", desc: "Channels, DMs, threads and files", color: "#611f69", initial: "S", availableInV1: true },
-      { key: "microsoft_teams", name: "Microsoft Teams", desc: "Meetings, chats, files", color: "#4B53BC", initial: "T", availableInV1: false },
-      { key: "discord", name: "Discord", desc: "Servers, channels and DMs", color: "#5865F2", initial: "D", availableInV1: false },
-    ],
-  },
-  {
-    key: "meeting",
-    label: "Meeting Eye",
-    icon: Video,
-    providers: [
-      { key: "zoom", name: "Zoom", desc: "Meetings and recordings", color: "#2D8CFF", initial: "Z", availableInV1: true },
-      { key: "google_meet", name: "Google Meet", desc: "Meetings and transcripts", color: "#00897B", initial: "G", availableInV1: false },
-      { key: "microsoft_teams", name: "Microsoft Teams", desc: "Meetings, chats, files", color: "#4B53BC", initial: "T", availableInV1: false },
-    ],
-  },
-  {
-    key: "task",
-    label: "Task Eye",
-    icon: ListChecks,
-    providers: [
-      { key: "jira", name: "Jira", desc: "Issues, sprints, roadmaps", color: "#0052CC", initial: "J", availableInV1: true },
-      { key: "linear", name: "Linear", desc: "Issues, cycles and projects", color: "#5E6AD2", initial: "L", availableInV1: false },
-      { key: "clickup", name: "ClickUp", desc: "Tasks, docs and goals", color: "#7B68EE", initial: "C", availableInV1: false },
-    ],
-  },
-  {
-    key: "coding",
-    label: "Coding Eye",
-    icon: Code2,
-    providers: [
-      { key: "github", name: "GitHub", desc: "Repos, PRs, commits, issues", color: "#24292e", initial: "G", availableInV1: true },
-      { key: "gitlab", name: "GitLab", desc: "Repos, MRs and pipelines", color: "#FC6D26", initial: "G", availableInV1: false },
-      { key: "bitbucket", name: "Bitbucket", desc: "Repos and pull requests", color: "#0052CC", initial: "B", availableInV1: false },
-    ],
-  },
-];
+const getEyeIcon = (key: string) => {
+  switch (key) {
+    case 'chat': return MessageSquare;
+    case 'meeting': return Video;
+    case 'task': return ListChecks;
+    case 'coding': return Code2;
+    default: return Plug;
+  }
+};
 
 export default function ProvidersPage() {
   const router = useRouter();
-  const [selected, setSelected] = useState<Record<EyeTypeKey, string | null>>({
-    chat: null,
-    meeting: null,
-    task: null,
-    coding: null,
-  });
+  const [catalog, setCatalog] = useState<EyeCatalogResponse[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [selected, setSelected] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  const selectProvider = (eyeType: EyeTypeKey, providerKey: string, availableInV1: boolean) => {
+  useEffect(() => {
+    eyesApi.getCatalog()
+      .then((res) => {
+        setCatalog(res);
+        const initialSelected: Record<string, string | null> = {};
+        res.forEach(eye => {
+          initialSelected[eye.key] = null;
+        });
+        setSelected(initialSelected);
+      })
+      .catch((err) => {
+        console.error(err);
+        setGlobalError("Failed to load providers. Please try again.");
+      })
+      .finally(() => {
+        setCatalogLoading(false);
+      });
+  }, []);
+
+  const selectProvider = (eyeType: string, providerKey: string, availableInV1: boolean) => {
     if (!availableInV1) return;
     setSelected((prev) => ({ ...prev, [eyeType]: providerKey }));
   };
 
-  const allSelected = EYES.every((eye) => selected[eye.key]);
+  const allSelected = catalog.length > 0 && catalog.every((eye) => selected[eye.key]);
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
   const handleContinue = async () => {
@@ -80,8 +59,8 @@ export default function ProvidersPage() {
     setLoading(true);
     setGlobalError(null);
     try {
-      const providers: ProviderSelection[] = EYES.map((eye) => ({
-        eyeType: eye.key,
+      const providers: ProviderSelection[] = catalog.map((eye) => ({
+        eyeType: eye.key as EyeTypeKey,
         providerKey: selected[eye.key]!,
       }));
       await onboardingApi.updateProviders({ providers });
@@ -113,48 +92,57 @@ export default function ProvidersPage() {
       )}
 
       <div className="space-y-10">
-        {EYES.map((eye, eyeIdx) => (
-          <motion.div
-            key={eye.key}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 * eyeIdx }}
-          >
-            <div className="mb-4 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.04] text-[color:var(--gold-soft)]">
-                <eye.icon className="h-4.5 w-4.5" />
-              </div>
-              <h3 className="text-[16px] font-semibold text-foreground">{eye.label}</h3>
-            </div>
+        {catalogLoading ? (
+          <div className="text-center text-muted-foreground py-10">Loading catalog...</div>
+        ) : (
+          catalog.map((eye, eyeIdx) => {
+            const IconComponent = getEyeIcon(eye.key);
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {eye.providers.map((provider) => {
-                const isSelected = selected[eye.key] === provider.key;
-                return (
-                  <motion.div
-                    key={provider.key}
-                    whileHover={provider.availableInV1 ? { y: -2 } : undefined}
-                    className={cn(
-                      "group relative overflow-hidden rounded-2xl border p-5 transition-all",
-                      isSelected
-                        ? "border-[color:var(--gold-soft)]/30 bg-black/[0.03] dark:bg-white/[0.04]"
-                        : provider.availableInV1
-                          ? "border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] hover:border-black/20 dark:hover:border-white/20"
-                          : "border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.015] opacity-50",
-                    )}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-11 w-11 items-center justify-center rounded-xl text-[16px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
-                          style={{ background: provider.color }}
-                        >
-                          {provider.initial}
-                        </div>
+            return (
+              <motion.div
+                key={eye.key}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.05 * eyeIdx }}
+              >
+                <div className="mb-4 flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.04] text-[color:var(--gold-soft)]">
+                    <IconComponent className="h-4.5 w-4.5" />
+                  </div>
+                  <h3 className="text-[16px] font-semibold text-foreground">{eye.name}</h3>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {eye.providers.map((provider) => {
+                    const isSelected = selected[eye.key] === provider.key;
+                    
+                    return (
+                      <motion.div
+                        key={provider.key}
+                        whileHover={provider.availableInV1 ? { y: -2 } : undefined}
+                        className={cn(
+                          "group relative overflow-hidden rounded-2xl border p-5 transition-all",
+                          isSelected
+                            ? "border-[color:var(--gold-soft)]/30 bg-black/[0.03] dark:bg-white/[0.04]"
+                            : provider.availableInV1
+                              ? "border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] hover:border-black/20 dark:hover:border-white/20"
+                              : "border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.015] opacity-50",
+                        )}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] overflow-hidden">
+                              {provider.logoUrl ? (
+                               
+                                <img src={provider.logoUrl} alt={provider.name} className="h-6 w-6 object-contain filter dark:invert" />
+                              ) : (
+                                <span className="text-[16px] font-bold text-foreground">{provider.name.charAt(0)}</span>
+                              )}
+                            </div>
                         <div>
                           <div className="text-[14px] font-semibold text-foreground">{provider.name}</div>
                           <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                            {eye.label}
+                            {eye.name}
                           </div>
                         </div>
                       </div>
@@ -169,7 +157,7 @@ export default function ProvidersPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-3 text-[13px] text-muted-foreground">{provider.desc}</p>
+                    <p className="mt-3 text-[13px] text-muted-foreground">Integrate with {provider.name}</p>
                     <button
                       type="button"
                       onClick={() => selectProvider(eye.key, provider.key, provider.availableInV1)}
@@ -198,7 +186,9 @@ export default function ProvidersPage() {
               })}
             </div>
           </motion.div>
-        ))}
+            );
+          })
+        )}
       </div>
 
       <div className="mt-10 flex items-center justify-between">
@@ -210,7 +200,7 @@ export default function ProvidersPage() {
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <div className="flex items-center gap-3">
-          <span className="text-[12px] text-muted-foreground">{selectedCount} / {EYES.length} selected</span>
+          <span className="text-[12px] text-muted-foreground">{selectedCount} / {catalog.length} selected</span>
           <button
             onClick={handleContinue}
             disabled={!allSelected || loading}

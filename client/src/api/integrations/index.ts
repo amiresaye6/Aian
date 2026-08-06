@@ -19,14 +19,52 @@ const PROVIDER_TO_EYE_TYPE: Record<ProviderKey, EyeType> = {
 
 // Gets provider metadata from backend
 export const getProvidersMetadata = async () => {
-  const response = await api.get('/providers/metadata');
-  return response.data.data;
+  const response = await api.get<{ success: boolean; data: any[] }>('/eyes/catalog');
+  const catalog = response.data.data;
+  
+  const mappedProviders: any[] = [];
+  
+  for (const eye of catalog) {
+    for (const provider of eye.providers) {
+      if (!provider.availableInV1) continue; // Only show available providers in the eyes list, or keep them all if we want to show coming soon
+      
+      mappedProviders.push({
+        key: provider.key,
+        name: provider.name,
+        category: eye.name, 
+        tagline: eye.description || `Connect ${provider.name} workspace`,
+        brand: provider.name,
+        glyph: provider.logoUrl, // Pass logoUrl into glyph
+        logoUrl: provider.logoUrl,
+        resourceLabel: "resources", 
+        permissions: [],
+        scopes: [],
+        sampleResources: [],
+        defaultWorkspaceName: "Workspace",
+      });
+    }
+  }
+  return mappedProviders;
 };
-
 // Gets all connections for an organization
 export const getConnections = async (organizationId: string) => {
-  const response = await api.get(`/eyes?organizationId=${organizationId}`);
-  return response.data.data;
+  const response = await api.get<{ success: boolean; data: any[] }>(`/organizations/${organizationId}/eyes`);
+  const eyes = response.data.data;
+  return eyes.map(eye => ({
+    key: eye.providerKey || eye.eyeType,
+    name: eye.providerName || eye.eyeType,
+    category: eye.category,
+    tagline: eye.tagline || `Connect ${eye.providerName} workspace`,
+    brand: eye.providerName,
+    glyph: eye.logoUrl,
+    logoUrl: eye.logoUrl,
+    resourceLabel: "resources",
+    permissions: [],
+    scopes: [],
+    sampleResources: [],
+    defaultWorkspaceName: "Workspace",
+    organizationEyeId: eye.id,
+  }));
 };
 
 // Gets details for a specific connection

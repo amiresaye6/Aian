@@ -28,7 +28,7 @@ export function EyeCard({ provider, index = 0 }: { provider: Provider; index?: n
       >
         <div
           className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-30 blur-3xl transition-opacity group-hover:opacity-60"
-          style={{ background: `radial-gradient(circle, ${provider.brand}, transparent 70%)` }}
+          style={{ background: `radial-gradient(circle, var(--gold-soft), transparent 70%)` }}
         />
 
         <div className="relative flex items-start justify-between">
