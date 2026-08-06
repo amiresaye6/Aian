@@ -7,8 +7,12 @@ import { useQuery } from "@tanstack/react-query";
 import { entitiesApi } from "@/api/entities/entities.api";
 import { EntitiesTable } from "./_components/EntitiesTable";
 import { EntityDetailsSheet } from "./_components/EntityDetailsSheet";
+import { EntitiesGraph } from "./_components/EntitiesGraph/EntitiesGraph";
+import { LayoutList, Network } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function EntitiesPage() {
+  const [viewMode, setViewMode] = useState<"table" | "graph">("table");
   const [selectedType, setSelectedType] = useState<string>("All");
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -45,21 +49,46 @@ export default function EntitiesPage() {
               Monitor your AI extraction pipeline, track ingestion volume over the last 30 days, and inspect the raw knowledge graph output.
             </p>
           </div>
+          
+          <div className="flex bg-white/5 border border-white/10 p-1 rounded-lg backdrop-blur-sm">
+            <Button 
+              variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              onClick={() => setViewMode('table')}
+              className={viewMode === 'table' ? 'bg-white/10 text-white' : 'text-muted-foreground'}
+            >
+              <LayoutList className="w-4 h-4 mr-2" />
+              Table
+            </Button>
+            <Button 
+              variant={viewMode === 'graph' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              onClick={() => setViewMode('graph')}
+              className={viewMode === 'graph' ? 'bg-white/10 text-white shadow-sm' : 'text-muted-foreground'}
+            >
+              <Network className="w-4 h-4 mr-2" />
+              Graph
+            </Button>
+          </div>
         </div>
 
-        {/* Main Table */}
+        {/* Main Content */}
         <div className="flex-1 min-h-[500px]">
-          <EntitiesTable
-            entities={response?.data}
-            meta={response?.meta}
-            isLoading={isLoading}
-            onSelectEntity={setSelectedEntityId}
-            selectedEntityId={selectedEntityId || undefined}
-            selectedType={selectedType}
-            setSelectedType={setSelectedType}
-            page={page}
-            setPage={setPage}
-          />
+          {viewMode === "table" ? (
+            <EntitiesTable
+              entities={response?.data}
+              meta={response?.meta}
+              isLoading={isLoading}
+              onSelectEntity={setSelectedEntityId}
+              selectedEntityId={selectedEntityId || undefined}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
+              page={page}
+              setPage={setPage}
+            />
+          ) : (
+            <EntitiesGraph />
+          )}
         </div>
 
         {/* Details Sheet */}

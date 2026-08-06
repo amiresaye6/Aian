@@ -201,7 +201,7 @@ async function main() {
     data: {
       key: 'slack',
       name: 'Slack',
-      logoUrl: 'https://cdn.simpleicons.org/slack',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg',
       oauthSupported: true,
     },
   });
@@ -209,7 +209,7 @@ async function main() {
     data: {
       key: 'microsoft_teams',
       name: 'Microsoft Teams',
-      logoUrl: 'https://cdn.simpleicons.org/microsoftteams',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c9/Microsoft_Office_Teams_%282018%E2%80%93present%29.svg',
       oauthSupported: true,
       isActive: false,
     },
@@ -250,20 +250,19 @@ async function main() {
       oauthSupported: true,
     },
   });
+  const trello = await prisma.provider.create({
+    data: {
+      key: 'trello',
+      name: 'Trello',
+      logoUrl: 'https://cdn.simpleicons.org/trello',
+      oauthSupported: true
+    },
+  });
   const linear = await prisma.provider.create({
     data: {
       key: 'linear',
       name: 'Linear',
       logoUrl: 'https://cdn.simpleicons.org/linear',
-      oauthSupported: true,
-      isActive: false,
-    },
-  });
-  const clickup = await prisma.provider.create({
-    data: {
-      key: 'clickup',
-      name: 'ClickUp',
-      logoUrl: 'https://cdn.simpleicons.org/clickup',
       oauthSupported: true,
       isActive: false,
     },
@@ -317,8 +316,8 @@ async function main() {
       },
 
       { eyeTypeId: taskEye.id, providerId: jira.id, isAvailableInV1: true },
+      { eyeTypeId: taskEye.id, providerId: trello.id, isAvailableInV1: true },
       { eyeTypeId: taskEye.id, providerId: linear.id, isAvailableInV1: false },
-      { eyeTypeId: taskEye.id, providerId: clickup.id, isAvailableInV1: false },
 
       { eyeTypeId: codingEye.id, providerId: github.id, isAvailableInV1: true },
       {

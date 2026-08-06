@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client';
  */
 @Injectable()
 export class KnowledgeItemRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(data: Prisma.KnowledgeItemUncheckedCreateInput) {
     return this.prisma.knowledgeItem.create({ data });

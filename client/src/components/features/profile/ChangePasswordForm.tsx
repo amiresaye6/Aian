@@ -13,8 +13,10 @@ import {
   Eye,
   EyeOff 
 } from "lucide-react";
-
-export default function ChangePasswordForm() {
+interface ChangePasswordFormProps {
+  onSuccess?: () => void;
+}
+export default function ChangePasswordForm({ onSuccess }: ChangePasswordFormProps = {}) {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -34,6 +36,9 @@ export default function ChangePasswordForm() {
       setConfirmNewPassword("");
       setValidationError(null);
       setTimeout(() => setSuccessMessage(false), 5000);
+      if (onSuccess) {
+      setTimeout(() => onSuccess(), 2000); 
+    }
     },
     onError: () => {
       setSuccessMessage(false);

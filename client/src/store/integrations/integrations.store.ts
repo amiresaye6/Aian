@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { getOwnerDashboard } from "@/api/dashboard";
-import { getProvidersMetadata } from "@/api/integrations";
+import { getConnections } from "@/api/integrations";
 import { PROVIDER_GLYPHS, Provider } from "@/components/features/integrations/providers";
+import { useAuthStore } from "@/store/auth/auth.store";
 
 type IntegrationsState = {
   providers: Provider[];
@@ -18,9 +19,12 @@ export const useIntegrationsStore = create<IntegrationsState>((set, get) => ({
   fetchIntegrations: async () => {
     set({ isLoading: true, error: null });
     try {
-      const metadataRes = await getProvidersMetadata();
+      const orgId = useAuthStore.getState().orgId || useAuthStore.getState().user?.organizationId;
+      if (!orgId) throw new Error("No organization selected");
+
+      const metadataRes = await getConnections(orgId);
       const providersList = metadataRes.map((meta: any) => {
-        meta.glyph = PROVIDER_GLYPHS[meta.key] || PROVIDER_GLYPHS.jira;
+        meta.glyph = meta.glyph || PROVIDER_GLYPHS[meta.key] || PROVIDER_GLYPHS.jira;
         meta.status = "disconnected";
         meta.health = 0;
         meta.knowledgeItems = 0;

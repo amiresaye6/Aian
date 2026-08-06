@@ -7,4 +7,5 @@ export enum Provider {
   ZOOM = 'ZOOM',
   JIRA = 'JIRA',
   GITHUB = 'GITHUB',
+  TRELLO = 'TRELLO',
 }

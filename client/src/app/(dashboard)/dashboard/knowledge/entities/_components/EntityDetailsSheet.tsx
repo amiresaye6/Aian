@@ -109,7 +109,7 @@ export function EntityDetailsSheet({ entityId, onClose }: EntityDetailsSheetProp
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1 col-span-1 sm:col-span-2 overflow-hidden">
                       <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">Known Aliases</p>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {entity.aliases.map((alias, idx) => (
+                        {(entity.aliases || []).map((alias, idx) => (
                           <Badge key={idx} variant="secondary" className="bg-white/5 hover:bg-white/10 text-muted-foreground font-normal break-all whitespace-normal text-left">
                             {alias}
                           </Badge>
@@ -150,7 +150,7 @@ export function EntityDetailsSheet({ entityId, onClose }: EntityDetailsSheetProp
                     </p>
 
                     <div className="space-y-3 w-full">
-                      {entity.mentions?.map((mention) => (
+                      {(entity.mentions || []).map((mention) => (
                         <div key={mention.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors group w-full overflow-hidden">
                           <div className="flex justify-between items-start mb-2 gap-4 w-full">
                             <div className="flex items-start gap-2 min-w-0 flex-1">

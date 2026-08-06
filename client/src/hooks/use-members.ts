@@ -26,6 +26,10 @@ export function useInviteMember(organizationId: string) {
       queryClient.invalidateQueries({ queryKey: ["members", organizationId] });
     },
     onError: (err: any) => {
+      const errorCode = err?.response?.data?.error?.code;
+      if (errorCode === "MEMBER_LIMIT_REACHED") {
+        return; // handled inline by the component, no toast
+      }
       toast.error(err.response?.data?.message || "Failed to send invitation");
     },
   });

@@ -45,6 +45,7 @@ export class SlackEventsController {
   @HttpCode(HttpStatus.OK)
   async handleEvent(@Req() req: RawBodyRequest<any>) {
     const body = req.body;
+    this.logger.debug(`[DIAGNOSTIC] SLACK EVENT PAYLOAD RECEIVED: ${JSON.stringify(body)}`);
 
     // ─── Case 1: url_verification challenge ──────────────────────────
     // Slack sends this once when you first set the Request URL.

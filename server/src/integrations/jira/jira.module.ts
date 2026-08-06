@@ -12,7 +12,6 @@ import { AssemblerFactory } from '../../processor/assemblers/assembler.factory';
 import { Provider } from '../contracts';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-
 @Module({
   imports: [ConfigModule],
   controllers: [JiraAuthController, JiraEventsController],
@@ -23,7 +22,12 @@ import { PrismaService } from '../../prisma/prisma.service';
     JiraSyncService,
     JiraAssemblerService,
   ],
-  exports: [JiraClientService, JiraAdapterService, JiraWebhookValidator, JiraSyncService],
+  exports: [
+    JiraClientService,
+    JiraAdapterService,
+    JiraWebhookValidator,
+    JiraSyncService,
+  ],
 })
 export class JiraModule implements OnModuleInit {
   constructor(
