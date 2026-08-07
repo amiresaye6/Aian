@@ -335,13 +335,38 @@ export const TrelloGetTaskInputSchema = z.object({
 export type TrelloGetTaskInput = z.infer<typeof TrelloGetTaskInputSchema>;
 
 export const GenerateReportInputSchema = z.object({
+  reportType: z
+    .enum(['daily', 'weekly', 'performance', 'planning'])
+    .optional()
+    .nullable()
+    .describe(
+      'Type of report: "daily" for today status, "weekly" for sprint summary, "performance" for individual activity, "planning" for today roadmap. Defaults to "daily".',
+    ),
   scope: z
     .string()
-    .describe('The primary subject of the report (e.g. user name, project name, or general topic).'),
-  timeframe: z
+    .describe(
+      'What the report is about, e.g., "Project AIAN", "Sprint 5", "Backend team".',
+    ),
+  targetUser: z
     .string()
-    .describe('Human readable timeframe, e.g., "last 3 days", "this month".')
-    .optional(),
+    .optional()
+    .nullable()
+    .describe(
+      'Target user name or email for performance report (e.g. "Amir", "Hager", "donia"). Required if reportType is "performance".',
+    ),
+  timeframe: z
+    .object({
+      from: z.string().optional().nullable().describe('Start date in ISO 8601 format.'),
+      to: z.string().optional().nullable().describe('End date in ISO 8601 format.'),
+    })
+    .optional()
+    .nullable()
+    .describe('Optional time period constraint for the report.'),
+  sections: z
+    .array(z.enum(['tasks', 'meetings', 'knowledge']))
+    .optional()
+    .nullable()
+    .describe('Which sections to include. Defaults to all.'),
 });
 
 export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;
