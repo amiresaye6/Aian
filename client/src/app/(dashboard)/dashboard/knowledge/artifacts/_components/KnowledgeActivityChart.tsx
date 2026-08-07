@@ -23,8 +23,11 @@ async function fetchAggregatedActivity(orgId: string): Promise<ArtifactActivity[
   if (!connections || connections.length === 0) return [];
 
   // 2. Fetch activity for each connection in parallel
-  const activitiesPromises = connections.map((conn: any) =>
-    knowledgeApi.getKnowledgeActivity(conn.id).catch(() => [])
+  const validConnections = connections.filter((c: any) => c.connectionId);
+  if (validConnections.length === 0) return [];
+
+  const activitiesPromises = validConnections.map((conn: any) =>
+    knowledgeApi.getKnowledgeActivity(conn.connectionId).catch(() => [])
   );
   const results = await Promise.all(activitiesPromises);
 
@@ -107,7 +110,7 @@ export function KnowledgeActivityChart({ organizationId }: { organizationId: str
                   boxShadow: "0 4px 20px rgba(0,0,0,0.2)"
                 }}
                 labelFormatter={(label) => format(parseISO(label as string), "MMMM d, yyyy")}
-                formatter={(value: any) => [value?.toLocaleString() || "0", "Artifacts"]}
+                formatter={(value: any) => [value?.toLocaleString() || "0", "Items"]}
               />
               <Area 
                 type="monotone" 

@@ -182,7 +182,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
               Unlock advanced AI agents & Knowledge Graph.
             </div>
             <Link
-              href="/onboarding/subscription"
+              href="/dashboard/billing"
               className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-foreground hover:text-[color:var(--gold-soft)]"
             >
               Upgrade →

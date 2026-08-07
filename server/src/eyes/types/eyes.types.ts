@@ -7,6 +7,7 @@ export interface EyeStatusItem {
   providerName: string | null;
   logoUrl: string | null;
   status: string;
+  connectionId?: string | null;
 }
 
 export interface EyeDetailResponse {
