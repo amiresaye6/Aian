@@ -180,7 +180,7 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
           content: `Tool Result for ${m.toolResultId}: ${m.content}`,
         };
       }
-      return m;
+      return { ...m, content: m.content || '' };
     });
 
     const promptWithTools = `
@@ -229,7 +229,7 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
         return {
           data: {
             role: 'assistant',
-            content: response.data.output_text,
+            content: response.data.output_text || '',
             toolCalls: response.data.tool_calls,
           },
           usage,
@@ -247,7 +247,7 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
         const parsed = JSON.parse(cleanContent);
         if (parsed.toolCalls && Array.isArray(parsed.toolCalls)) {
           return {
-            data: { role: 'assistant', toolCalls: parsed.toolCalls },
+            data: { role: 'assistant', content: '', toolCalls: parsed.toolCalls },
             usage,
           };
         }
