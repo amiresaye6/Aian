@@ -176,11 +176,11 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
     const formattedMessages = messages.map((m) => {
       if (m.role === 'tool') {
         return {
-          role: 'user', // LLMs often need tool results as user messages if not using native tool roles, but we'll try native first
-          content: `Tool Result for ${m.toolResultId}: ${m.content}`,
+          role: 'user', 
+          content: `[System Tool Result for ID: ${m.toolResultId}]\n${m.content}\n\nThis is the result of the tool you just called. Please use this result to continue fulfilling my original request. If you need to use another tool, do so now. If you are finished, provide a final text summary.`,
         };
       }
-      return m;
+      return { ...m, content: m.content || '' };
     });
 
     const promptWithTools = `
@@ -189,7 +189,7 @@ ${systemPrompt || 'You are a helpful assistant with access to tools.'}
 You have access to the following tools:
 ${JSON.stringify(tools, null, 2)}
 
-If you need to use a tool to fulfill the user's request, you MUST output ONLY a valid JSON object matching this structure:
+IMPORTANT: To use a tool, you MUST output a JSON object matching this exact structure:
 {
   "toolCalls": [
     {
@@ -199,7 +199,8 @@ If you need to use a tool to fulfill the user's request, you MUST output ONLY a 
     }
   ]
 }
-If you do not need to use a tool, just respond normally with text. Do not wrap normal text in JSON.`;
+If you do not need to use a tool, or if you are asking for clarification, just respond normally with text. Do not wrap normal text in JSON.
+NEVER output an empty response. Always explain what you are doing or use a tool.`;
 
     const payload = {
       model_id: model,
@@ -223,13 +224,13 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
 
       const usage = this.extractUsage(response.data);
       const content =
-        response.data.output_text || JSON.stringify(response.data);
+        response.data.output_text ?? JSON.stringify(response.data);
 
       if (response.data.tool_calls) {
         return {
           data: {
             role: 'assistant',
-            content: response.data.output_text,
+            content: response.data.output_text || '',
             toolCalls: response.data.tool_calls,
           },
           usage,
@@ -247,7 +248,7 @@ If you do not need to use a tool, just respond normally with text. Do not wrap n
         const parsed = JSON.parse(cleanContent);
         if (parsed.toolCalls && Array.isArray(parsed.toolCalls)) {
           return {
-            data: { role: 'assistant', toolCalls: parsed.toolCalls },
+            data: { role: 'assistant', content: '', toolCalls: parsed.toolCalls },
             usage,
           };
         }
