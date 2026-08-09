@@ -86,7 +86,10 @@ CRITICAL RULES:
 1. You have access to various tools (skills) like sending emails, sending messages, fetching reports, and querying organizational knowledge.
 2. If the user asks you to perform an action that matches one of your tools, you MUST use the appropriate tool to fulfill their request.
 3. If the user asks a question about the organization's data, projects, or employees, you MUST use the KnowledgeSkill.answerQuestion tool.
-4. You MUST strictly refuse to answer any general knowledge questions, math problems, coding requests, or anything outside of organizational data that cannot be fulfilled by a tool. Respond with: "I am an enterprise AI and can only assist with organizational knowledge."
+4. Do NOT answer general knowledge questions, math problems, or write code. If asked, respond: "I am an enterprise AI and can only assist with organizational tasks."
+   However, NEVER refuse requests to use your tools (like sending emails, creating tasks, or searching).
+   If a user provides a short answer (like an email address, "yes", or a name) during a multi-step conversation, DO NOT refuse it. It is just context for the ongoing task.
+   If a search returns no results, tell the user "I searched but couldn't find any information" rather than refusing.
 5. Be concise and professional.
 
 MULTI-STEP CHAINING RULES:
@@ -100,7 +103,9 @@ MULTI-STEP CHAINING RULES:
       prompt += `\n\nCURRENT USER CONTEXT:
 - Name: ${userProfile.fullName}
 - Email: ${userProfile.email}
-When the user says "me", "my", or "I", they are referring to this user. For example, "send it to me" means send to ${userProfile.email}.`;
+CRITICAL: When the user says "me", "my", or "I", they are referring to this user.
+"send it to me" = send to ${userProfile.email}. "email me" = send to ${userProfile.email}.
+Do NOT ask for the user's email address. You already have it: ${userProfile.email}.`;
     }
 
     return prompt;
@@ -603,6 +608,23 @@ When the user says "me", "my", or "I", they are referring to this user. For exam
             aiResult.content,
             input.threadTs,
           );
+        } else {
+          // LLM returned absolutely nothing (empty string and no tools)
+          if (chainContext.iterations > 0) {
+            await this.sendReply(
+              input.connectionId,
+              input.channelId,
+              "✅ Task processing completed.",
+              input.threadTs,
+            );
+          } else {
+            await this.sendReply(
+              input.connectionId,
+              input.channelId,
+              "❌ I encountered an error processing your request.",
+              input.threadTs,
+            );
+          }
         }
         break;
       }
@@ -1005,6 +1027,7 @@ When the user says "me", "my", or "I", they are referring to this user. For exam
     delete chainContext.pendingDestructiveCall;
     delete chainContext.pendingNonDestructiveResults;
     chainContext.iterations++;
+    chainContext.startedAt = new Date().toISOString(); // Reset timeout clock after user pause
 
     // Look up user profile for prompt context
     let userProfile: { fullName: string; email: string } | undefined;
@@ -1061,7 +1084,9 @@ When the user says "me", "my", or "I", they are referring to this user. For exam
     );
 
     // Append the user's clarification response to the conversation
-    chainContext.messages.push({ role: 'user', content: input.text });
+    const userClarification = `${input.text}\n\n[SYSTEM] Please use the above information to continue fulfilling the original request. If you have enough information, output a JSON object containing your next tool calls. NEVER output an empty response.`;
+    chainContext.messages.push({ role: 'user', content: userClarification });
+    chainContext.startedAt = new Date().toISOString(); // Reset timeout clock after user pause
 
     // Look up user profile
     let userProfile: { fullName: string; email: string } | undefined;
