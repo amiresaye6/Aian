@@ -32,6 +32,7 @@ import { GraphModule } from './graph/graph.module';
 import { RetrievalModule } from './retrieval/retrieval.module';
 import { HandsModule } from './hands/hands.module';
 import { AdminModule } from './admin/admin.module';
+import { ConversationsModule } from './conversations/conversations.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { AdminModule } from './admin/admin.module';
     BillingModule,
     HandsModule,
     AdminModule,
+    ConversationsModule,
   ],
 })
 export class AppModule {}
