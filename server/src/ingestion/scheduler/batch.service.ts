@@ -25,6 +25,7 @@ export class BatchService {
   async processOrganizationBatches(
     organizationId: string,
     force: boolean = false,
+    syncRunId?: string,
   ) {
     const settings =
       await this.settingsRepo.findByOrganizationId(organizationId);
@@ -61,6 +62,7 @@ export class BatchService {
       const batch = await this.batchRepo.create(
         organizationId,
         force ? 'manual' : 'auto',
+        syncRunId,
       );
 
       // 2. Fetch pending items

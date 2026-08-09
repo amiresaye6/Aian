@@ -424,11 +424,11 @@
       }
     },
     {
-      "name": "Check Sync Status",
+      "name": "Check Pipeline Status",
       "request": {
         "method": "GET",
         "url": {
-          "raw": "{{baseUrl}}/api/v1/sync/:organizationId/status",
+          "raw": "{{baseUrl}}/api/v1/sync/:organizationId/pipeline-status",
           "host": [
             "{{baseUrl}}"
           ],
@@ -437,7 +437,7 @@
             "v1",
             "sync",
             ":organizationId",
-            "status"
+            "pipeline-status"
           ],
           "variable": [
             {
@@ -1052,11 +1052,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/graph/visualize?limit=150&minDegree=0",
+              "raw": "{{baseUrl}}/api/v1/graph/visualize?limit=150&minDegree=0",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "graph",
                 "visualize"
               ],
@@ -1085,11 +1087,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/graph/nodes/:id/neighbors",
+              "raw": "{{baseUrl}}/api/v1/graph/nodes/:id/neighbors",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "graph",
                 "nodes",
                 ":id",
@@ -1116,11 +1120,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/graph/nodes/:id/details",
+              "raw": "{{baseUrl}}/api/v1/graph/nodes/:id/details",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "graph",
                 "nodes",
                 ":id",
@@ -1146,11 +1152,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/billing/plans",
+              "raw": "{{baseUrl}}/api/v1/billing/plans",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "plans"
               ]
@@ -1163,11 +1171,13 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/billing/plans/:slug",
+              "raw": "{{baseUrl}}/api/v1/billing/plans/:slug",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "plans",
                 ":slug"
@@ -1201,11 +1211,13 @@
               "raw": "{\"planSlug\": \"pro\"}"
             },
             "url": {
-              "raw": "{{baseUrl}}/billing/checkout",
+              "raw": "{{baseUrl}}/api/v1/billing/checkout",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "checkout"
               ]
@@ -1224,11 +1236,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/billing/verify/:providerPaymentId",
+              "raw": "{{baseUrl}}/api/v1/billing/verify/:providerPaymentId",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "verify",
                 ":providerPaymentId"
@@ -1254,11 +1268,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/billing/subscription?organizationId={{orgId}}",
+              "raw": "{{baseUrl}}/api/v1/billing/subscription?organizationId={{orgId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "subscription"
               ],
@@ -1291,11 +1307,13 @@
               "raw": "{\"planSlug\": \"pro\"}"
             },
             "url": {
-              "raw": "{{baseUrl}}/billing/subscription/upgrade?organizationId={{orgId}}",
+              "raw": "{{baseUrl}}/api/v1/billing/subscription/upgrade?organizationId={{orgId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "subscription",
                 "upgrade"
@@ -1321,11 +1339,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/billing/quota-dashboard?organizationId={{orgId}}",
+              "raw": "{{baseUrl}}/api/v1/billing/quota-dashboard?organizationId={{orgId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "quota-dashboard"
               ],
@@ -1350,11 +1370,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/billing/usage/logs?organizationId={{orgId}}",
+              "raw": "{{baseUrl}}/api/v1/billing/usage/logs?organizationId={{orgId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "usage",
                 "logs"
@@ -1380,11 +1402,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/billing/usage/summary?organizationId={{orgId}}",
+              "raw": "{{baseUrl}}/api/v1/billing/usage/summary?organizationId={{orgId}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
+                "api",
+                "v1",
                 "billing",
                 "usage",
                 "summary"

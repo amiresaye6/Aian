@@ -14,6 +14,8 @@ import { MessagingSkill } from './skills/messaging.skill';
 import { EmailSkill } from './skills/email.skill';
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { KnowledgeSkill } from './skills/knowledge.skill';
+import { MeetingSkill } from './skills/meeting.skill';
+import { ZoomModule } from '../integrations/zoom/zoom.module';
 import { ReportingSkill } from './skills/reporting.skill';
 
 import { JiraModule } from '../integrations/jira/jira.module';
@@ -28,6 +30,7 @@ import { TrelloSkill } from './skills/trello.skill';
     EmailModule,
     AiGatewayModule,
     RetrievalModule,
+    ZoomModule,
     JiraModule,
     TrelloModule,
   ],
@@ -41,6 +44,7 @@ import { TrelloSkill } from './skills/trello.skill';
     MessagingSkill,
     EmailSkill,
     KnowledgeSkill,
+    MeetingSkill,
     JiraSkill,
     TrelloSkill,
     ReportingSkill,

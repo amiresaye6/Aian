@@ -32,6 +32,7 @@ model Organization {
   aiUsageLogs          AiUsageLog[]
   usagePeriodSnapshots UsagePeriodSnapshot[]
   conversations        Conversation[]
+  syncRuns             SyncRun[]
 
   @@map("organizations")
 }

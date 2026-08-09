@@ -27,6 +27,7 @@ export class EyesService {
         providerName: activeProvider?.name ?? null,
         logoUrl: activeProvider?.logoUrl ?? null,
         status: eye.status,
+        connectionId: eye.connection?.id ?? null,
       };
     });
   }

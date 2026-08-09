@@ -4,14 +4,11 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ResilienceService } from '../core/resilience.service';
 import { SkillRegistryService } from '../core/registry.service';
 import { SkillContext, SkillResult } from '../core/types';
-import { GenerateReportInputSchema, GenerateReportInput } from './schemas';
+import { GenerateReportInputSchema } from './schemas';
 import { RetrievalPipelineService } from '../../retrieval/retrieval-pipeline.service';
 import { AnswerGenerationService } from '../../retrieval/services/answer-generation.service';
 import { JiraClientService } from '../../integrations/jira/services/jira-client.service';
-import {
-  ZoomClientService,
-  MeetingType,
-} from '../../integrations/zoom/zoom-client.service';
+import { ZoomClientService, MeetingType } from '../../integrations/zoom/zoom-client.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -30,20 +27,16 @@ export class ReportingSkill implements OnModuleInit {
     this.registry.register({
       name: 'ReportingSkill.generateReport',
       description:
-        'Generates a structured markdown report including tasks, meetings, and knowledge context for a given scope and timeframe.',
+        'Generates structured markdown reports (Daily, Weekly, Performance, or Planning) by aggregating Jira tasks, Zoom meetings, and cross-platform Knowledge Graph context.',
       schema: GenerateReportInputSchema,
       destructive: false,
       requiredProviders: [],
-      optionalProviders: ['JIRA', 'ZOOM'],
-      handler: (ctx: SkillContext, input: any) =>
-        this.generateReport(ctx, input),
+      optionalProviders: ['JIRA', 'ZOOM', 'jira', 'zoom'],
+      handler: (ctx: SkillContext, input: any) => this.generateReport(ctx, input),
     });
   }
 
-  async generateReport(
-    ctx: SkillContext,
-    input: any,
-  ): Promise<SkillResult<any>> {
+  async generateReport(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
     const parsed = GenerateReportInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -69,138 +62,338 @@ export class ReportingSkill implements OnModuleInit {
       'multiple',
       parsed.data,
       async () => {
-        const { scope, timeframe } = parsed.data;
-        const activeSections = ['tasks', 'meetings', 'knowledge'];
+        const { reportType = 'daily', scope, targetUser, timeframe, sections } = parsed.data;
+        const type = reportType || 'daily';
+        const activeSections = sections || ['tasks', 'meetings', 'knowledge'];
 
-        let tasksMarkdown =
-          '## 📋 Tasks\n*No tasks found or integration inactive.*';
-        let meetingsMarkdown =
-          '## 📅 Meetings\n*No meetings found or integration inactive.*';
-        let knowledgeMarkdown = '## 🧠 Knowledge Context\n*No context found.*';
-        let sourcesList: string[] = [];
+        let fullReport = '';
 
-        // 1. Fetch Tasks (Jira)
-        if (activeSections.includes('tasks')) {
-          try {
-            const jiraConnection = ctx.connections['JIRA'];
-            if (jiraConnection) {
-              const issues: Array<any> = [];
-                // (await this.jiraClient.getRecentIssues(
-                // jiraConnection as any,
-                // )) || [];
-
-              tasksMarkdown =
-                `*📋 Tasks*\n\`\`\`\n| Key | Summary | Status | Assignee |\n|---|---|---|---|\n` +
-                (issues.length > 0
-                  ? issues
-                      .map((i: any) => {
-                        const summary = i.fields?.summary || 'N/A';
-                        const status = i.fields?.status?.name || 'N/A';
-                        const assignee =
-                          i.fields?.assignee?.displayName || 'Unassigned';
-                        return `| ${i.key || 'N/A'} | ${summary.length > 30 ? summary.substring(0, 27) + '...' : summary} | ${status} | ${assignee} |`;
-                      })
-                      .join('\n')
-                  : `| No issues found | N/A | N/A | N/A |`) +
-                `\n\`\`\``;
-
-              sourcesList.push(`Jira Connection: ${jiraConnection.id}`);
-            }
-          } catch (err: any) {
-            tasksMarkdown = `## 📋 Tasks\n*Error fetching tasks: ${err.message}*`;
-          }
+        switch (type) {
+          case 'weekly':
+            fullReport = await this.buildWeeklyReport(ctx, scope, timeframe, activeSections);
+            break;
+          case 'performance':
+            fullReport = await this.buildPerformanceReport(ctx, scope, targetUser, timeframe, activeSections);
+            break;
+          case 'planning':
+            fullReport = await this.buildPlanningReport(ctx, scope, timeframe, activeSections);
+            break;
+          case 'daily':
+          default:
+            fullReport = await this.buildDailyReport(ctx, scope, timeframe, activeSections);
+            break;
         }
 
-        // 2. Fetch Meetings (Zoom)
-        if (activeSections.includes('meetings')) {
-          try {
-            const zoomConnection = ctx.connections['ZOOM'];
-            if (zoomConnection) {
-              const meetingsResult = await this.zoomClient.getMeetings(
-                zoomConnection as any,
-                MeetingType.Scheduled,
-              );
-              const meetings = meetingsResult.resources || [];
-
-              meetingsMarkdown =
-                `*📅 Meetings*\n\`\`\`\n| Topic | Date | Duration | Attendees |\n|---|---|---|---|\n` +
-                (meetings.length > 0
-                  ? meetings
-                      .map(
-                        (m: any) =>
-                          `| ${m.name || 'N/A'} | ${m.metadata?.start_time || 'N/A'} | ${m.metadata?.duration || 'N/A'}m | N/A |`,
-                      )
-                      .join('\n')
-                  : `| No scheduled meetings | N/A | N/A | N/A |`) +
-                `\n\`\`\``;
-
-              sourcesList.push(`Zoom Connection: ${zoomConnection.id}`);
-            }
-          } catch (err: any) {
-            meetingsMarkdown = `## 📅 Meetings\n*Error fetching meetings: ${err.message}*`;
-          }
-        }
-
-        // 3. Fetch Knowledge Context & Real Evidence Chain Sources
-        if (activeSections.includes('knowledge')) {
-          try {
-            const retrievalResult =
-              await this.retrievalPipeline.retrieveContext(
-                ctx.organizationId,
-                scope,
-              );
-            const contextString = retrievalResult?.contextString || '';
-
-            const summaryAnswer = await this.answerGeneration.generateAnswer(
-              ctx.organizationId,
-              `Provide a concise summary regarding: ${scope}`,
-              contextString,
-            );
-            knowledgeMarkdown = `## 🧠 Knowledge Context\n${summaryAnswer}`;
-
-            // Extract real artifact IDs/names from evidence chains
-            if (
-              retrievalResult?.evidenceChains &&
-              Array.isArray(retrievalResult.evidenceChains)
-            ) {
-              retrievalResult.evidenceChains.forEach((node: any) => {
-                if (node?.artifactId || node?.name) {
-                  sourcesList.push(`Artifact: ${node.name || node.artifactId}`);
-                }
-              });
-            }
-          } catch (err: any) {
-            knowledgeMarkdown = `## 🧠 Knowledge Context\n*Error fetching knowledge graph context: ${err.message}*`;
-          }
-        }
-
-        // Assemble the final Markdown Report
-        const sourcesFormatted =
-          sourcesList.length > 0 ? sourcesList.join(', ') : 'None';
-        const timeframeText = timeframe
-          ? `*Period: ${timeframe}*`
-          : '*Period: All Time*';
-        let fullReport = `*Report: ${scope}*\n${timeframeText}
-
-${tasksMarkdown.replace(/## /g, '*').replace(/ \*\n/g, '*\n')}
-
-${meetingsMarkdown.replace(/## /g, '*').replace(/ \*\n/g, '*\n')}
-
-${knowledgeMarkdown.replace(/## 🧠 /g, '*🧠 ')}
-
----
-_Sources: [${sourcesFormatted}]_
-`;
-
-        // Apply Slack ~4000 characters limit safety chunking
+        // Apply Slack ~3900 characters safety threshold
         if (fullReport.length > 3900) {
-          fullReport =
-            fullReport.substring(0, 3900) +
-            '\n\n*(Report truncated due to Slack length limits)*';
+          fullReport = fullReport.substring(0, 3900) + '\n\n*(Report truncated due to length limits)*';
         }
 
         return { reportMarkdown: fullReport };
       },
     );
+  }
+
+  /**
+   * 📅 Daily Status Report
+   */
+  private async buildDailyReport(
+    ctx: SkillContext,
+    scope: string,
+    timeframe: any,
+    sections: string[],
+  ): Promise<string> {
+    const fromStr = timeframe?.from ?? new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const toStr = timeframe?.to ?? new Date().toISOString().split('T')[0];
+
+    const tasksMarkdown = sections.includes('tasks')
+      ? await this.fetchJiraTasksSection(ctx, `updated >= -1d`, 'Daily Tasks (Last 24h)')
+      : '';
+
+    const meetingsMarkdown = sections.includes('meetings')
+      ? await this.fetchZoomMeetingsSection(ctx, 'Daily Meetings')
+      : '';
+
+    const knowledgeMarkdown = sections.includes('knowledge')
+      ? await this.fetchKnowledgeContextSection(ctx, `${scope} daily updates and key decisions made today`)
+      : '';
+
+    return `# 📅 Daily Report: ${scope}
+*Period: ${fromStr} — ${toStr}*
+
+${tasksMarkdown}
+
+${meetingsMarkdown}
+
+${knowledgeMarkdown}
+
+---
+*Generated by AIAN ReportingSkill*`;
+  }
+
+  /**
+   * 📊 Weekly Sprint Summary Report
+   */
+  private async buildWeeklyReport(
+    ctx: SkillContext,
+    scope: string,
+    timeframe: any,
+    sections: string[],
+  ): Promise<string> {
+    const fromStr = timeframe?.from ?? new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const toStr = timeframe?.to ?? new Date().toISOString().split('T')[0];
+
+    const tasksMarkdown = sections.includes('tasks')
+      ? await this.fetchJiraTasksSection(ctx, `updated >= -7d`, 'Weekly Sprint Tasks')
+      : '';
+
+    const meetingsMarkdown = sections.includes('meetings')
+      ? await this.fetchZoomMeetingsSection(ctx, 'Weekly Meetings & Reviews')
+      : '';
+
+    const knowledgeMarkdown = sections.includes('knowledge')
+      ? await this.fetchKnowledgeContextSection(ctx, `${scope} weekly sprint accomplishments and architectural changes`)
+      : '';
+
+    return `# 📊 Weekly Report: ${scope}
+*Period: ${fromStr} — ${toStr}*
+
+${tasksMarkdown}
+
+${meetingsMarkdown}
+
+${knowledgeMarkdown}
+
+---
+*Generated by AIAN ReportingSkill*`;
+  }
+
+  /**
+   * 👤 Individual Performance & Activity Report
+   */
+  private async buildPerformanceReport(
+    ctx: SkillContext,
+    scope: string,
+    targetUser?: string | null,
+    timeframe?: any,
+    sections?: string[],
+  ): Promise<string> {
+    const userName = targetUser ?? 'Team Member';
+    const fromStr = timeframe?.from ?? 'Start of Month';
+    const toStr = timeframe?.to ?? new Date().toISOString().split('T')[0];
+
+    const jql = targetUser
+      ? `assignee ~ "${targetUser}" OR text ~ "${targetUser}"`
+      : `updated >= -7d`;
+
+    const tasksMarkdown = await this.fetchJiraTasksSection(
+      ctx,
+      jql,
+      `Assigned Tasks & Ticket Contributions (${userName})`,
+    );
+
+    const meetingsMarkdown = await this.fetchZoomMeetingsSection(
+      ctx,
+      `Meetings & Review Participations (${userName})`,
+    );
+
+    const knowledgeMarkdown = await this.fetchKnowledgeContextSection(
+      ctx,
+      `Detailed contributions, pull requests, commits, and activity by ${userName} in ${scope}`,
+    );
+
+    return `# 👤 Performance Report: ${userName}
+*Scope: ${scope} | Period: ${fromStr} — ${toStr}*
+
+### 📌 Summary of Activity & Contributions
+This report aggregates Jira ticket assignments, Zoom meeting participations, and cross-platform Knowledge Graph commits/discussions for **${userName}**.
+
+${tasksMarkdown}
+
+${meetingsMarkdown}
+
+${knowledgeMarkdown}
+
+---
+*Generated by AIAN ReportingSkill*`;
+  }
+
+  /**
+   * 🗺️ Today's Planning & Roadmap Report
+   */
+  private async buildPlanningReport(
+    ctx: SkillContext,
+    scope: string,
+    timeframe: any,
+    sections: string[],
+  ): Promise<string> {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const tasksMarkdown = sections.includes('tasks')
+      ? await this.fetchJiraTasksSection(
+          ctx,
+          `status in ("To Do", "In Progress", "In Review")`,
+          'Active & Pending Tasks (Roadmap)',
+        )
+      : '';
+
+    const meetingsMarkdown = sections.includes('meetings')
+      ? await this.fetchZoomMeetingsSection(ctx, "Today's Scheduled Meetings")
+      : '';
+
+    const knowledgeMarkdown = sections.includes('knowledge')
+      ? await this.fetchKnowledgeContextSection(ctx, `${scope} active action items and open roadmap targets for today`)
+      : '';
+
+    return `# 🗺️ Planning & Roadmap Report: ${scope}
+*Target Date: ${todayStr}*
+
+${tasksMarkdown}
+
+${meetingsMarkdown}
+
+${knowledgeMarkdown}
+
+---
+*Generated by AIAN ReportingSkill*`;
+  }
+
+  // ── Helper Data Fetchers ──────────────────────────────────────────────────
+
+  private async fetchJiraTasksSection(
+    ctx: SkillContext,
+    jql: string,
+    title: string,
+  ): Promise<string> {
+    try {
+      const jiraConnection =
+        ctx?.connections?.['JIRA'] ||
+        ctx?.connections?.['jira'] ||
+        (await this.prisma.providerConnection.findFirst({
+          where: {
+            organizationEyeId: ctx.organizationId,
+            provider: { key: 'jira' },
+            status: 'connected',
+          },
+        }));
+
+      if (!jiraConnection) {
+        return `## 📋 ${title}\n*Jira integration not connected.*`;
+      }
+
+      // Execute search via searchIssues method on JiraClientService
+      const searchResult = await this.jiraClient.searchIssues(ctx.organizationId, jql, 15);
+      const issues = searchResult?.issues || [];
+
+      if (!Array.isArray(issues) || issues.length === 0) {
+        return `## 📋 ${title}\n*No active tasks found matching criteria.*`;
+      }
+
+      const tableRows = issues
+        .map((i: any) => {
+          const key = i.key || 'N/A';
+          const summary = i.fields?.summary || 'No summary';
+          const status = i.fields?.status?.name || 'To Do';
+          const assignee = i.fields?.assignee?.displayName || 'Unassigned';
+          return `| ${key} | ${summary} | ${status} | ${assignee} |`;
+        })
+        .join('\n');
+
+      return `## 📋 ${title}\n| Key | Summary | Status | Assignee |\n|---|---|---|---|\n${tableRows}`;
+    } catch (err: any) {
+      return `## 📋 ${title}\n*Error fetching Jira tasks: ${err.message}*`;
+    }
+  }
+
+  private async fetchZoomMeetingsSection(
+    ctx: SkillContext,
+    title: string,
+  ): Promise<string> {
+    try {
+      const zoomConnection =
+        ctx?.connections?.['ZOOM'] ||
+        ctx?.connections?.['zoom'] ||
+        (await this.prisma.providerConnection.findFirst({
+          where: {
+            organizationEyeId: ctx.organizationId,
+            provider: { key: 'zoom' },
+            status: 'connected',
+          },
+        }));
+
+      if (!zoomConnection) {
+        return `## 📅 ${title}\n*Zoom integration not connected.*`;
+      }
+
+      // Execute listMeetings via ZoomClientService
+      const meetingsResult = await this.zoomClient.listMeetings(
+        zoomConnection as any,
+        MeetingType.Scheduled,
+        10,
+      );
+      const meetings = meetingsResult?.resources || [];
+
+      if (!Array.isArray(meetings) || meetings.length === 0) {
+        return `## 📅 ${title}\n*No meetings recorded for this period.*`;
+      }
+
+      const tableRows = meetings
+        .slice(0, 10)
+        .map((m: any) => {
+          const name = m.name || 'Untitled Meeting';
+          const startTime = m.metadata?.start_time
+            ? new Date(m.metadata.start_time).toLocaleString('en-US', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })
+            : 'N/A';
+          const duration = m.metadata?.duration ? `${m.metadata.duration}m` : 'N/A';
+          const host = m.metadata?.host_email || 'Host';
+          return `| ${name} | ${startTime} | ${duration} | ${host} |`;
+        })
+        .join('\n');
+
+      return `## 📅 ${title}\n| Topic | Date/Time | Duration | Host/Attendees |\n|---|---|---|---|\n${tableRows}`;
+    } catch (err: any) {
+      return `## 📅 ${title}\n*Error fetching Zoom meetings: ${err.message}*`;
+    }
+  }
+
+  private async fetchKnowledgeContextSection(
+    ctx: SkillContext,
+    queryPrompt: string,
+  ): Promise<string> {
+    try {
+      const retrievalResult = await this.retrievalPipeline.retrieveContext(
+        ctx.organizationId,
+        queryPrompt,
+      );
+      const contextString = retrievalResult?.contextString || '';
+
+      if (!contextString) {
+        return `## 🧠 Knowledge Context\n*No relevant knowledge graph context found.*`;
+      }
+
+      const summaryAnswer = await this.answerGeneration.generateAnswer(
+        `Summarize the key developments, PRs, and architectural insights for: ${queryPrompt}`,
+        contextString,
+        {} as any,
+      );
+
+      const sources: string[] = [];
+      if (retrievalResult?.evidenceChains && Array.isArray(retrievalResult.evidenceChains)) {
+        retrievalResult.evidenceChains.forEach((node: any) => {
+          if (node?.name || node?.artifactId) {
+            sources.push(node.name || node.artifactId);
+          }
+        });
+      }
+
+      const sourcesFormatted = sources.length > 0 ? Array.from(new Set(sources)).join(', ') : 'Knowledge Graph';
+
+      return `## 🧠 Knowledge Context\n${summaryAnswer}\n\n*Sources: ${sourcesFormatted}*`;
+    } catch (err: any) {
+      return `## 🧠 Knowledge Context\n*Error generating knowledge summary: ${err.message}*`;
+    }
   }
 }

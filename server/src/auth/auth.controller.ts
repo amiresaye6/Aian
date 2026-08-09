@@ -50,11 +50,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async SignIn(@Body() body: SignInDto) {
     const { email, password } = body;
-    const { user, access_token, refresh_token } = await this.authService.SignIn(
+    const { user, access_token, refresh_token , mustChangePassword } = await this.authService.SignIn(
       email,
       password,
     );
-    return { access_token, refresh_token, user };
+    return { access_token, refresh_token, user , mustChangePassword};
   }
 
   @Post('logout')

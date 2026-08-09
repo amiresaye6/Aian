@@ -83,6 +83,10 @@ model IngestionBatch {
   failedAt       DateTime?   @map("failed_at") @db.Timestamptz
   errorMessage   String?     @map("error_message") @db.Text
   retryCount     Int         @default(0) @map("retry_count")
+  syncRunId      String?     @map("sync_run_id")
+
+  // Add the relation:
+  syncRun        SyncRun?    @relation(fields: [syncRunId], references: [id], onDelete: SetNull)
 
   // Relations
   organization Organization         @relation(fields: [organizationId], references: [id])

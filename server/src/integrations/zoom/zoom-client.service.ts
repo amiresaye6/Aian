@@ -3,11 +3,22 @@ import { ProviderClient, ProviderConnection, ProviderResource } from '../contrac
 import { EncryptionService } from '../../common/encryption.service';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../email/email.service';
 
 
 export enum MeetingType {
   Scheduled = 'scheduled',
   Live = 'live',
+  Upcoming = 'upcoming',
+}
+
+export interface MeetingData {
+  id: string;
+  topic: string;
+  joinUrl: string;
+  startUrl: string;
+  startTime: string;
+  duration: number;
 }
 
 @Injectable()
@@ -16,7 +27,8 @@ export class ZoomClientService implements ProviderClient {
 
   constructor(
     private readonly encryptionService: EncryptionService,
-    private readonly prismaService: PrismaService
+    private readonly prismaService: PrismaService,
+    private readonly emailService:EmailService
   ) {}
 
   /**
@@ -198,7 +210,7 @@ export class ZoomClientService implements ProviderClient {
     }
   }
 
-  async getMeetings(
+  async listMeetings(
     connection: ProviderConnection,
     type: MeetingType,
     pageSize = 30,
@@ -252,4 +264,273 @@ export class ZoomClientService implements ProviderClient {
       throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);
     }
   }
+
+  async createMeeting(
+    connection: any,
+    data: {
+      topic: string;
+      startTime: string;
+      durationMinutes: number;
+      timezone?: string;
+      attendees?: string[];
+    },
+  ) {
+    await this.verifyConnection(connection);
+
+    const accessToken = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    const response = await axios.post(
+      'https://api.zoom.us/v2/users/me/meetings',
+      {
+        topic: data.topic,
+        type: 2,
+        start_time: data.startTime,
+        duration: data.durationMinutes,
+        timezone: data.timezone || 'UTC',
+        settings: {
+          host_video: true,
+          participant_video: true,
+          join_before_host: false,
+          mute_upon_entry: true,
+          approval_type: 0,
+          registrants_email_notification: true,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    const meetingData: MeetingData = {
+      id: String(response.data.id),
+      topic: response.data.topic,
+      joinUrl: response.data.join_url,
+      startUrl: response.data.start_url,
+      startTime: response.data.start_time,
+      duration: response.data.duration,
+    };
+
+    await this.prismaService.meeting.create({
+      data: {
+        id: meetingData.id,
+        connectionId: connection.id,
+        topic: meetingData.topic,
+        joinUrl: meetingData.joinUrl,
+        startUrl: meetingData.startUrl,
+        startTime: new Date(meetingData.startTime),
+        duration: meetingData.duration,
+      },
+    });
+
+    if (data.attendees?.length) {
+      await this.addRegistrants(
+        connection,
+        meetingData.id,
+        data.attendees,
+        meetingData,
+      );
+    }
+
+    return meetingData;
+  }
+
+  async addRegistrants(
+    connection: any,
+    meetingId: string,
+    attendees: string[],
+    meetingData?: MeetingData,
+  ): Promise<any> {
+    const meeting =
+      meetingData ??
+      (await this.prismaService.meeting.findUniqueOrThrow({
+        where: {
+          id: meetingId,
+        },
+      }));
+
+    let count =0;
+    let alreadyExists=0;
+
+    const htmlContent = `
+      <p>You have been registered for a Zoom meeting.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Start Time: ${meeting.startTime}</p>
+      <p>Duration: ${meeting.duration} minutes</p>
+      <p><a href="${meeting.joinUrl}">Join Meeting</a></p>
+    `;
+
+    const existingRegistrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+        select: {
+          email: true,
+        },
+      });
+
+    const existingEmails = new Set(
+      existingRegistrants.map((r) => r.email),
+    );
+
+    for (const email of attendees) {
+      if (existingEmails.has(email)) {
+        alreadyExists++;
+        continue;
+      }
+
+      await this.emailService.sendBrandedEmail(
+        email,
+        'Meeting Registration',
+        htmlContent,
+      );
+
+      count++;
+
+      await this.prismaService.meetingRegistrant.create({
+        data: {
+          meetingId,
+          connectionId: connection.id,
+          email,
+        },
+      });
+    }
+    return {count, alreadyExists}
+  }
+
+  async deleteMeeting(
+    connection: any,
+    meetingId: string,
+  ): Promise<void> {
+    await this.verifyConnection(connection);
+
+    const accessToken = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    const meeting = await this.prismaService.meeting.findUniqueOrThrow({
+      where: {
+        id: meetingId,
+      },
+    });
+
+    const registrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+      });
+
+    const htmlContent = `
+      <p>Your Zoom meeting has been cancelled.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Scheduled Time: ${meeting.startTime}</p>
+    `;
+
+    for (const registrant of registrants) {
+      await this.emailService.sendBrandedEmail(
+        registrant.email,
+        'Meeting Cancelled',
+        htmlContent,
+      );
+    }
+
+    await axios.delete(
+      `https://api.zoom.us/v2/meetings/${meetingId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    await this.prismaService.meetingRegistrant.deleteMany({
+      where: {
+        meetingId,
+      },
+    });
+
+    await this.prismaService.meeting.delete({
+      where: {
+        id: meetingId,
+      },
+    });
+  }
+
+  async updateMeeting(
+    connection: any,
+    meetingId: string,
+    fields: {
+      topic?: string;
+      startTime?: string;
+      durationMinutes?: number;
+      timezone?: string;
+    },
+  ): Promise<void> {
+    console.log(`connection: `,connection);
+    console.log(`meetingId: `,meetingId);
+    console.log(`fields: `,JSON.stringify(fields));
+    
+    await this.verifyConnection(connection);
+
+    const accessToken = this.encryptionService.decrypt(
+      connection.accessTokenEncrypted,
+    );
+
+    await axios.patch(
+      `https://api.zoom.us/v2/meetings/${meetingId}`,
+      {
+        topic: fields.topic,
+        start_time: fields.startTime,
+        duration: fields.durationMinutes,
+        timezone: fields.timezone,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+
+    const meeting = await this.prismaService.meeting.update({
+      where: { id: meetingId },
+      data: {
+        ...(fields.topic && { topic: fields.topic }),
+        ...(fields.startTime && { startTime: new Date(fields.startTime) }),
+        ...(fields.durationMinutes && { duration: fields.durationMinutes }),
+      },
+    });
+
+    const registrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+      });
+
+    const htmlContent = `
+      <p>Your Zoom meeting has been updated.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Start Time: ${meeting.startTime}</p>
+      <p>Duration: ${meeting.duration} minutes</p>
+      <p><a href="${meeting.joinUrl}">Join Meeting</a></p>
+    `;
+
+    for (const registrant of registrants) {
+      await this.emailService.sendBrandedEmail(
+        registrant.email,
+        'Meeting Updated',
+        htmlContent,
+      );
+    }
+  }
+
+
 }

@@ -4,7 +4,8 @@ import {
   ProcessingSettings,
   IngestionBatch,
   KnowledgeItem,
-  SyncStatusResponse,
+  PipelineStatusResponse,
+  SyncNowResponse,
   PaginatedResponse,
 } from "@/types/pipeline";
 
@@ -26,14 +27,16 @@ export const pipelineApi = {
   },
 
   // Sync Operations
-  triggerSyncNow: async (organizationId: string) => {
+  triggerSyncNow: async (organizationId: string): Promise<SyncNowResponse> => {
     const response = await api.post(`/sync/${organizationId}/now`);
-    return response.data;
+    return response.data?.data || response.data;
   },
 
-  getSyncStatus: async (organizationId: string) => {
-    const response = await api.get<SyncStatusResponse>(`/sync/${organizationId}/status`);
-    return response.data;
+  getPipelineStatus: async (organizationId: string): Promise<PipelineStatusResponse> => {
+    const response = await api.get<PipelineStatusResponse>(
+      `/sync/${organizationId}/pipeline-status`
+    );
+    return response.data?.data || response.data;
   },
 
   // Batches & Items
@@ -56,4 +59,3 @@ export const pipelineApi = {
     return response.data;
   },
 };
-

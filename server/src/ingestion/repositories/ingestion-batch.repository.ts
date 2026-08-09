@@ -9,9 +9,17 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class IngestionBatchRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(organizationId: string, triggerType: string) {
+  async create(
+    organizationId: string,
+    triggerType: string,
+    syncRunId?: string,
+  ) {
     return this.prisma.ingestionBatch.create({
-      data: { organizationId, triggerType },
+      data: {
+        organizationId,
+        triggerType,
+        ...(syncRunId ? { syncRunId } : {}),
+      },
     });
   }
 

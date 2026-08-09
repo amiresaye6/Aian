@@ -64,6 +64,7 @@ export const getConnections = async (organizationId: string) => {
     sampleResources: [],
     defaultWorkspaceName: "Workspace",
     organizationEyeId: eye.id,
+    connectionId: eye.connectionId,
   }));
 };
 

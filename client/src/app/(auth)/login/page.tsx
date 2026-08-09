@@ -31,18 +31,32 @@ export default function LoginPage() {
 
     try {
       const response = await authApi.login({ email, password });
-      
+
       loginStore(response.data.user, response.data.access_token, response.data.refresh_token);
-      console.log("Login successful:", response.data);
-      console.log("org id:", response.data.user.organizationId);
-      if(!response.data.user.organizationId || response.data.user.organizationId === "" 
-        || response.data.user.organizationId === "unkown" || response.data.user.organizationId === "null") {
+
+
+      if (response.data.mustChangePassword) {
+        router.push("/force-password-change");
+      } else if (
+        !response.data.user.organizationId ||
+        response.data.user.organizationId === "" ||
+        response.data.user.organizationId === "unkown" ||
+        response.data.user.organizationId === "null"
+      ) {
         router.push("/workspaces");
-      }else{
+      } else {
         router.push("/dashboard");
       }
-      
-      
+      console.log("Login successful:", response.data);
+      console.log("org id:", response.data.user.organizationId);
+      // if (!response.data.user.organizationId || response.data.user.organizationId === ""
+      //   || response.data.user.organizationId === "unkown" || response.data.user.organizationId === "null") {
+      //   router.push("/workspaces");
+      // } else {
+      //   router.push("/dashboard");
+      // }
+
+
     } catch (err: any) {
       setErrorMsg(err.response?.data?.message || "Invalid email or password");
     } finally {
@@ -96,7 +110,7 @@ export default function LoginPage() {
           autoComplete="current-password"
           required
         />
-        
+
         <div className="flex items-center justify-between pt-1">
           <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-muted-foreground">
             <input

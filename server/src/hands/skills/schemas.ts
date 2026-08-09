@@ -57,6 +57,168 @@ export const SummarizeInputSchema = z.object({
 });
 export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;
 
+
+// Zoom Meeting Schemas
+
+function cleanEmail(raw: string): string {
+  let cleaned = raw.trim();
+  cleaned = cleaned.replace(/^<mailto:/i, '').replace(/>$/, '');
+  if (cleaned.includes('|')) {
+    cleaned = cleaned.split('|')[0].trim();
+  }
+  return cleaned.trim();
+}
+
+export const CreateMeetingInputSchema = z
+  .preprocess((input: any) => {
+    if (input && typeof input === 'object') {
+      const normalized = { ...input };
+
+      // 1. duration / durationMinutes
+      const rawDuration = input.durationMinutes ?? input.duration;
+      if (rawDuration !== undefined && rawDuration !== null) {
+        normalized.durationMinutes = Number(rawDuration) || 30;
+      }
+
+      // 2. startTime / time / date / dateTime
+      let rawDate = input.startTime ?? input.start_time ?? input.time ?? input.dateTime;
+
+      if (!rawDate && (input.date || input.time)) {
+        const datePart = input.date || '';
+        const timePart = input.time || '';
+        rawDate = `${datePart} ${timePart}`.trim();
+      }
+
+      if (rawDate) {
+        const parsedDate = new Date(rawDate);
+        if (!isNaN(parsedDate.getTime())) {
+          normalized.startTime = parsedDate.toISOString();
+        } else {
+          normalized.startTime = rawDate;
+        }
+      }
+
+      // 3. attendees
+      const rawValue = input.attendees ?? input.email ?? input.emails;
+      if (rawValue !== undefined && rawValue !== null && rawValue !== '') {
+        let attendeesArray: string[] = [];
+        if (typeof rawValue === 'string') {
+          const trimmed = rawValue.trim();
+          if (trimmed.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) {
+                attendeesArray = parsed.map((e) => cleanEmail(String(e)));
+              }
+            } catch {}
+          }
+          if (attendeesArray.length === 0) {
+            attendeesArray = trimmed.split(',').map((e) => cleanEmail(e)).filter(Boolean);
+          }
+        } else if (Array.isArray(rawValue)) {
+          attendeesArray = rawValue
+            .flatMap((item) => (typeof item === 'string' ? item.split(',') : item))
+            .map((e) => (typeof e === 'string' ? cleanEmail(e) : e))
+            .filter(Boolean);
+        }
+        normalized.attendees = attendeesArray.length > 0 ? attendeesArray : undefined;
+      }
+
+      return normalized;
+    }
+    return input;
+  }, z.object({
+    topic: z.string().describe('The meeting topic or title.'),
+    startTime: z
+      .string()
+      .describe('CRITICAL: MUST use key name "startTime". ISO 8601 string, e.g. "2026-08-08T14:00:00Z"'),
+    durationMinutes: z
+      .coerce
+      .number()
+      .describe('CRITICAL: MUST use key name "durationMinutes". Duration in minutes as a number.'),
+    timezone: z.string().optional().describe('Timezone, e.g., "Africa/Cairo". Defaults to UTC.'),
+    attendees: z
+      .array(z.string().email({ message: 'Invalid email address' }))
+      .optional()
+      .describe('Optional list of attendee email addresses.'),
+  }));
+export const UpdateMeetingInputSchema = z.object({
+  meetingId: z.string().describe('The Zoom meeting ID.'),
+  fields: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      try {
+        return JSON.parse(val);
+      } catch {
+        return val;
+      }
+    }
+    return val;
+  }, z.record(z.string(), z.any())).describe('Fields to update: topic, startTime, durationMinutes, etc.'),
+});
+
+export const CancelMeetingInputSchema = z.object({
+  meetingId: z.string().describe('The Zoom meeting ID to cancel or delete.'),
+});
+
+export const InviteMeetingInputSchema = z
+  .preprocess((input: any) => {
+    if (input && typeof input === 'object') {
+      const rawValue = input.attendees ?? input.email ?? input.emails;
+
+      if (rawValue !== undefined && rawValue !== null && rawValue !== '') {
+        let attendeesArray: string[] = [];
+
+        if (typeof rawValue === 'string') {
+          const trimmed = rawValue.trim();
+          if (trimmed.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) attendeesArray = parsed;
+            } catch {
+              // ignore JSON error and fallback to comma split
+            }
+          }
+          if (attendeesArray.length === 0) {
+            attendeesArray = trimmed.split(',').map((e) => e.trim()).filter(Boolean);
+          }
+        } else if (Array.isArray(rawValue)) {
+          attendeesArray = rawValue
+            .flatMap((item) => (typeof item === 'string' ? item.split(',') : item))
+            .map((e) => (typeof e === 'string' ? e.trim() : e))
+            .filter(Boolean);
+        }
+
+        return {
+          ...input,
+          attendees: attendeesArray,
+        };
+      }
+    }
+    return input;
+  }, z.object({
+    meetingId: z.string().describe('The Zoom meeting ID.'),
+    attendees: z
+      .array(z.string().email({ message: 'Invalid email address' }))
+      .optional()
+      .describe('List of attendee email addresses.'),
+  }));
+
+export const GetMeetingInputSchema = z.object({
+  meetingId: z.string().describe('The Zoom meeting ID.'),
+});
+
+export const ListMeetingsInputSchema = z.object({
+  type: z.enum(['scheduled', 'live', 'upcoming'])
+    .optional()
+    .default('scheduled')
+    .describe("Type of meetings to fetch: scheduled, live, upcoming"),
+  pageSize: z.coerce.number().optional().default(30).describe('Number of records to return.'),
+  nextPageToken: z.string().optional().describe('Token for pagination.'),
+  dateRange: z.object({
+    from: z.string().optional(),
+    to: z.string().optional(),
+  }).optional(),
+});
 // --- Jira Task Schemas ---
 export const JiraCreateTaskInputSchema = z.object({
   title: z.string().describe('The title/summary of the Jira issue.'),
@@ -173,13 +335,38 @@ export const TrelloGetTaskInputSchema = z.object({
 export type TrelloGetTaskInput = z.infer<typeof TrelloGetTaskInputSchema>;
 
 export const GenerateReportInputSchema = z.object({
+  reportType: z
+    .enum(['daily', 'weekly', 'performance', 'planning'])
+    .optional()
+    .nullable()
+    .describe(
+      'Type of report: "daily" for today status, "weekly" for sprint summary, "performance" for individual activity, "planning" for today roadmap. Defaults to "daily".',
+    ),
   scope: z
     .string()
-    .describe('The primary subject of the report (e.g. user name, project name, or general topic).'),
-  timeframe: z
+    .describe(
+      'What the report is about, e.g., "Project AIAN", "Sprint 5", "Backend team".',
+    ),
+  targetUser: z
     .string()
-    .describe('Human readable timeframe, e.g., "last 3 days", "this month".')
-    .optional(),
+    .optional()
+    .nullable()
+    .describe(
+      'Target user name or email for performance report (e.g. "Amir", "Hager", "donia"). Required if reportType is "performance".',
+    ),
+  timeframe: z
+    .object({
+      from: z.string().optional().nullable().describe('Start date in ISO 8601 format.'),
+      to: z.string().optional().nullable().describe('End date in ISO 8601 format.'),
+    })
+    .optional()
+    .nullable()
+    .describe('Optional time period constraint for the report.'),
+  sections: z
+    .array(z.enum(['tasks', 'meetings', 'knowledge']))
+    .optional()
+    .nullable()
+    .describe('Which sections to include. Defaults to all.'),
 });
 
 export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;
