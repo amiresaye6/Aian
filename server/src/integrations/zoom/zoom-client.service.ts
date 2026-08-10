@@ -32,40 +32,57 @@ export class ZoomClientService implements ProviderClient {
   ) {}
 
   /**
+   * Executes a Zoom API call using the connection's current access token.
+   * If the call fails with 401 (expired token), it refreshes the token once
+   * and retries the SAME call immediately using the fresh token returned
+   * from the refresh — it never re-reads the old encrypted token from the
+   * `connection` object, which is what caused the "first request fails,
+   * second succeeds" bug.
+   *
+   * This replaces calling `verifyConnection()` before every operation:
+   * no extra /users/me calls are made unless the token has actually expired,
+   * which avoids hammering Zoom's rate limit on every single service call.
+   */
+  private async executeWithTokenRefresh<T>(
+    connection: ProviderConnection,
+    requestFn: (accessToken: string) => Promise<T>,
+  ): Promise<T> {
+    const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+
+    try {
+      return await requestFn(accessToken);
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        this.logger.warn(`Access token expired for connection ${connection.id}. Refreshing and retrying...`);
+        const newAccessToken = await this.refreshAccessToken(connection);
+        return await requestFn(newAccessToken);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Verifies if the active connection is healthy and authorized.
    * Decrypts the access token and calls Zoom's /users/me API endpoint.
+   * Kept as an explicit "test connection" check — not meant to be called
+   * before every operation anymore (see executeWithTokenRefresh above).
    */
   async verifyConnection(connection: ProviderConnection): Promise<{ isValid: boolean; message: string }> {
     try {
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+      const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.get('https://api.zoom.us/v2/users/me', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
+      );
 
-      const response = await axios.get('https://api.zoom.us/v2/users/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      //console.log(response)
       this.logger.log(`Zoom connection verified for user: ${response.data.email}`);
       return {
         isValid: true,
         message: `Connected as ${response.data.first_name} ${response.data.last_name} (${response.data.email})`,
       };
     } catch (error: any) {
-      if (error.response?.status === 401) {
-        this.logger.warn(`Access token expired for connection ${connection.id}. Trying to refresh...`);
-        try {
-          const newAccessToken = await this.refreshAccessToken(connection);
-          
-          const retryResponse = await axios.get('https://api.zoom.us/v2/users/me', {
-            headers: {
-              Authorization: `Bearer ${newAccessToken}`,
-            },
-          });
-          return retryResponse.data;
-        } catch (refreshError: any) {
-          throw new Error(`Token refresh failed or retry failed: ${refreshError.message}`);
-        }
-      }
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Zoom connection verification failed: ${errorMsg}`);
       return {
@@ -185,6 +202,14 @@ export class ZoomClientService implements ProviderClient {
         },
       });
 
+      // Keep the in-memory connection object in sync with the DB update,
+      // so if this same `connection` reference gets reused later in the
+      // same call/request, it reflects the refreshed tokens instead of
+      // the stale ones that caused problem #2.
+      connection.accessTokenEncrypted = newAccessTokenEncrypted;
+      connection.refreshTokenEncrypted = newRefreshTokenEncrypted;
+      connection.tokenExpiresAt = tokenExpiresAt;
+
       this.logger.log(`Zoom token refreshed successfully for connection: ${connection.id}`);
       return access_token;
     } catch (error: any) {
@@ -195,13 +220,12 @@ export class ZoomClientService implements ProviderClient {
   }
 
   async getMeetingDetails(connection: ProviderConnection, meetingId: string): Promise<any> {
-    let accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
-
     try {
-      await this.verifyConnection(connection);
-      const response = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      );
       return response.data;
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message;
@@ -222,21 +246,39 @@ export class ZoomClientService implements ProviderClient {
     totalRecords: number;
   }> {
     try {
-      await this.verifyConnection(connection);
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+      const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.get('https://api.zoom.us/v2/users/me/meetings', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          params: {
+            type,
+            page_size: pageSize,
+            ...(nextPageToken ? { next_page_token: nextPageToken } : {}),
+          },
+        }),
+      );
 
-      const response = await axios.get('https://api.zoom.us/v2/users/me/meetings', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
-          type,
-          page_size: pageSize,
-          ...(nextPageToken ? { next_page_token: nextPageToken } : {}),
-        },
-      });
+      console.log(`Zoom API response for listMeetings: ${JSON.stringify(response.data)}`);
+      let meetings = response.data.meetings || [];
 
-      const meetings = response.data.meetings || [];
+      const threeHoursAgoMs = Date.now() - (3 * 60 * 60 * 1000);
+
+    meetings = meetings.filter((meeting: any) => {
+      if (!meeting.start_time) {
+        return false;
+      }
+
+      const meetingStartTimeMs = new Date(meeting.start_time).getTime();
+
+      const isRecentOrFuture = meetingStartTimeMs >= threeHoursAgoMs;
+
+      this.logger.debug(
+        `Meeting: "${meeting.topic}" | Start: ${meeting.start_time} | Passed Filter: ${isRecentOrFuture}`
+      );
+
+      return isRecentOrFuture;
+    });
 
       // Map raw Zoom API meeting response to the standard ProviderResource contract
       const resources = meetings.map((meeting: any) => ({
@@ -275,34 +317,30 @@ export class ZoomClientService implements ProviderClient {
       attendees?: string[];
     },
   ) {
-    await this.verifyConnection(connection);
-
-    const accessToken = this.encryptionService.decrypt(
-      connection.accessTokenEncrypted,
-    );
-
-    const response = await axios.post(
-      'https://api.zoom.us/v2/users/me/meetings',
-      {
-        topic: data.topic,
-        type: 2,
-        start_time: data.startTime,
-        duration: data.durationMinutes,
-        timezone: data.timezone || 'UTC',
-        settings: {
-          host_video: true,
-          participant_video: true,
-          join_before_host: false,
-          mute_upon_entry: true,
-          approval_type: 0,
-          registrants_email_notification: true,
+    const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+      axios.post(
+        'https://api.zoom.us/v2/users/me/meetings',
+        {
+          topic: data.topic,
+          type: 2,
+          start_time: data.startTime,
+          duration: data.durationMinutes,
+          timezone: data.timezone || 'UTC',
+          settings: {
+            host_video: true,
+            participant_video: true,
+            join_before_host: false,
+            mute_upon_entry: true,
+            approval_type: 0,
+            registrants_email_notification: true,
+          },
         },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
-      },
+      ),
     );
 
     const meetingData: MeetingData = {
@@ -407,12 +445,6 @@ export class ZoomClientService implements ProviderClient {
     connection: any,
     meetingId: string,
   ): Promise<void> {
-    await this.verifyConnection(connection);
-
-    const accessToken = this.encryptionService.decrypt(
-      connection.accessTokenEncrypted,
-    );
-
     const meeting = await this.prismaService.meeting.findUniqueOrThrow({
       where: {
         id: meetingId,
@@ -441,13 +473,12 @@ export class ZoomClientService implements ProviderClient {
       );
     }
 
-    await axios.delete(
-      `https://api.zoom.us/v2/meetings/${meetingId}`,
-      {
+    await this.executeWithTokenRefresh(connection, (accessToken) =>
+      axios.delete(`https://api.zoom.us/v2/meetings/${meetingId}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      },
+      }),
     );
 
     await this.prismaService.meetingRegistrant.deleteMany({
@@ -476,26 +507,22 @@ export class ZoomClientService implements ProviderClient {
     console.log(`connection: `,connection);
     console.log(`meetingId: `,meetingId);
     console.log(`fields: `,JSON.stringify(fields));
-    
-    await this.verifyConnection(connection);
 
-    const accessToken = this.encryptionService.decrypt(
-      connection.accessTokenEncrypted,
-    );
-
-    await axios.patch(
-      `https://api.zoom.us/v2/meetings/${meetingId}`,
-      {
-        topic: fields.topic,
-        start_time: fields.startTime,
-        duration: fields.durationMinutes,
-        timezone: fields.timezone,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
+    await this.executeWithTokenRefresh(connection, (accessToken) =>
+      axios.patch(
+        `https://api.zoom.us/v2/meetings/${meetingId}`,
+        {
+          topic: fields.topic,
+          start_time: fields.startTime,
+          duration: fields.durationMinutes,
+          timezone: fields.timezone,
         },
-      },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      ),
     );
 
     const meeting = await this.prismaService.meeting.update({

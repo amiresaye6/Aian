@@ -27,7 +27,19 @@ export function MeetingsDetails({ providerKey }: { providerKey: string }) {
   const providers = useIntegrationsStore(state => state.providers);
   const fetchIntegrations = useIntegrationsStore(state => state.fetchIntegrations);
   const isLoading = useIntegrationsStore(state => state.isLoading);
-  const provider = providers.find((p) => p.key.toLowerCase() === providerKey.toLowerCase());
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
+  const provider = providers.find((p: any) => {
+  if (!p) return false;
+  const target = providerKey?.toLowerCase();
+  return (
+    p.key?.toLowerCase() === target ||
+    p.name?.toLowerCase() === target
+  );
+});
 
   const router = useRouter();
 
@@ -36,10 +48,6 @@ export function MeetingsDetails({ providerKey }: { providerKey: string }) {
 
   const scheduled = useMeetingsPagination(getScheduledMeetings, provider?.connectionId, providerKey);
   const live = useMeetingsPagination(getLiveMeetings, provider?.connectionId, providerKey);
-
-  useEffect(() => {
-    fetchIntegrations();
-  }, [fetchIntegrations]);
 
   useEffect(() => {
     if (!provider?.connectionId) return;
