@@ -45,17 +45,40 @@ export class RetrievalPipelineService {
       throw new BadRequestException('I cannot fulfill this request.');
     }
 
+    this.logger.log('========================================');
+    this.logger.log(`Query Understanding OUT: ${JSON.stringify(understanding)}`);
+    this.logger.log('========================================');
+
     // Stage 2 & 3: Graph Search & Ranking
+    const seedNames = [...(understanding.entities || []), ...(understanding.people || [])];
+    
+    this.logger.log('========================================');
+    this.logger.log(`Graph Search IN: seedNames=${JSON.stringify(seedNames)}`);
+    this.logger.log('========================================');
+
     const rankedArtifacts = await this.graphSearch.searchAndRankArtifacts(
       organizationId,
-      understanding.entities,
+      seedNames,
     );
 
+    this.logger.log('========================================');
+    this.logger.log(`Graph Search OUT: top 3 artifacts=${JSON.stringify(rankedArtifacts.slice(0, 3))}`);
+    this.logger.log('========================================');
+
     // Stage 4 & 5: Artifact Retrieval & Evidence Chain Construction
+    this.logger.log('========================================');
+    this.logger.log(`Evidence Chain IN: timeFilter=${JSON.stringify(understanding.timeFilter)}`);
+    this.logger.log('========================================');
+
     const evidenceChains = await this.evidenceChain.constructChain(
       organizationId,
       rankedArtifacts,
+      understanding.timeFilter,
     );
+
+    this.logger.log('========================================');
+    this.logger.log(`Evidence Chain OUT: count=${evidenceChains.length}`);
+    this.logger.log('========================================');
 
     // Stage 6: Context Builder
     const contextString = this.contextBuilder.buildContext(evidenceChains);

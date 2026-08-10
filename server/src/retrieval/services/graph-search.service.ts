@@ -40,11 +40,13 @@ export class GraphSearchService {
         UNWIND nodes(path) AS n
         UNWIND coalesce(n.artifactIds, []) AS artifactId
         
-        // Get the node type/label
-        WITH artifactId, labels(n)[0] AS nodeType, length(path) AS distance
+        // Get the node type/label and start node id for seed counting
+        WITH artifactId, labels(n)[0] AS nodeType, start.id AS seedId, length(path) AS distance
         
-        // Closer distance = higher score
-        RETURN artifactId, nodeType, min(distance) AS minDistance, count(*) AS occurrences
+        // Aggregate per artifact
+        WITH artifactId, collect(DISTINCT seedId) AS connectedSeeds, min(distance) AS minDistance, count(*) AS occurrences, nodeType
+        
+        RETURN artifactId, nodeType, minDistance, occurrences, size(connectedSeeds) AS seedMatchCount
       `;
 
       this.logger.debug(
@@ -64,6 +66,7 @@ export class GraphSearchService {
         const nodeType = record.get('nodeType') as string;
         const minDistance = record.get('minDistance').toNumber();
         const occurrences = record.get('occurrences').toNumber();
+        const seedMatchCount = record.get('seedMatchCount').toNumber();
 
         // Calculate score
         const typeWeight =
@@ -73,9 +76,12 @@ export class GraphSearchService {
 
         // Distance decay: closer nodes score higher. (e.g. distance 0 -> 1.0, distance 1 -> 0.8, distance 2 -> 0.64)
         const distanceMultiplier = Math.pow(0.8, minDistance);
+        
+        // Exponential boost for intersection
+        const intersectionMultiplier = Math.pow(2, Math.max(0, seedMatchCount - 1));
 
         const scoreAddition =
-          typeWeight * distanceMultiplier * (1 + Math.log10(occurrences));
+          typeWeight * distanceMultiplier * intersectionMultiplier * (1 + Math.log10(occurrences));
 
         if (!artifactScores.has(artifactId)) {
           artifactScores.set(artifactId, {
@@ -105,7 +111,7 @@ export class GraphSearchService {
         ranked = ranked.filter((item) => item.score >= threshold);
       }
 
-      ranked = ranked.slice(0, RETRIEVAL_CONSTANTS.MAX_EVIDENCE_CHAINS);
+      ranked = ranked.slice(0, RETRIEVAL_CONSTANTS.GRAPH_MAX_CANDIDATES);
 
       this.logger.log(
         `Found and ranked ${ranked.length} artifacts from graph search.`,

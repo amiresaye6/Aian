@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RankedArtifactInfo } from './graph-search.service';
+import { RETRIEVAL_CONSTANTS } from '../constants';
 
 export interface EvidenceNode {
   artifactId: string;
@@ -22,6 +23,7 @@ export class EvidenceChainService {
   async constructChain(
     organizationId: string,
     rankedArtifacts: RankedArtifactInfo[],
+    timeFilter?: { requiresRecency: boolean; startDate: string | null; endDate: string | null } | null,
   ): Promise<EvidenceNode[]> {
     if (!rankedArtifacts || rankedArtifacts.length === 0) {
       return [];
@@ -29,12 +31,24 @@ export class EvidenceChainService {
 
     const artifactIds = rankedArtifacts.map((ra) => ra.artifactId);
 
+    const whereClause: any = {
+      id: { in: artifactIds },
+      organizationId,
+    };
+
+    if (timeFilter?.startDate || timeFilter?.endDate) {
+      whereClause.createdAt = {};
+      if (timeFilter.startDate) {
+        whereClause.createdAt.gte = new Date(timeFilter.startDate);
+      }
+      if (timeFilter.endDate) {
+        whereClause.createdAt.lte = new Date(timeFilter.endDate);
+      }
+    }
+
     // Fetch the raw artifacts from the database
     const artifacts = await this.prisma.knowledgeArtifact.findMany({
-      where: {
-        id: { in: artifactIds },
-        organizationId,
-      },
+      where: whereClause,
       select: {
         id: true,
         type: true,
@@ -62,12 +76,28 @@ export class EvidenceChainService {
       };
     });
 
+    let sortedNodes = evidenceNodes;
+    if (timeFilter?.requiresRecency) {
+      this.logger.log('========================================');
+      this.logger.log('Evidence Chain: Sorting by Recency DESC (Date)');
+      this.logger.log('========================================');
+      sortedNodes.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    } else {
+      this.logger.log('========================================');
+      this.logger.log('Evidence Chain: Sorting by Relevance Score DESC (Graph)');
+      this.logger.log('========================================');
+      sortedNodes.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    }
+
+    // Slice to top MAX_EVIDENCE_CHAINS
+    const slicedNodes = sortedNodes.slice(0, RETRIEVAL_CONSTANTS.MAX_EVIDENCE_CHAINS);
+
     // Sort chronologically to form the "Evidence Chain" (timeline)
-    evidenceNodes.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    slicedNodes.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
     this.logger.log(
-      `Constructed Evidence Chain with ${evidenceNodes.length} nodes.`,
+      `Constructed Evidence Chain with ${slicedNodes.length} nodes (from ${evidenceNodes.length} candidates).`,
     );
-    return evidenceNodes;
+    return slicedNodes;
   }
 }
