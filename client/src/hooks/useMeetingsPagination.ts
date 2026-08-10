@@ -16,30 +16,22 @@ export function useMeetingsPagination(fetcher: Fetcher, connectionId: string | u
   const [tokenHistory, setTokenHistory] = useState<(string | undefined)[]>([undefined]);
   const [pageIndex, setPageIndex] = useState(0);
 
-  const fetchPage = useCallback((index: number) => {
+  const fetchPage = useCallback((token: string | undefined) => {
     if (!connectionId) return;
     setIsLoading(true);
-    const token = tokenHistory[index];
     fetcher(connectionId, providerKey, PAGE_SIZE, token)
       .then((res) => {
         setData(res.data || res);
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [connectionId, providerKey, fetcher, tokenHistory]);
+  }, [connectionId, providerKey, fetcher]);
 
   // Reset and fetch the first page whenever the connection or provider changes
   useEffect(() => {
     setTokenHistory([undefined]);
     setPageIndex(0);
-    if (!connectionId) return;
-    setIsLoading(true);
-    fetcher(connectionId, providerKey, PAGE_SIZE, undefined)
-      .then((res) => {
-        setData(res.data || res);
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+    fetchPage(undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionId, providerKey]);
 
@@ -48,21 +40,23 @@ export function useMeetingsPagination(fetcher: Fetcher, connectionId: string | u
 
   const goNext = () => {
     if (!data?.nextPageToken) return;
+    const token = data.nextPageToken;
     const nextIndex = pageIndex + 1;
     setTokenHistory((prev) => {
       const next = [...prev];
-      next[nextIndex] = data.nextPageToken;
+      next[nextIndex] = token;
       return next;
     });
     setPageIndex(nextIndex);
-    fetchPage(nextIndex);
+    fetchPage(token);
   };
 
   const goPrevious = () => {
     if (pageIndex === 0) return;
     const prevIndex = pageIndex - 1;
+    const token = tokenHistory[prevIndex];
     setPageIndex(prevIndex);
-    fetchPage(prevIndex);
+    fetchPage(token);
   };
 
   return { data, isLoading, hasNext, hasPrevious, goNext, goPrevious, pageNumber: pageIndex + 1 };
