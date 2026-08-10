@@ -14,11 +14,15 @@ export const QueryUnderstandingSchema = z.object({
     .describe(
       'List of exact canonical entity names mentioned or implied (e.g. "Slack", "OAuth", "Amir"). Used for graph entry points.',
     ),
-  timeRange: z
-    .string()
+  timeFilter: z
+    .object({
+      requiresRecency: z.boolean(),
+      startDate: z.string().nullable(),
+      endDate: z.string().nullable(),
+    })
     .nullable()
     .describe(
-      'Any temporal constraints mentioned, e.g., "last week", "yesterday". Null if none.',
+      'Temporal constraints. requiresRecency is true if user asks for recent information. startDate/endDate should be ISO 8601.',
     ),
   people: z
     .array(z.string())
@@ -44,7 +48,11 @@ export class QueryUnderstandingService {
   ): Promise<QueryUnderstandingResult> {
     this.logger.log(`Analyzing query: "${query}"`);
 
-    const prompt = QUERY_UNDERSTANDING_PROMPT.replace('{query}', query);
+    const currentDate = new Date().toISOString();
+    const prompt = QUERY_UNDERSTANDING_PROMPT.replace('{query}', query).replace(
+      '{currentDate}',
+      currentDate,
+    );
 
     const { data: result } = await this.aiGateway.generateStructuredOutput(
       prompt,
