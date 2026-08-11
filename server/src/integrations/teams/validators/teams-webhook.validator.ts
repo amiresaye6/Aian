@@ -15,16 +15,7 @@ export class TeamsWebhookValidator implements WebhookSignatureValidator {
     try {
       this.logger.debug('Received Teams webhook validation request');
 
-      // 1. Handle Graph Validation Token Handshake
-      if (req.query && req.query.validationToken) {
-        this.logger.log('Processing Microsoft Graph validationToken handshake');
-        if (req.res) {
-          req.res.status(200).type('text/plain').send(req.query.validationToken as string);
-        }
-        return true; // WebhookService will see headersSent and exit early
-      }
-
-      // 2. Parse payload
+      // 1. Parse payload
       let payload: any;
       try {
         if (!rawBody) throw new Error('Empty raw body');

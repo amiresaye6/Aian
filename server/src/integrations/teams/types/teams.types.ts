@@ -57,6 +57,10 @@ export interface MicrosoftGraphEvent {
   onlineMeeting?: {
     joinUrl: string;
   };
+  body?: {
+    contentType: 'text' | 'html';
+    content: string;
+  };
   webLink?: string;
   type: string;
   createdDateTime: string;

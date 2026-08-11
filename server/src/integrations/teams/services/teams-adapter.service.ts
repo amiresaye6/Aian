@@ -27,10 +27,13 @@ export class TeamsAdapterService implements ProviderAdapter {
       return [];
     }
 
-    if (payload.isOnlineMeeting !== undefined) {
+    if (payload.isOnlineMeeting !== undefined || payload.attendees !== undefined) {
       return this.normalizeMeetingEvent(input, payload as MicrosoftGraphEvent);
-    } else {
+    } else if (payload.messageType !== undefined || payload.chatId !== undefined || payload.channelIdentity !== undefined) {
       return this.normalizeChatEvent(input, payload as MicrosoftGraphChatMessage);
+    } else {
+      this.logger.debug(`Ignoring unknown Teams event payload format. id=${payload.id}`);
+      return [];
     }
   }
 
@@ -125,7 +128,7 @@ export class TeamsAdapterService implements ProviderAdapter {
         externalEventId: event.id,
         parentExternalResourceId: null,
         title: event.subject || 'Untitled Meeting',
-        content: '', 
+        content: event.body?.content || '', 
         author: {
           externalId: authorId,
           name: authorName,
@@ -167,7 +170,7 @@ export class TeamsAdapterService implements ProviderAdapter {
    */
   getExternalResourceId(input: ProviderEventInput): string {
     const payload = input.rawPayload as any;
-    if (payload.isOnlineMeeting !== undefined) {
+    if (payload.isOnlineMeeting !== undefined || payload.attendees !== undefined) {
       return payload.teamIdentity?.teamId || '';
     }
     const event = payload as MicrosoftGraphChatMessage;
