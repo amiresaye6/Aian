@@ -1,4 +1,5 @@
 import { Module, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { TeamsAuthController } from './controllers/teams-auth.controller';
 import { TeamsEventsController } from './controllers/teams-events.controller';
 import { TeamsClientService } from './services/teams-client.service';
@@ -11,6 +12,7 @@ import { WebhookSignatureValidatorFactory } from '../../ingestion/collection/web
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
+  imports: [ConfigModule],
   controllers: [TeamsAuthController, TeamsEventsController],
   providers: [TeamsClientService, TeamsAdapterService, TeamsWebhookValidator, TeamsAssemblerService],
   exports: [TeamsClientService, TeamsAdapterService, TeamsWebhookValidator, TeamsAssemblerService],
