@@ -437,8 +437,24 @@ export class TeamsClientService implements ProviderClient {
     cursor: string | undefined,
     savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
   ): Promise<void> {
+    if (connection.eyeType === 'CHAT') {
+      return this.syncHistoricalChatResource(connection, resource, fromDate, cursor, savePageCallback);
+    } else if (connection.eyeType === 'MEETING') {
+      return this.syncHistoricalMeetingResource(connection, resource, fromDate, cursor, savePageCallback);
+    } else {
+      this.logger.warn(`Skipping unsupported eyeType for Teams sync: ${connection.eyeType}`);
+    }
+  }
+
+  private async syncHistoricalChatResource(
+    connection: ProviderConnection,
+    resource: any,
+    fromDate: Date,
+    cursor: string | undefined,
+    savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
+  ): Promise<void> {
     if (resource.resourceType !== 'channel') {
-      this.logger.warn(`Skipping unsupported resource type for sync: ${resource.resourceType}`);
+      this.logger.warn(`Skipping unsupported resource type for chat sync: ${resource.resourceType}`);
       return;
     }
 
@@ -528,6 +544,75 @@ export class TeamsClientService implements ProviderClient {
         }
         
         this.logger.error(`Failed to sync historical resource for channel ${channelId}:`, error.message);
+        throw error;
+      }
+    }
+  }
+
+  private async syncHistoricalMeetingResource(
+    connection: ProviderConnection,
+    resource: any,
+    fromDate: Date,
+    cursor: string | undefined,
+    savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
+  ): Promise<void> {
+    // For organization-level meetings under delegated permissions, we discover meetings from Group calendars
+    if (resource.resourceType !== 'team') {
+      this.logger.warn(`Skipping unsupported resource type for meeting sync: ${resource.resourceType}. Expected 'team'`);
+      return;
+    }
+
+    const teamId = resource.externalResourceId;
+    if (!teamId) {
+      this.logger.error(`Missing externalResourceId (teamId) for resource ${resource.id}`);
+      return;
+    }
+
+    let nextLink: string | undefined = cursor;
+    let hasMore = true;
+
+    if (!nextLink) {
+      const dateString = fromDate.toISOString();
+      // Filter for online meetings updated after fromDate
+      nextLink = `/groups/${teamId}/events?$filter=isOnlineMeeting eq true and lastModifiedDateTime gt ${dateString}&$top=50`;
+    }
+
+    while (hasMore) {
+      try {
+        const pageResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(connection, nextLink as string);
+
+        if (!pageResult.value || pageResult.value.length === 0) {
+          this.logger.log(`No more meetings found for team ${teamId}`);
+          hasMore = false;
+          await savePageCallback([], pageResult.nextLink);
+          break;
+        }
+
+        const rawEvents: any[] = [];
+
+        for (const event of pageResult.value) {
+          // Decorate with teamId so the Adapter knows the organizational context
+          rawEvents.push({
+            ...event,
+            teamIdentity: { teamId },
+          });
+        }
+
+        nextLink = pageResult.nextLink;
+        if (!nextLink) {
+          hasMore = false;
+        }
+
+        await savePageCallback(rawEvents, nextLink);
+
+      } catch (error: any) {
+        if (error.retryable) {
+          this.logger.warn(`Transient error fetching Teams group events ${teamId}, waiting before retry: ${error.message}`);
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+        
+        this.logger.error(`Failed to sync historical meeting resource for team ${teamId}:`, error.message);
         throw error;
       }
     }

@@ -29,6 +29,43 @@ export interface MicrosoftGraphIdentity {
   userIdentityType?: string;
 }
 
+export interface MicrosoftGraphEmailAddress {
+  name: string;
+  address: string;
+}
+
+export interface MicrosoftGraphEvent {
+  id: string;
+  subject: string;
+  start: {
+    dateTime: string;
+    timeZone: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone: string;
+  };
+  organizer?: {
+    emailAddress: MicrosoftGraphEmailAddress;
+  };
+  attendees?: Array<{
+    type: string;
+    emailAddress: MicrosoftGraphEmailAddress;
+  }>;
+  isOnlineMeeting: boolean;
+  onlineMeetingProvider?: string;
+  onlineMeeting?: {
+    joinUrl: string;
+  };
+  webLink?: string;
+  type: string;
+  createdDateTime: string;
+  lastModifiedDateTime: string;
+  teamIdentity?: {
+    teamId: string;
+  };
+}
+
 export interface MicrosoftGraphChatMessage {
   id: string;
   replyToId?: string;

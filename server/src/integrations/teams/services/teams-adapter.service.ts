@@ -6,7 +6,7 @@ import {
   EyeType,
   Provider,
 } from '../../contracts';
-import { MicrosoftGraphChatMessage } from '../types/teams.types';
+import { MicrosoftGraphChatMessage, MicrosoftGraphEvent } from '../types/teams.types';
 
 /**
  * Microsoft Teams implementation of ProviderAdapter.
@@ -17,15 +17,24 @@ export class TeamsAdapterService implements ProviderAdapter {
   private readonly logger = new Logger(TeamsAdapterService.name);
 
   /**
-   * Normalizes a raw Microsoft Graph ChatMessage payload into KnowledgeItem(s).
+   * Normalizes a raw Microsoft Graph ChatMessage or Event payload into KnowledgeItem(s).
    */
   normalizeEvent(input: ProviderEventInput): KnowledgeItem[] {
-    const event = input.rawPayload as unknown as MicrosoftGraphChatMessage;
+    const payload = input.rawPayload as any;
 
-    if (!event || !event.id) {
+    if (!payload || !payload.id) {
       this.logger.debug('Ignoring invalid or empty event payload');
       return [];
     }
+
+    if (payload.isOnlineMeeting !== undefined) {
+      return this.normalizeMeetingEvent(input, payload as MicrosoftGraphEvent);
+    } else {
+      return this.normalizeChatEvent(input, payload as MicrosoftGraphChatMessage);
+    }
+  }
+
+  private normalizeChatEvent(input: ProviderEventInput, event: MicrosoftGraphChatMessage): KnowledgeItem[] {
 
     // Determine the resource ID and context
     let externalResourceId = '';
@@ -88,10 +97,68 @@ export class TeamsAdapterService implements ProviderAdapter {
     ];
   }
 
+  private normalizeMeetingEvent(input: ProviderEventInput, event: MicrosoftGraphEvent): KnowledgeItem[] {
+    const externalResourceId = event.teamIdentity?.teamId || 'unknown';
+    const contextLocation = `Teams Team ${externalResourceId}`;
+    
+    const authorId = event.organizer?.emailAddress?.address || 'system';
+    const authorName = event.organizer?.emailAddress?.name;
+
+    const participants = (event.attendees || []).map(att => ({
+      externalId: att.emailAddress.address,
+      name: att.emailAddress.name,
+    }));
+
+    if (authorId !== 'system' && !participants.some(p => p.externalId === authorId)) {
+      participants.push({ externalId: authorId, name: authorName as string });
+    }
+
+    return [
+      {
+        id: undefined as any,
+        organizationId: input.organizationId,
+        eyeType: EyeType.MEETING,
+        provider: Provider.TEAMS,
+        sourceType: 'meeting',
+        eventType: 'meeting',
+        externalResourceId,
+        externalEventId: event.id,
+        parentExternalResourceId: null,
+        title: event.subject || 'Untitled Meeting',
+        content: '', 
+        author: {
+          externalId: authorId,
+          name: authorName,
+        },
+        participants,
+        contextLocation,
+        sourceUrl: event.onlineMeeting?.joinUrl || event.webLink || null,
+        occurredAt: event.start?.dateTime ? new Date(event.start.dateTime) : new Date(event.createdDateTime),
+        receivedAt: new Date(),
+        visibility: 'ORGANIZATION',
+        metadata: {
+          teamId: event.teamIdentity?.teamId,
+          isOnlineMeeting: event.isOnlineMeeting,
+          onlineMeetingProvider: event.onlineMeetingProvider,
+          start: event.start,
+          end: event.end,
+          type: event.type,
+          createdDateTime: event.createdDateTime,
+          lastModifiedDateTime: event.lastModifiedDateTime,
+        },
+        rawPayloadReference: input.rawEventReference,
+        version: null,
+      },
+    ];
+  }
+
   /**
-   * Generates a globally unique idempotency key for a Teams message.
+   * Generates a globally unique idempotency key for a Teams message or meeting.
    */
   getIdempotencyKey(item: KnowledgeItem): string {
+    if (item.eyeType === EyeType.MEETING) {
+      return `teams:${item.organizationId}:${item.externalResourceId}:meeting:${item.externalEventId}`;
+    }
     return `teams:${item.organizationId}:${item.externalResourceId}:${item.externalEventId}`;
   }
 
@@ -99,7 +166,11 @@ export class TeamsAdapterService implements ProviderAdapter {
    * Extracts the resource ID from the raw payload for webhook routing.
    */
   getExternalResourceId(input: ProviderEventInput): string {
-    const event = input.rawPayload as unknown as MicrosoftGraphChatMessage;
+    const payload = input.rawPayload as any;
+    if (payload.isOnlineMeeting !== undefined) {
+      return payload.teamIdentity?.teamId || '';
+    }
+    const event = payload as MicrosoftGraphChatMessage;
     return event.channelIdentity?.channelId || event.chatId || '';
   }
 
@@ -107,7 +178,7 @@ export class TeamsAdapterService implements ProviderAdapter {
    * Extracts the external event ID from the raw payload.
    */
   getExternalEventId(input: ProviderEventInput): string {
-    const event = input.rawPayload as unknown as MicrosoftGraphChatMessage;
-    return event.id || '';
+    const payload = input.rawPayload as any;
+    return payload.id || '';
   }
 }
