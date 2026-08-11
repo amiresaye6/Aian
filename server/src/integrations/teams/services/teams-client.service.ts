@@ -407,4 +407,129 @@ export class TeamsClientService implements ProviderClient {
     
     return resources;
   }
+
+  
+  async revokeCredentials(connection: ProviderConnection): Promise<void> {
+    try {
+      this.logger.log(`Revoking Teams credentials for connection ${connection.id}`);
+      
+      // Future Webhook implementations (Task 8) will need to delete graph subscriptions here
+      // Example:
+      // await this.deleteGraphSubscriptions(connection);
+
+      this.logger.log(`Teams credentials successfully marked for revocation for connection ${connection.id}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed during Teams credential revocation for connection ${connection.id}`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Fetch historical messages and their threaded replies from a Teams channel.
+   * Handles pagination, respects rate limits, and uses the Graph API.
+   */
+  async syncHistoricalResource(
+    connection: ProviderConnection,
+    resource: any,
+    fromDate: Date,
+    cursor: string | undefined,
+    savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
+  ): Promise<void> {
+    if (resource.resourceType !== 'channel') {
+      this.logger.warn(`Skipping unsupported resource type for sync: ${resource.resourceType}`);
+      return;
+    }
+
+    const teamId = resource.metadata?.teamId;
+    const channelId = resource.externalResourceId;
+
+    if (!teamId || !channelId) {
+      this.logger.error(`Missing teamId or channelId for resource ${resource.id}`);
+      return;
+    }
+
+    let nextLink: string | undefined = cursor;
+    let hasMore = true;
+
+    // By default, Graph does not filter by date directly on this endpoint easily without $filter on lastModifiedDateTime
+    // But we can append $filter if we don't have a cursor. 
+    // Format for Graph API: YYYY-MM-DDTHH:MM:SSZ
+    if (!nextLink) {
+      const dateString = fromDate.toISOString();
+      nextLink = `/teams/${teamId}/channels/${channelId}/messages?$filter=lastModifiedDateTime gt ${dateString}&$top=50`;
+    }
+
+    while (hasMore) {
+      try {
+        const pageResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(connection, nextLink as string);
+
+        if (!pageResult.value || pageResult.value.length === 0) {
+          this.logger.log(`No more messages found for channel ${channelId}`);
+          hasMore = false;
+          // Trigger a final save with an empty array to update the cursor if needed
+          await savePageCallback([], pageResult.nextLink);
+          break;
+        }
+
+        const rawEvents: any[] = [];
+
+        // Decorate with teamId/channelId for the Adapter
+        for (const msg of pageResult.value) {
+          const decoratedMsg = {
+            ...msg,
+            channelIdentity: { teamId, channelId },
+          };
+          rawEvents.push(decoratedMsg);
+
+          // If the message is a parent and has replies, fetch replies
+          // Graph API returns replies separately unless we expand, but expand on replies is not supported for list messages.
+          // In Teams, if replyToId is null, it's a root message. Wait, do we need to fetch replies?
+          // The endpoint for replies: /teams/{teamId}/channels/{channelId}/messages/{messageId}/replies
+          // Only fetch if messageType === 'message' (some are system events) and we might want to check reply count? 
+          // Unfortunately Graph doesn't expose a simple replyCount property on the list endpoint, we must explicitly fetch.
+          // To prevent rate limiting, we only fetch replies for standard user messages.
+          if (msg.messageType === 'message' && !msg.replyToId) {
+             let repliesNextLink: string | undefined = `/teams/${teamId}/channels/${channelId}/messages/${msg.id}/replies?$top=50`;
+             while (repliesNextLink) {
+               try {
+                 const repliesResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(connection, repliesNextLink as string);
+                 if (repliesResult.value) {
+                   for (const reply of repliesResult.value) {
+                     rawEvents.push({
+                       ...reply,
+                       channelIdentity: { teamId, channelId },
+                     });
+                   }
+                 }
+                 repliesNextLink = repliesResult.nextLink;
+               } catch (replyErr: any) {
+                 this.logger.warn(`Failed to fetch replies for message ${msg.id}: ${replyErr.message}`);
+                 break;
+               }
+             }
+          }
+        }
+
+        nextLink = pageResult.nextLink;
+        if (!nextLink) {
+          hasMore = false;
+        }
+
+        // Hand off to the ingest pipeline
+        await savePageCallback(rawEvents, nextLink);
+
+      } catch (error: any) {
+        if (error.retryable) {
+          this.logger.warn(`Transient error fetching Teams channel ${channelId}, waiting before retry: ${error.message}`);
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+        
+        this.logger.error(`Failed to sync historical resource for channel ${channelId}:`, error.message);
+        throw error;
+      }
+    }
+  }
 }

@@ -22,3 +22,32 @@ export interface MicrosoftGraphChannel {
   description?: string;
   membershipType?: string; 
 }
+
+export interface MicrosoftGraphIdentity {
+  id: string;
+  displayName: string;
+  userIdentityType?: string;
+}
+
+export interface MicrosoftGraphChatMessage {
+  id: string;
+  replyToId?: string;
+  createdDateTime: string;
+  lastModifiedDateTime?: string;
+  deletedDateTime?: string;
+  messageType: string;
+  body: {
+    contentType: 'text' | 'html';
+    content: string;
+  };
+  from?: {
+    user?: MicrosoftGraphIdentity;
+    application?: MicrosoftGraphIdentity;
+  };
+  chatId?: string;
+  channelIdentity?: {
+    teamId: string;
+    channelId: string;
+  };
+  webUrl?: string;
+}

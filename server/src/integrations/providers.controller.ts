@@ -106,6 +106,30 @@ export class ProvidersController {
         scopes: ['recording:read', 'meeting:read'],
         defaultWorkspaceName: 'Zoom Account',
       },
+      {
+        key: 'microsoft_teams',
+        name: 'Microsoft Teams',
+        category: 'Communication',
+        tagline:
+          'Sync channels, chats, and meetings from Microsoft Teams.',
+        brand: '#5b5fc7',
+        resourceLabel: 'Teams & Channels',
+        permissions: [
+          {
+            title: 'Read Teams & Channels',
+            description: 'Read-only access to discover and sync Teams and standard/private channels.',
+          },
+          {
+            title: 'Read user profiles',
+            description: 'Access basic user profiles and identities.',
+          },
+        ],
+        scopes: (
+          this.configService.get('TEAMS_SCOPES') ||
+          'User.Read Team.ReadBasic.All Channel.ReadBasic.All'
+        ).split(' '),
+        defaultWorkspaceName: 'Microsoft 365 Tenant',
+      },
     ];
   }
 }
