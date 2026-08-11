@@ -63,13 +63,42 @@ export class EvidenceChainService {
       },
     });
 
-    // Deduplicate artifacts by their exact content string to prevent LLM context bloating
+    // Deduplicate artifacts by exact match and high line-based similarity (to catch shifted chunks)
     const uniqueContentSet = new Set<string>();
     const deduplicatedArtifacts = artifacts.filter((artifact) => {
       const content = artifact.content || '';
+
+      // 1. Check for exact match
       if (uniqueContentSet.has(content)) {
         return false;
       }
+
+      // 2. Check for high line-overlap similarity (catches shifted commit chunks)
+      for (const existingContent of uniqueContentSet) {
+        // Quick length check to skip expensive comparisons on obviously different chunks
+        if (Math.abs(existingContent.length - content.length) < 1000) {
+          const linesA = new Set(
+            existingContent.split('\n').filter((l) => l.trim().length > 0),
+          );
+          const linesB = new Set(
+            content.split('\n').filter((l) => l.trim().length > 0),
+          );
+
+          let overlap = 0;
+          for (const line of linesB) {
+            if (linesA.has(line)) {
+              overlap++;
+            }
+          }
+
+          const maxLines = Math.max(linesA.size, linesB.size);
+          // If 80% of the non-empty lines are identical, it's a shifted duplicate
+          if (maxLines > 0 && overlap / maxLines > 0.8) {
+            return false;
+          }
+        }
+      }
+
       uniqueContentSet.add(content);
       return true;
     });
