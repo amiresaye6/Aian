@@ -12,17 +12,11 @@ import {
   RefreshedCredentials,
 } from '../../contracts';
 
-export class TeamsIntegrationError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly retryable: boolean,
-    public readonly details?: any,
-  ) {
-    super(message);
-    this.name = 'TeamsIntegrationError';
-  }
-}
+import {
+  TeamsIntegrationError,
+  MicrosoftGraphTeam,
+  MicrosoftGraphChannel,
+} from '../types/teams.types';
 
 /**
  * Microsoft Teams (Graph API) Client Service Foundation.
@@ -326,7 +320,91 @@ export class TeamsClientService implements ProviderClient {
   async getResources(
     connection: ProviderConnection,
   ): Promise<ProviderResource[]> {
-    // Teams Resource Discovery is reserved for Task 5
-    throw new Error('Not Implemented - Resource Discovery reserved for Task 5');
+    const resources: ProviderResource[] = [];
+    const teams: MicrosoftGraphTeam[] = [];
+
+    // 1. Fetch all Teams in the organization
+    try {
+      let nextLink: string | undefined = '/teams';
+      do {
+        const pageResult: { value: MicrosoftGraphTeam[]; nextLink?: string } = await this.getPaginated<MicrosoftGraphTeam>(
+          connection,
+          nextLink as string,
+        );
+        if (pageResult.value && pageResult.value.length > 0) {
+          teams.push(...pageResult.value);
+        }
+        nextLink = pageResult.nextLink;
+      } while (nextLink);
+    } catch (error) {
+      this.logger.error(`Failed to fetch Teams for connection ${connection.id}`, error);
+      throw error;
+    }
+
+    // 2. Add Teams to resources
+    for (const team of teams) {
+      resources.push({
+        externalResourceId: team.id,
+        name: team.displayName || 'Unknown Team',
+        resourceType: 'team',
+        metadata: {
+          description: team.description || '',
+        },
+      });
+    }
+
+    this.logger.log(`Discovered ${teams.length} Teams for connection ${connection.id}`);
+
+    // 3. Concurrently fetch channels for all discovered Teams (with a batch limit to prevent rate limiting)
+    const BATCH_SIZE = 10; // Process 10 teams at a time
+    for (let i = 0; i < teams.length; i += BATCH_SIZE) {
+      const batch = teams.slice(i, i + BATCH_SIZE);
+      const channelPromises = batch.map(async (team) => {
+        try {
+          const channels: MicrosoftGraphChannel[] = [];
+          // Note: using /channels retrieves all accessible channels (standard & private we have access to).
+          // We do not use /allChannels unless explicitly requested, as it requires broader permissions.
+          let nextLink: string | undefined = `/teams/${team.id}/channels`;
+          
+          do {
+            const pageResult: { value: MicrosoftGraphChannel[]; nextLink?: string } = await this.getPaginated<MicrosoftGraphChannel>(
+              connection,
+              nextLink as string,
+            );
+            if (pageResult.value && pageResult.value.length > 0) {
+              channels.push(...pageResult.value);
+            }
+            nextLink = pageResult.nextLink;
+          } while (nextLink);
+
+          return { teamId: team.id, channels };
+        } catch (error) {
+          this.logger.warn(`Failed to fetch channels for Team ${team.id}. Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+          return { teamId: team.id, channels: [] }; // Return empty on failure to not block everything
+        }
+      });
+
+      const results = await Promise.all(channelPromises);
+
+      // 4. Add Channels to resources, linking them to their parent Team via metadata
+      for (const result of results) {
+        for (const channel of result.channels) {
+          resources.push({
+            externalResourceId: channel.id,
+            name: channel.displayName || 'Unknown Channel',
+            resourceType: 'channel',
+            metadata: {
+              teamId: result.teamId, // CRITICAL: This allows hierarchical rendering on the frontend
+              description: channel.description || '',
+              membershipType: channel.membershipType || 'standard',
+            },
+          });
+        }
+      }
+    }
+
+    this.logger.log(`Discovered a total of ${resources.length} Teams & Channels for connection ${connection.id}`);
+    
+    return resources;
   }
 }
