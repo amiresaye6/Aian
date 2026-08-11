@@ -75,7 +75,7 @@ export class GeminiProvider implements AiProvider {
         model: model,
         contents: prompt,
         config: {
-          systemInstruction: 'You are a helpful assistant.',
+          systemInstruction: options?.systemPrompt || 'You are a helpful assistant.',
           maxOutputTokens: options?.maxTokens || undefined,
           temperature: options?.temperature || undefined,
         },
@@ -227,7 +227,7 @@ ${JSON.stringify(geminiSchema, null, 2)}`;
         model: model,
         contents: userPromptWithSchema,
         config: {
-          systemInstruction: 'You are a strict data extraction AI.',
+          systemInstruction: options?.systemPrompt || 'You are a strict data extraction AI.',
           maxOutputTokens: options?.maxTokens || undefined,
           temperature: options?.temperature || undefined,
           responseMimeType: 'application/json',

@@ -50,7 +50,7 @@ export class StudentBedrockProvider implements AiProvider {
     const payload = {
       model_id: model,
       messages: [{ role: 'user', content: prompt }],
-      system_prompt: 'You are a helpful assistant.',
+      system_prompt: options?.systemPrompt || 'You are a helpful assistant.',
       max_tokens: options?.maxTokens || 1000,
     };
 
@@ -116,7 +116,7 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
     const payload = {
       model_id: model,
       messages: [{ role: 'user', content: userPromptWithSchema }],
-      system_prompt: 'You are a strict data extraction AI.',
+      system_prompt: options?.systemPrompt || 'You are a strict data extraction AI.',
       max_tokens: options?.maxTokens || 4000,
     };
 

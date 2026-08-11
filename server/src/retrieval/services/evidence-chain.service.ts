@@ -23,7 +23,11 @@ export class EvidenceChainService {
   async constructChain(
     organizationId: string,
     rankedArtifacts: RankedArtifactInfo[],
-    timeFilter?: { requiresRecency: boolean; startDate: string | null; endDate: string | null } | null,
+    timeFilter?: {
+      requiresRecency: boolean;
+      startDate: string | null;
+      endDate: string | null;
+    } | null,
   ): Promise<EvidenceNode[]> {
     if (!rankedArtifacts || rankedArtifacts.length === 0) {
       return [];
@@ -59,22 +63,35 @@ export class EvidenceChainService {
       },
     });
 
-    // Map the database artifacts to Evidence Nodes, combining with graph scores
-    const evidenceNodes: EvidenceNode[] = artifacts.map((artifact) => {
-      const rankInfo = rankedArtifacts.find(
-        (ra) => ra.artifactId === artifact.id,
-      );
-      return {
-        artifactId: artifact.id,
-        type: artifact.type,
-        provider: artifact.provider,
-        timestamp: artifact.createdAt,
-        title: artifact.title,
-        content: artifact.content,
-        relevanceScore: rankInfo?.score || 0,
-        graphReasons: rankInfo?.reasons || [],
-      };
+    // Deduplicate artifacts by their exact content string to prevent LLM context bloating
+    const uniqueContentSet = new Set<string>();
+    const deduplicatedArtifacts = artifacts.filter((artifact) => {
+      const content = artifact.content || '';
+      if (uniqueContentSet.has(content)) {
+        return false;
+      }
+      uniqueContentSet.add(content);
+      return true;
     });
+
+    // Map the database artifacts to Evidence Nodes, combining with graph scores
+    const evidenceNodes: EvidenceNode[] = deduplicatedArtifacts.map(
+      (artifact) => {
+        const rankInfo = rankedArtifacts.find(
+          (ra) => ra.artifactId === artifact.id,
+        );
+        return {
+          artifactId: artifact.id,
+          type: artifact.type,
+          provider: artifact.provider,
+          timestamp: artifact.createdAt,
+          title: artifact.title,
+          content: artifact.content,
+          relevanceScore: rankInfo?.score || 0,
+          graphReasons: rankInfo?.reasons || [],
+        };
+      },
+    );
 
     let sortedNodes = evidenceNodes;
     if (timeFilter?.requiresRecency) {
@@ -84,13 +101,18 @@ export class EvidenceChainService {
       sortedNodes.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     } else {
       this.logger.log('========================================');
-      this.logger.log('Evidence Chain: Sorting by Relevance Score DESC (Graph)');
+      this.logger.log(
+        'Evidence Chain: Sorting by Relevance Score DESC (Graph)',
+      );
       this.logger.log('========================================');
       sortedNodes.sort((a, b) => b.relevanceScore - a.relevanceScore);
     }
 
     // Slice to top MAX_EVIDENCE_CHAINS
-    const slicedNodes = sortedNodes.slice(0, RETRIEVAL_CONSTANTS.MAX_EVIDENCE_CHAINS);
+    const slicedNodes = sortedNodes.slice(
+      0,
+      RETRIEVAL_CONSTANTS.MAX_EVIDENCE_CHAINS,
+    );
 
     // Sort chronologically to form the "Evidence Chain" (timeline)
     slicedNodes.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
