@@ -8,4 +8,5 @@ export enum Provider {
   JIRA = 'JIRA',
   GITHUB = 'GITHUB',
   TRELLO = 'TRELLO',
+  TEAMS = 'microsoft_teams',
 }

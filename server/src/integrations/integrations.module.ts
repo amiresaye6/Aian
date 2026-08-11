@@ -5,6 +5,7 @@ import { GithubModule } from './github/github.module';
 import { JiraModule } from './jira/jira.module';
 import { ZoomModule } from './zoom/zoom.module';
 import { TrelloModule } from './trello/trello.module';
+import { TeamsModule } from './teams/teams.module';
 import { ProvidersController } from './providers.controller';
 import { ConfigModule } from '@nestjs/config';
 import { MessagesService } from './messages/messages.service';
@@ -18,7 +19,7 @@ import { MessagesService } from './messages/messages.service';
  */
 @Global()
 @Module({
-  imports: [SlackModule, GithubModule, JiraModule, ZoomModule, ConfigModule, TrelloModule],
+  imports: [SlackModule, GithubModule, JiraModule, ZoomModule, ConfigModule, TrelloModule, TeamsModule],
   controllers: [ProvidersController],
   providers: [ProviderClientFactory, MessagesService],
   exports: [
@@ -29,6 +30,7 @@ import { MessagesService } from './messages/messages.service';
     JiraModule,
     ZoomModule,
     TrelloModule,
+    TeamsModule,
   ],
 })
 export class IntegrationsModule {}
