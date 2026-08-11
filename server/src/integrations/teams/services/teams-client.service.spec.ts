@@ -75,7 +75,7 @@ describe('TeamsClientService Subscription Lifecycle', () => {
       expect(mockedAxios.post).toHaveBeenCalled();
       const call = mockedAxios.post.mock.calls[0];
       expect(call[0]).toContain('/subscriptions');
-      expect(call[1].resource).toContain('/teams/team1/channels/chan1/messages');
+      expect((call[1] as any).resource).toContain('/teams/team1/channels/chan1/messages');
     });
 
     it('creates subscriptions for team (MEETING) and saves metadata on success', async () => {
@@ -95,7 +95,7 @@ describe('TeamsClientService Subscription Lifecycle', () => {
       
       expect(mockedAxios.post).toHaveBeenCalled();
       const call = mockedAxios.post.mock.calls[0];
-      expect(call[1].resource).toContain('/groups/group1/events');
+      expect((call[1] as any).resource).toContain('/groups/group1/events');
       
       expect(mockUpdate).toHaveBeenCalledWith('conn_1', expect.objectContaining({
         subscriptions: expect.arrayContaining([

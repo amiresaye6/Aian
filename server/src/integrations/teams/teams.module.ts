@@ -2,13 +2,15 @@ import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { TeamsAuthController } from './controllers/teams-auth.controller';
 import { TeamsClientService } from './services/teams-client.service';
 import { TeamsAdapterService } from './services/teams-adapter.service';
+import { TeamsWebhookValidator } from './validators/teams-webhook.validator';
 import { ProviderClientFactory } from '../provider-client.factory';
+import { WebhookSignatureValidatorFactory } from '../../ingestion/collection/webhooks/webhook-signature-validator.factory';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Module({
   controllers: [TeamsAuthController],
-  providers: [TeamsClientService, TeamsAdapterService],
-  exports: [TeamsClientService, TeamsAdapterService],
+  providers: [TeamsClientService, TeamsAdapterService, TeamsWebhookValidator],
+  exports: [TeamsClientService, TeamsAdapterService, TeamsWebhookValidator],
 })
 export class TeamsModule implements OnModuleInit {
   private readonly logger = new Logger(TeamsModule.name);
@@ -16,8 +18,10 @@ export class TeamsModule implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clientFactory: ProviderClientFactory,
+    private readonly validatorFactory: WebhookSignatureValidatorFactory,
     private readonly teamsClient: TeamsClientService,
     private readonly teamsAdapter: TeamsAdapterService,
+    private readonly teamsValidator: TeamsWebhookValidator,
   ) {}
 
   async onModuleInit() {
@@ -36,6 +40,7 @@ export class TeamsModule implements OnModuleInit {
 
     this.clientFactory.registerClient(providerId, this.teamsClient);
     this.clientFactory.registerAdapter(providerId, this.teamsAdapter);
+    this.validatorFactory.registerValidator(providerId, this.teamsValidator);
 
     this.logger.log(
       `Microsoft Teams module registered with provider ID: ${providerId}`,

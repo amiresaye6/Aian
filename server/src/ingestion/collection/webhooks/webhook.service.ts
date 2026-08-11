@@ -50,6 +50,12 @@ export class WebhookService {
     }
 
     const isValid = await validator.validate(req, rawBody, secret);
+    
+    // If the validator directly responded (e.g., MS Graph validationToken handshake), stop further processing
+    if (req.res && req.res.headersSent) {
+      return { success: true, message: 'Handled directly by validator' };
+    }
+    
     if (!isValid) {
       this.logger.warn(
         `Invalid webhook signature for connection ${connectionId}`,
