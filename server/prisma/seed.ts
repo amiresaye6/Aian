@@ -211,7 +211,7 @@ async function main() {
       name: 'Microsoft Teams',
       logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c9/Microsoft_Office_Teams_%282018%E2%80%93present%29.svg',
       oauthSupported: true,
-      isActive: false,
+      isActive: true,
     },
   });
   const discord = await prisma.provider.create({
@@ -300,7 +300,7 @@ async function main() {
   await prisma.eyeProvider.createMany({
     data: [
       { eyeTypeId: chatEye.id, providerId: slack.id, isAvailableInV1: true },
-      { eyeTypeId: chatEye.id, providerId: msTeams.id, isAvailableInV1: false },
+      { eyeTypeId: chatEye.id, providerId: msTeams.id, isAvailableInV1: true },
       { eyeTypeId: chatEye.id, providerId: discord.id, isAvailableInV1: false },
 
       { eyeTypeId: meetingEye.id, providerId: zoom.id, isAvailableInV1: true },
@@ -312,7 +312,7 @@ async function main() {
       {
         eyeTypeId: meetingEye.id,
         providerId: msTeams.id,
-        isAvailableInV1: false,
+        isAvailableInV1: true,
       },
 
       { eyeTypeId: taskEye.id, providerId: jira.id, isAvailableInV1: true },

@@ -30,6 +30,7 @@ export const PROVIDER_GLYPHS: Record<string, LucideIcon> = {
   github: FileText,
   slack: MessageSquare,
   zoom: Video,
+  microsoft_teams: MessageSquare,
 };
 
 export function getProviderName(key: string): string {
@@ -38,6 +39,7 @@ export function getProviderName(key: string): string {
     github: "GitHub",
     slack: "Slack",
     zoom: "Zoom",
+    microsoft_teams: "Microsoft Teams",
   };
   return names[key] || key.charAt(0).toUpperCase() + key.slice(1);
 }
