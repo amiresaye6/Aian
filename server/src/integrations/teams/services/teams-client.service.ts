@@ -1,4 +1,6 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import * as crypto from 'crypto';
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProviderConnectionRepository } from '../../../ingestion/repositories/provider-connection.repository';
@@ -408,23 +410,6 @@ export class TeamsClientService implements ProviderClient {
     return resources;
   }
 
-  
-  async revokeCredentials(connection: ProviderConnection): Promise<void> {
-    try {
-      this.logger.log(`Revoking Teams credentials for connection ${connection.id}`);
-      
-      // Future Webhook implementations (Task 8) will need to delete graph subscriptions here
-      // Example:
-      // await this.deleteGraphSubscriptions(connection);
-
-      this.logger.log(`Teams credentials successfully marked for revocation for connection ${connection.id}`);
-    } catch (error) {
-      this.logger.error(
-        `Failed during Teams credential revocation for connection ${connection.id}`,
-        error,
-      );
-    }
-  }
 
   /**
    * Fetch historical messages and their threaded replies from a Teams channel.
@@ -614,6 +599,202 @@ export class TeamsClientService implements ProviderClient {
         
         this.logger.error(`Failed to sync historical meeting resource for team ${teamId}:`, error.message);
         throw error;
+      }
+    }
+  }
+
+  
+  async onResourcesSelected(
+    connection: ProviderConnection,
+    selectedResources: any[],
+  ): Promise<void> {
+    this.logger.log(`Attempting to create subscriptions for connection ${connection.id}`);
+    
+    // As documented, Delegated permissions DO NOT support Graph webhooks for channel messages 
+    // or group events. We implement the infrastructure here but catch the expected 403 gracefully.
+    
+    const baseUrl = this.getBaseUrl();
+    const token = await this.getValidToken(connection);
+    const headers = this.buildHeaders(token);
+    
+    const apiUrl = this.configService.get<string>('TEAMS_API_URL') || 
+                   this.configService.get<string>('WEBHOOK_BASE_URL') || 
+                   this.configService.get<string>('BACKEND_URL');
+                   
+    if (!apiUrl) {
+      this.logger.error('TEAMS_API_URL or BACKEND_URL is missing, cannot register webhooks');
+      return;
+    }
+
+    const notificationUrl = `${apiUrl}/api/v1/integrations/teams/events/${connection.id}`;
+    
+    const currentMetadata = (connection.connectionMetadata || {}) as any;
+    const existingSubscriptions = currentMetadata.subscriptions || [];
+    const newSubscriptions: any[] = [];
+    
+    for (const res of selectedResources) {
+      let resourcePath = '';
+      let expirationMinutes = 59; // Max 60 mins for channel messages
+      
+      if (res.resourceType === 'channel' && connection.eyeType === 'CHAT') {
+        const teamId = res.metadata?.teamId || res.externalResourceId.split(':')[0]; // Fallback if missing
+        resourcePath = `/teams/${teamId}/channels/${res.externalResourceId}/messages`;
+      } else if (res.resourceType === 'team' && connection.eyeType === 'MEETING') {
+        resourcePath = `/groups/${res.externalResourceId}/events`;
+        expirationMinutes = 4230; // Max 4230 mins for events
+      } else {
+        continue;
+      }
+      
+      const expirationDateTime = new Date();
+      expirationDateTime.setMinutes(expirationDateTime.getMinutes() + expirationMinutes);
+      const clientState = crypto.randomBytes(32).toString('hex');
+      
+      try {
+        const response = await axios.post(
+          `${baseUrl}/subscriptions`,
+          {
+            changeType: 'created,updated',
+            notificationUrl,
+            resource: resourcePath,
+            expirationDateTime: expirationDateTime.toISOString(),
+            clientState,
+          },
+          { headers }
+        );
+        
+        newSubscriptions.push({
+          resourceId: res.externalResourceId,
+          subscriptionId: response.data.id,
+          expirationDateTime: response.data.expirationDateTime,
+          clientState,
+        });
+        
+        this.logger.log(`Created subscription ${response.data.id} for resource ${resourcePath}`);
+      } catch (error: any) {
+        if (error.response?.status === 403 || error.response?.status === 401) {
+          this.logger.warn(`Expected Limitation: Graph rejected subscription for ${resourcePath} under Delegated Permissions.`);
+        } else {
+          this.logger.error(`Failed to create subscription for ${resourcePath}: ${error.response?.data?.error?.message || error.message}`);
+        }
+      }
+    }
+    
+    if (newSubscriptions.length > 0) {
+      await this.providerConnectionRepo.updateConnectionMetadata(connection.id, {
+        ...currentMetadata,
+        subscriptions: [...existingSubscriptions, ...newSubscriptions],
+      });
+    }
+  }
+
+  async revokeCredentials(connection: ProviderConnection): Promise<void> {
+    const currentMetadata = (connection.connectionMetadata || {}) as any;
+    const subscriptions = currentMetadata.subscriptions || [];
+    
+    if (subscriptions.length > 0) {
+      const baseUrl = this.getBaseUrl();
+      let token: string | null = null;
+      try {
+        token = await this.getValidToken(connection);
+      } catch (err) {
+        this.logger.warn(`Could not get valid token to revoke subscriptions for ${connection.id}`);
+      }
+      
+      if (token) {
+        const headers = this.buildHeaders(token);
+        for (const sub of subscriptions) {
+          try {
+            await axios.delete(`${baseUrl}/subscriptions/${sub.subscriptionId}`, { headers });
+            this.logger.log(`Deleted Graph subscription ${sub.subscriptionId}`);
+          } catch (err: any) {
+            this.logger.warn(`Failed to delete Graph subscription ${sub.subscriptionId}: ${err.message}`);
+          }
+        }
+      }
+    }
+    
+    await this.providerConnectionRepo.update(connection.id, {
+      status: 'disconnected',
+      accessTokenEncrypted: '',
+      refreshTokenEncrypted: null,
+    });
+
+    await this.prisma.organizationEye.updateMany({
+      where: { id: connection.organizationEyeId },
+      data: { status: 'disconnected' },
+    });
+  }
+
+  @Cron('0 */15 * * * *')
+  async handleSubscriptionRenewals() {
+    this.logger.debug('Running Teams Graph Subscription renewals check...');
+    
+    const provider = await this.prisma.provider.findUnique({ where: { key: 'microsoft_teams' } });
+    if (!provider) return;
+    
+    const connections = await this.prisma.providerConnection.findMany({
+      where: { providerId: provider.id, status: 'connected' },
+    });
+    
+    for (const conn of connections) {
+      try {
+        const currentMetadata = (conn.connectionMetadata || {}) as any;
+        const subscriptions = currentMetadata.subscriptions || [];
+        
+        if (subscriptions.length === 0) continue;
+        
+        const now = new Date();
+        const renewalsNeeded = subscriptions.filter((sub: any) => {
+          const exp = new Date(sub.expirationDateTime);
+          // Renew if expiring in less than 30 minutes
+          return (exp.getTime() - now.getTime()) < 30 * 60 * 1000;
+        });
+        
+        if (renewalsNeeded.length === 0) continue;
+        
+        const fullConnection = await this.providerConnectionRepo.findByIdMapped(conn.id);
+        if (!fullConnection) continue;
+        
+        const token = await this.getValidToken(fullConnection);
+        const headers = this.buildHeaders(token);
+        const baseUrl = this.getBaseUrl();
+        
+        const updatedSubscriptions = [...subscriptions];
+        
+        for (const sub of renewalsNeeded) {
+          try {
+            // Channel messages get 59 mins, events get 3 days. +59 mins is safe for both.
+            const newExp = new Date();
+            newExp.setMinutes(newExp.getMinutes() + 59);
+            
+            const response = await axios.patch(`${baseUrl}/subscriptions/${sub.subscriptionId}`, {
+              expirationDateTime: newExp.toISOString()
+            }, { headers });
+            
+            const index = updatedSubscriptions.findIndex(s => s.subscriptionId === sub.subscriptionId);
+            if (index > -1) {
+              updatedSubscriptions[index].expirationDateTime = response.data.expirationDateTime;
+            }
+            this.logger.debug(`Renewed subscription ${sub.subscriptionId}`);
+          } catch (err: any) {
+            if (err.response?.status === 404) {
+              this.logger.warn(`Subscription ${sub.subscriptionId} not found, removing from list.`);
+              const index = updatedSubscriptions.findIndex(s => s.subscriptionId === sub.subscriptionId);
+              if (index > -1) updatedSubscriptions.splice(index, 1);
+            } else {
+              this.logger.error(`Failed to renew subscription ${sub.subscriptionId}: ${err.message}`);
+            }
+          }
+        }
+        
+        await this.providerConnectionRepo.updateConnectionMetadata(conn.id, {
+          ...currentMetadata,
+          subscriptions: updatedSubscriptions
+        });
+        
+      } catch (err: any) {
+        this.logger.error(`Failed to process subscription renewals for connection ${conn.id}: ${err.message}`);
       }
     }
   }
