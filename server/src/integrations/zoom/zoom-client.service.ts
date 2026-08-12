@@ -236,7 +236,7 @@ export class ZoomClientService implements ProviderClient {
 
   async listMeetings(
     connection: ProviderConnection,
-    type: MeetingType,
+    type: MeetingType = MeetingType.Upcoming,
     pageSize = 30,
     nextPageToken?: string,
   ): Promise<{
@@ -259,29 +259,9 @@ export class ZoomClientService implements ProviderClient {
         }),
       );
 
-      console.log(`Zoom API response for listMeetings: ${JSON.stringify(response.data)}`);
-      let meetings = response.data.meetings || [];
+      const meetings = response.data.meetings || [];
 
-      const threeHoursAgoMs = Date.now() - (3 * 60 * 60 * 1000);
-
-    meetings = meetings.filter((meeting: any) => {
-      if (!meeting.start_time) {
-        return false;
-      }
-
-      const meetingStartTimeMs = new Date(meeting.start_time).getTime();
-
-      const isRecentOrFuture = meetingStartTimeMs >= threeHoursAgoMs;
-
-      this.logger.debug(
-        `Meeting: "${meeting.topic}" | Start: ${meeting.start_time} | Passed Filter: ${isRecentOrFuture}`
-      );
-
-      return isRecentOrFuture;
-    });
-
-      // Map raw Zoom API meeting response to the standard ProviderResource contract
-      const resources = meetings.map((meeting: any) => ({
+      const resources: ProviderResource[] = meetings.map((meeting: any) => ({
         externalResourceId: meeting.id.toString(),
         name: meeting.topic,
         resourceType: 'meeting',
@@ -295,7 +275,6 @@ export class ZoomClientService implements ProviderClient {
 
       return {
         resources,
-        // Zoom returns an empty string, not null/undefined, when there's no further page
         nextPageToken: response.data.next_page_token ? response.data.next_page_token : null,
         pageSize: response.data.page_size ?? pageSize,
         totalRecords: response.data.total_records ?? resources.length,

@@ -185,7 +185,7 @@ export function RoleForm({ editingRole, onClose, onSubmit, isPending, error }: R
                   "group flex items-start gap-3.5 p-3.5 rounded-2xl cursor-pointer transition-all border",
                   isChecked 
                     ? "bg-[#C9982B]/[0.05] border-[#C9982B]/35 text-foreground shadow-[0_4px_20px_-5px_rgba(201,152,43,0.08)]" 
-                    : "border-white/[0.04] bg-zinc-100 hover:bg-zinc-200"
+                    : "border-white/[0.04] bg-zinc-100 hover:bg-zinc-200","dark:bg-zinc-900/60 dark:hover:bg-zinc-800/80 dark:border-white/10 dark:text-zinc-400"
                 )}
               >
                 <Checkbox 
