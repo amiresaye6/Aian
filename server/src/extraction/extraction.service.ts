@@ -10,7 +10,8 @@ import { EntityResolutionService } from '../resolution/resolution.service';
  * JSON matching our exact schema with correct field names and types.
  * We use Llama 3 70B because the 120B model is too slow and hits the 30s gateway timeout.
  */
-const EXTRACTION_MODEL = 'us.meta.llama3-3-70b-instruct-v1:0';
+const EXTRACTION_MODEL = 'gemini-3.1-flash-lite';
+// const EXTRACTION_MODEL = 'us.meta.llama3-3-70b-instruct-v1:0';
 
 /**
  * Higher token limit for extraction — long conversations produce large JSON.

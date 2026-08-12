@@ -2,6 +2,7 @@ import { Global, Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AiProviderFactory } from './providers/ai-provider.factory';
 import { StudentBedrockProvider } from './providers/student-bedrock.provider';
+import { GeminiProvider } from './providers/gemini.provider';
 import { AiGatewayService } from './ai-gateway.service';
 import { AiUsageService } from './ai-usage.service';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -14,6 +15,7 @@ import { BillingModule } from '../billing/billing.module';
   providers: [
     AiProviderFactory,
     StudentBedrockProvider,
+    GeminiProvider,
     AiGatewayService,
     AiUsageService,
   ],
@@ -23,10 +25,13 @@ export class AiGatewayModule implements OnModuleInit {
   constructor(
     private readonly providerFactory: AiProviderFactory,
     private readonly bedrockProvider: StudentBedrockProvider,
+    private readonly geminiProvider: GeminiProvider,
   ) {}
 
   onModuleInit() {
-    // Register StudentBedrockProvider as the default provider for the entire system
-    this.providerFactory.register(this.bedrockProvider, true);
+    this.providerFactory.register(this.bedrockProvider, false);
+
+    // Register GeminiProvider as the default provider for the entire system
+    this.providerFactory.register(this.geminiProvider, true);
   }
 }

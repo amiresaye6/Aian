@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
 import { z } from 'zod';
-import { QUERY_UNDERSTANDING_PROMPT } from '../../ai/prompts';
+import {
+  QUERY_UNDERSTANDING_SYSTEM_PROMPT,
+  QUERY_UNDERSTANDING_USER_PROMPT,
+} from '../../ai/prompts';
 
 export const QueryUnderstandingSchema = z.object({
   intent: z
@@ -14,11 +17,20 @@ export const QueryUnderstandingSchema = z.object({
     .describe(
       'List of exact canonical entity names mentioned or implied (e.g. "Slack", "OAuth", "Amir"). Used for graph entry points.',
     ),
-  timeRange: z
-    .string()
+  relationships: z
+    .array(z.string())
+    .describe(
+      'A list of uppercase relationship predicates inferred from the query (e.g. "WORKED_ON", "AUTHORED", "RESOLVED"). Leave empty if no specific action/relationship is mentioned.',
+    ),
+  timeFilter: z
+    .object({
+      requiresRecency: z.boolean(),
+      startDate: z.string().nullable(),
+      endDate: z.string().nullable(),
+    })
     .nullable()
     .describe(
-      'Any temporal constraints mentioned, e.g., "last week", "yesterday". Null if none.',
+      'Temporal constraints. requiresRecency is true if user asks for recent information. startDate/endDate should be ISO 8601.',
     ),
   people: z
     .array(z.string())
@@ -42,19 +54,29 @@ export class QueryUnderstandingService {
     organizationId: string,
     query: string,
   ): Promise<QueryUnderstandingResult> {
-    this.logger.log(`Analyzing query: "${query}"`);
+    this.logger.log(`Analyzing query intent and entities: "${query}"`);
 
-    const prompt = QUERY_UNDERSTANDING_PROMPT.replace('{query}', query);
+    const currentDate = new Date().toISOString();
+    const systemPrompt = QUERY_UNDERSTANDING_SYSTEM_PROMPT.replace(
+      '{currentDate}',
+      currentDate,
+    );
+
+    const userPrompt = QUERY_UNDERSTANDING_USER_PROMPT.replace(
+      '{query}',
+      query,
+    );
 
     const { data: result } = await this.aiGateway.generateStructuredOutput(
-      prompt,
+      userPrompt,
       QueryUnderstandingSchema,
-      'QueryUnderstanding',
-      'Extracts structured context from a user query for graph retrieval',
+      'query_understanding',
+      'Analyzes a user query to extract search entities, intent, and time filters',
       {
-        temperature: 0.1,
+        temperature: 0,
         organizationId,
         feature: 'retrieval',
+        systemPrompt,
       },
     );
 
