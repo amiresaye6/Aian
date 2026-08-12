@@ -27,12 +27,13 @@ export class TeamsAssemblerService implements KnowledgeAssembler {
     const grouped = items.reduce(
       (acc, item) => {
         let key = '';
+        const resourceType = (item.metadata as any)?.resourceType || 'unknown';
         if (item.eyeType === 'MEETING') {
           // Group by Meeting ID
-          key = `meeting-${item.externalEventId}`;
+          key = `meeting-${resourceType}-${item.externalEventId}`;
         } else {
           // Group by Channel/Chat ID or Parent ID (Thread)
-          key = `chat-${item.parentExternalResourceId || item.externalResourceId}`;
+          key = `chat-${resourceType}-${item.parentExternalResourceId || item.externalResourceId}`;
         }
 
         if (!acc[key]) acc[key] = [];

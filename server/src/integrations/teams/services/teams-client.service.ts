@@ -35,7 +35,7 @@ export class TeamsClientService implements ProviderClient {
     private readonly prisma: PrismaService,
     private readonly providerConnectionRepo: ProviderConnectionRepository,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   /**
    * Microsoft Graph Base URL from configuration.
@@ -295,7 +295,7 @@ export class TeamsClientService implements ProviderClient {
         connection,
         '/me',
       );
-      
+
       return {
         isValid: true,
         message: 'Microsoft Teams connection verified successfully.',
@@ -323,90 +323,166 @@ export class TeamsClientService implements ProviderClient {
     connection: ProviderConnection,
   ): Promise<ProviderResource[]> {
     const resources: ProviderResource[] = [];
-    const teams: MicrosoftGraphTeam[] = [];
 
-    // 1. Fetch all Teams in the organization
-    try {
-      let nextLink: string | undefined = '/teams';
-      do {
-        const pageResult: { value: MicrosoftGraphTeam[]; nextLink?: string } = await this.getPaginated<MicrosoftGraphTeam>(
-          connection,
-          nextLink as string,
-        );
-        if (pageResult.value && pageResult.value.length > 0) {
-          teams.push(...pageResult.value);
+    if (connection.eyeType === 'CHAT') {
+      const teams: MicrosoftGraphTeam[] = [];
+
+      try {
+        let nextLink: string | undefined = '/teams';
+        do {
+          const pageResult: { value: MicrosoftGraphTeam[]; nextLink?: string } = await this.getPaginated<MicrosoftGraphTeam>(
+            connection,
+            nextLink as string,
+          );
+          if (pageResult.value && pageResult.value.length > 0) {
+            teams.push(...pageResult.value);
+          }
+          nextLink = pageResult.nextLink;
+        } while (nextLink);
+      } catch (error) {
+        this.logger.error(`Failed to fetch Teams for connection ${connection.id}`, error);
+        throw error;
+      }
+
+      for (const team of teams) {
+        resources.push({
+          externalResourceId: team.id,
+          name: team.displayName || 'Unknown Team',
+          resourceType: 'team',
+          metadata: {
+            description: team.description || '',
+          },
+        });
+      }
+
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < teams.length; i += BATCH_SIZE) {
+        const batch = teams.slice(i, i + BATCH_SIZE);
+        const channelPromises = batch.map(async (team) => {
+          try {
+            const channels: MicrosoftGraphChannel[] = [];
+            let nextLink: string | undefined = `/teams/${team.id}/channels`;
+
+            do {
+              const pageResult: { value: MicrosoftGraphChannel[]; nextLink?: string } = await this.getPaginated<MicrosoftGraphChannel>(
+                connection,
+                nextLink as string,
+              );
+              if (pageResult.value && pageResult.value.length > 0) {
+                channels.push(...pageResult.value);
+              }
+              nextLink = pageResult.nextLink;
+            } while (nextLink);
+
+            return { teamId: team.id, channels };
+          } catch (error) {
+            this.logger.warn(`Failed to fetch channels for Team ${team.id}. Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+            return { teamId: team.id, channels: [] };
+          }
+        });
+
+        const results = await Promise.all(channelPromises);
+
+        for (const result of results) {
+          for (const channel of result.channels) {
+            resources.push({
+              externalResourceId: channel.id,
+              name: channel.displayName || 'Unknown Channel',
+              resourceType: 'channel',
+              metadata: {
+                teamId: result.teamId,
+                description: channel.description || '',
+                membershipType: channel.membershipType || 'standard',
+              },
+            });
+          }
         }
-        nextLink = pageResult.nextLink;
-      } while (nextLink);
-    } catch (error) {
-      this.logger.error(`Failed to fetch Teams for connection ${connection.id}`, error);
-      throw error;
-    }
+      }
 
-    // 2. Add Teams to resources
-    for (const team of teams) {
-      resources.push({
-        externalResourceId: team.id,
-        name: team.displayName || 'Unknown Team',
-        resourceType: 'team',
-        metadata: {
-          description: team.description || '',
-        },
-      });
-    }
-
-    this.logger.log(`Discovered ${teams.length} Teams for connection ${connection.id}`);
-
-    // 3. Concurrently fetch channels for all discovered Teams (with a batch limit to prevent rate limiting)
-    const BATCH_SIZE = 10; // Process 10 teams at a time
-    for (let i = 0; i < teams.length; i += BATCH_SIZE) {
-      const batch = teams.slice(i, i + BATCH_SIZE);
-      const channelPromises = batch.map(async (team) => {
-        try {
-          const channels: MicrosoftGraphChannel[] = [];
-          // Note: using /channels retrieves all accessible channels (standard & private we have access to).
-          // We do not use /allChannels unless explicitly requested, as it requires broader permissions.
-          let nextLink: string | undefined = `/teams/${team.id}/channels`;
-          
-          do {
-            const pageResult: { value: MicrosoftGraphChannel[]; nextLink?: string } = await this.getPaginated<MicrosoftGraphChannel>(
-              connection,
-              nextLink as string,
-            );
-            if (pageResult.value && pageResult.value.length > 0) {
-              channels.push(...pageResult.value);
+      // Fetch Chats
+      try {
+        let chatsNextLink: string | undefined = '/chats';
+        do {
+          const chatsResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(
+            connection,
+            chatsNextLink as string,
+          );
+          if (chatsResult.value && chatsResult.value.length > 0) {
+            for (const chat of chatsResult.value) {
+               let chatName = chat.topic || 'Group Chat';
+               if (!chat.topic && chat.chatType === 'oneOnOne') {
+                  chatName = 'Direct Message';
+               }
+               resources.push({
+                 externalResourceId: chat.id,
+                 name: chatName,
+                 resourceType: 'chat',
+                 metadata: {
+                   chatType: chat.chatType,
+                 },
+               });
             }
-            nextLink = pageResult.nextLink;
-          } while (nextLink);
+          }
+          chatsNextLink = chatsResult.nextLink;
+        } while (chatsNextLink);
+      } catch (error) {
+        this.logger.warn(`Failed to fetch chats for connection ${connection.id}. Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+      }
+    } else if (connection.eyeType === 'MEETING') {
+      // Fetch user calendars
+      try {
+        let calendarsNextLink: string | undefined = '/me/calendars';
+        do {
+          const calendarsResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(
+            connection,
+            calendarsNextLink as string,
+          );
+          if (calendarsResult.value && calendarsResult.value.length > 0) {
+            for (const cal of calendarsResult.value) {
+               resources.push({
+                 externalResourceId: cal.id,
+                 name: cal.name || 'Unknown Calendar',
+                 resourceType: 'calendar',
+                 metadata: {
+                   canEdit: cal.canEdit,
+                   owner: cal.owner,
+                 },
+               });
+            }
+          }
+          calendarsNextLink = calendarsResult.nextLink;
+        } while (calendarsNextLink);
+      } catch (error) {
+        this.logger.warn(`Failed to fetch calendars for connection ${connection.id}. Error: ${error instanceof Error ? error.message : 'Unknown'}`);
+      }
 
-          return { teamId: team.id, channels };
-        } catch (error) {
-          this.logger.warn(`Failed to fetch channels for Team ${team.id}. Error: ${error instanceof Error ? error.message : 'Unknown'}`);
-          return { teamId: team.id, channels: [] }; // Return empty on failure to not block everything
-        }
-      });
-
-      const results = await Promise.all(channelPromises);
-
-      // 4. Add Channels to resources, linking them to their parent Team via metadata
-      for (const result of results) {
-        for (const channel of result.channels) {
-          resources.push({
-            externalResourceId: channel.id,
-            name: channel.displayName || 'Unknown Channel',
-            resourceType: 'channel',
-            metadata: {
-              teamId: result.teamId, // CRITICAL: This allows hierarchical rendering on the frontend
-              description: channel.description || '',
-              membershipType: channel.membershipType || 'standard',
-            },
-          });
-        }
+      // Also discover Teams (Groups) for group events, but map as event sources
+      try {
+        let nextLink: string | undefined = '/teams';
+        do {
+          const pageResult: { value: MicrosoftGraphTeam[]; nextLink?: string } = await this.getPaginated<MicrosoftGraphTeam>(
+            connection,
+            nextLink as string,
+          );
+          if (pageResult.value && pageResult.value.length > 0) {
+            for (const team of pageResult.value) {
+              resources.push({
+                externalResourceId: team.id,
+                name: `${team.displayName || 'Unknown Team'} (Group Events)`,
+                resourceType: 'team',
+                metadata: {
+                  description: team.description || '',
+                },
+              });
+            }
+          }
+          nextLink = pageResult.nextLink;
+        } while (nextLink);
+      } catch (error) {
+        this.logger.warn(`Failed to fetch Teams for meeting connection ${connection.id}`, error);
       }
     }
 
-    this.logger.log(`Discovered a total of ${resources.length} Teams & Channels for connection ${connection.id}`);
-    
     return resources;
   }
 
@@ -438,28 +514,24 @@ export class TeamsClientService implements ProviderClient {
     cursor: string | undefined,
     savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
   ): Promise<void> {
-    if (resource.resourceType !== 'channel') {
+    if (resource.resourceType !== 'channel' && resource.resourceType !== 'chat') {
       this.logger.warn(`Skipping unsupported resource type for chat sync: ${resource.resourceType}`);
       return;
     }
 
     const teamId = resource.metadata?.teamId;
-    const channelId = resource.externalResourceId;
-
-    if (!teamId || !channelId) {
-      this.logger.error(`Missing teamId or channelId for resource ${resource.id}`);
-      return;
-    }
+    const resourceId = resource.externalResourceId;
 
     let nextLink: string | undefined = cursor;
     let hasMore = true;
 
-    // By default, Graph does not filter by date directly on this endpoint easily without $filter on lastModifiedDateTime
-    // But we can append $filter if we don't have a cursor. 
-    // Format for Graph API: YYYY-MM-DDTHH:MM:SSZ
     if (!nextLink) {
       const dateString = fromDate.toISOString();
-      nextLink = `/teams/${teamId}/channels/${channelId}/messages?$filter=lastModifiedDateTime gt ${dateString}&$top=50`;
+      if (resource.resourceType === 'channel') {
+        nextLink = `/teams/${teamId}/channels/${resourceId}/messages?$filter=lastModifiedDateTime gt ${dateString}&$top=50`;
+      } else {
+        nextLink = `/chats/${resourceId}/messages?$filter=lastModifiedDateTime gt ${dateString}&$top=50`;
+      }
     }
 
     while (hasMore) {
@@ -467,49 +539,39 @@ export class TeamsClientService implements ProviderClient {
         const pageResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(connection, nextLink as string);
 
         if (!pageResult.value || pageResult.value.length === 0) {
-          this.logger.log(`No more messages found for channel ${channelId}`);
+          this.logger.log(`No more messages found for ${resource.resourceType} ${resourceId}`);
           hasMore = false;
-          // Trigger a final save with an empty array to update the cursor if needed
           await savePageCallback([], pageResult.nextLink);
           break;
         }
 
         const rawEvents: any[] = [];
 
-        // Decorate with teamId/channelId for the Adapter
         for (const msg of pageResult.value) {
-          const decoratedMsg = {
-            ...msg,
-            channelIdentity: { teamId, channelId },
-          };
+          const decoratedMsg = resource.resourceType === 'channel'
+            ? { ...msg, channelIdentity: { teamId, channelId: resourceId } }
+            : { ...msg, chatId: resourceId };
           rawEvents.push(decoratedMsg);
 
-          // If the message is a parent and has replies, fetch replies
-          // Graph API returns replies separately unless we expand, but expand on replies is not supported for list messages.
-          // In Teams, if replyToId is null, it's a root message. Wait, do we need to fetch replies?
-          // The endpoint for replies: /teams/{teamId}/channels/{channelId}/messages/{messageId}/replies
-          // Only fetch if messageType === 'message' (some are system events) and we might want to check reply count? 
-          // Unfortunately Graph doesn't expose a simple replyCount property on the list endpoint, we must explicitly fetch.
-          // To prevent rate limiting, we only fetch replies for standard user messages.
-          if (msg.messageType === 'message' && !msg.replyToId) {
-             let repliesNextLink: string | undefined = `/teams/${teamId}/channels/${channelId}/messages/${msg.id}/replies?$top=50`;
-             while (repliesNextLink) {
-               try {
-                 const repliesResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(connection, repliesNextLink as string);
-                 if (repliesResult.value) {
-                   for (const reply of repliesResult.value) {
-                     rawEvents.push({
-                       ...reply,
-                       channelIdentity: { teamId, channelId },
-                     });
-                   }
-                 }
-                 repliesNextLink = repliesResult.nextLink;
-               } catch (replyErr: any) {
-                 this.logger.warn(`Failed to fetch replies for message ${msg.id}: ${replyErr.message}`);
-                 break;
-               }
-             }
+          if (resource.resourceType === 'channel' && msg.messageType === 'message' && !msg.replyToId) {
+            let repliesNextLink: string | undefined = `/teams/${teamId}/channels/${resourceId}/messages/${msg.id}/replies?$top=50`;
+            while (repliesNextLink) {
+              try {
+                const repliesResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(connection, repliesNextLink as string);
+                if (repliesResult.value) {
+                  for (const reply of repliesResult.value) {
+                    rawEvents.push({
+                      ...reply,
+                      channelIdentity: { teamId, channelId: resourceId },
+                    });
+                  }
+                }
+                repliesNextLink = repliesResult.nextLink;
+              } catch (replyErr: any) {
+                this.logger.warn(`Failed to fetch replies for message ${msg.id}: ${replyErr.message}`);
+                break;
+              }
+            }
           }
         }
 
@@ -518,17 +580,15 @@ export class TeamsClientService implements ProviderClient {
           hasMore = false;
         }
 
-        // Hand off to the ingest pipeline
         await savePageCallback(rawEvents, nextLink);
 
       } catch (error: any) {
         if (error.retryable) {
-          this.logger.warn(`Transient error fetching Teams channel ${channelId}, waiting before retry: ${error.message}`);
+          this.logger.warn(`Transient error fetching Teams ${resource.resourceType} ${resourceId}, waiting before retry: ${error.message}`);
           await new Promise((resolve) => setTimeout(resolve, 5000));
           continue;
         }
-        
-        this.logger.error(`Failed to sync historical resource for channel ${channelId}:`, error.message);
+        this.logger.error(`Failed to sync historical resource for ${resource.resourceType} ${resourceId}:`, error.message);
         throw error;
       }
     }
@@ -541,25 +601,22 @@ export class TeamsClientService implements ProviderClient {
     cursor: string | undefined,
     savePageCallback: (rawEvents: any[], nextCursor?: string) => Promise<void>,
   ): Promise<void> {
-    // For organization-level meetings under delegated permissions, we discover meetings from Group calendars
-    if (resource.resourceType !== 'team') {
-      this.logger.warn(`Skipping unsupported resource type for meeting sync: ${resource.resourceType}. Expected 'team'`);
+    if (resource.resourceType !== 'team' && resource.resourceType !== 'calendar') {
+      this.logger.warn(`Skipping unsupported resource type for meeting sync: ${resource.resourceType}`);
       return;
     }
 
-    const teamId = resource.externalResourceId;
-    if (!teamId) {
-      this.logger.error(`Missing externalResourceId (teamId) for resource ${resource.id}`);
-      return;
-    }
-
+    const resourceId = resource.externalResourceId;
     let nextLink: string | undefined = cursor;
     let hasMore = true;
 
     if (!nextLink) {
       const dateString = fromDate.toISOString();
-      // Filter for online meetings updated after fromDate
-      nextLink = `/groups/${teamId}/events?$filter=isOnlineMeeting eq true and lastModifiedDateTime gt ${dateString}&$top=50`;
+      if (resource.resourceType === 'team') {
+        nextLink = `/groups/${resourceId}/events?$filter=isOnlineMeeting eq true and lastModifiedDateTime gt ${dateString}&$top=50`;
+      } else {
+        nextLink = `/me/calendars/${resourceId}/events?$filter=isOnlineMeeting eq true and lastModifiedDateTime gt ${dateString}&$top=50`;
+      }
     }
 
     while (hasMore) {
@@ -567,20 +624,19 @@ export class TeamsClientService implements ProviderClient {
         const pageResult: { value: any[]; nextLink?: string } = await this.getPaginated<any>(connection, nextLink as string);
 
         if (!pageResult.value || pageResult.value.length === 0) {
-          this.logger.log(`No more meetings found for team ${teamId}`);
+          this.logger.log(`No more meetings found for ${resource.resourceType} ${resourceId}`);
           hasMore = false;
           await savePageCallback([], pageResult.nextLink);
           break;
         }
 
         const rawEvents: any[] = [];
-
         for (const event of pageResult.value) {
-          // Decorate with teamId so the Adapter knows the organizational context
-          rawEvents.push({
-            ...event,
-            teamIdentity: { teamId },
-          });
+          if (resource.resourceType === 'team') {
+            rawEvents.push({ ...event, teamIdentity: { teamId: resourceId } });
+          } else {
+            rawEvents.push({ ...event, calendarIdentity: { calendarId: resourceId } });
+          }
         }
 
         nextLink = pageResult.nextLink;
@@ -592,64 +648,65 @@ export class TeamsClientService implements ProviderClient {
 
       } catch (error: any) {
         if (error.retryable) {
-          this.logger.warn(`Transient error fetching Teams group events ${teamId}, waiting before retry: ${error.message}`);
+          this.logger.warn(`Transient error fetching events for ${resource.resourceType} ${resourceId}, waiting before retry: ${error.message}`);
           await new Promise((resolve) => setTimeout(resolve, 5000));
           continue;
         }
-        
-        this.logger.error(`Failed to sync historical meeting resource for team ${teamId}:`, error.message);
+        this.logger.error(`Failed to sync historical meeting resource for ${resource.resourceType} ${resourceId}:`, error.message);
         throw error;
       }
     }
   }
 
-  
+
   async onResourcesSelected(
     connection: ProviderConnection,
     selectedResources: any[],
   ): Promise<void> {
     this.logger.log(`Attempting to create subscriptions for connection ${connection.id}`);
-    
-    // As documented, Delegated permissions DO NOT support Graph webhooks for channel messages 
-    // or group events. We implement the infrastructure here but catch the expected 403 gracefully.
-    
+
     const baseUrl = this.getBaseUrl();
     const token = await this.getValidToken(connection);
     const headers = this.buildHeaders(token);
-    
-    const apiUrl = this.configService.get<string>('TEAMS_API_URL') || 
-                   this.configService.get<string>('WEBHOOK_BASE_URL') || 
-                   this.configService.get<string>('BACKEND_URL');
-                   
+
+    const apiUrl = this.configService.get<string>('TEAMS_API_URL') ||
+      this.configService.get<string>('WEBHOOK_BASE_URL') ||
+      this.configService.get<string>('BACKEND_URL');
+
     if (!apiUrl) {
       this.logger.error('TEAMS_API_URL or BACKEND_URL is missing, cannot register webhooks');
       return;
     }
 
-    const notificationUrl = `${apiUrl}/api/v1/integrations/teams/events/${connection.id}`;
-    
+    const notificationUrl = `${apiUrl}/api/v1/integrations/microsoft_teams/events/${connection.id}`;
+
     const currentMetadata = (connection.connectionMetadata || {}) as any;
     const existingSubscriptions = currentMetadata.subscriptions || [];
     const newSubscriptions: any[] = [];
-    
+
     for (const res of selectedResources) {
       let resourcePath = '';
-      let expirationMinutes = 59; // Max 60 mins for channel messages
-      
+      let expirationMinutes = 59; // Max 60 mins for channel and chat messages
+
       if (res.resourceType === 'channel' && connection.eyeType === 'CHAT') {
-        const teamId = res.metadata?.teamId || res.externalResourceId.split(':')[0]; // Fallback if missing
+        const teamId = res.metadata?.teamId || res.externalResourceId.split(':')[0];
         resourcePath = `/teams/${teamId}/channels/${res.externalResourceId}/messages`;
+      } else if (res.resourceType === 'chat' && connection.eyeType === 'CHAT') {
+        resourcePath = `/chats/${res.externalResourceId}/messages`;
       } else if (res.resourceType === 'team' && connection.eyeType === 'MEETING') {
         resourcePath = `/groups/${res.externalResourceId}/events`;
         expirationMinutes = 4230; // Max 4230 mins for events
+      } else if (res.resourceType === 'calendar' && connection.eyeType === 'MEETING') {
+        resourcePath = `/me/calendars/${res.externalResourceId}/events`;
+        expirationMinutes = 4230;
       } else {
         continue;
       }
-      
+
       const expirationDateTime = new Date();
       expirationDateTime.setMinutes(expirationDateTime.getMinutes() + expirationMinutes);
       const clientState = crypto.randomBytes(32).toString('hex');
-      
+
       try {
         const response = await axios.post(
           `${baseUrl}/subscriptions`,
@@ -662,24 +719,24 @@ export class TeamsClientService implements ProviderClient {
           },
           { headers }
         );
-        
+
         newSubscriptions.push({
           resourceId: res.externalResourceId,
           subscriptionId: response.data.id,
           expirationDateTime: response.data.expirationDateTime,
           clientState,
         });
-        
+
         this.logger.log(`Created subscription ${response.data.id} for resource ${resourcePath}`);
       } catch (error: any) {
         if (error.response?.status === 403 || error.response?.status === 401) {
-          this.logger.warn(`Expected Limitation: Graph rejected subscription for ${resourcePath} under Delegated Permissions.`);
+          this.logger.warn(`Expected Limitation: Graph rejected subscription for ${resourcePath} under current permissions.`);
         } else {
           this.logger.error(`Failed to create subscription for ${resourcePath}: ${error.response?.data?.error?.message || error.message}`);
         }
       }
     }
-    
+
     if (newSubscriptions.length > 0) {
       await this.providerConnectionRepo.updateConnectionMetadata(connection.id, {
         ...currentMetadata,
@@ -691,7 +748,7 @@ export class TeamsClientService implements ProviderClient {
   async revokeCredentials(connection: ProviderConnection): Promise<void> {
     const currentMetadata = (connection.connectionMetadata || {}) as any;
     const subscriptions = currentMetadata.subscriptions || [];
-    
+
     if (subscriptions.length > 0) {
       const baseUrl = this.getBaseUrl();
       let token: string | null = null;
@@ -700,7 +757,7 @@ export class TeamsClientService implements ProviderClient {
       } catch (err) {
         this.logger.warn(`Could not get valid token to revoke subscriptions for ${connection.id}`);
       }
-      
+
       if (token) {
         const headers = this.buildHeaders(token);
         for (const sub of subscriptions) {
@@ -713,7 +770,7 @@ export class TeamsClientService implements ProviderClient {
         }
       }
     }
-    
+
     await this.providerConnectionRepo.update(connection.id, {
       status: 'disconnected',
       accessTokenEncrypted: '',
@@ -729,49 +786,49 @@ export class TeamsClientService implements ProviderClient {
   @Cron('0 */15 * * * *')
   async handleSubscriptionRenewals() {
     this.logger.debug('Running Teams Graph Subscription renewals check...');
-    
+
     const provider = await this.prisma.provider.findUnique({ where: { key: 'microsoft_teams' } });
     if (!provider) return;
-    
+
     const connections = await this.prisma.providerConnection.findMany({
       where: { providerId: provider.id, status: 'connected' },
     });
-    
+
     for (const conn of connections) {
       try {
         const currentMetadata = (conn.connectionMetadata || {}) as any;
         const subscriptions = currentMetadata.subscriptions || [];
-        
+
         if (subscriptions.length === 0) continue;
-        
+
         const now = new Date();
         const renewalsNeeded = subscriptions.filter((sub: any) => {
           const exp = new Date(sub.expirationDateTime);
           // Renew if expiring in less than 30 minutes
           return (exp.getTime() - now.getTime()) < 30 * 60 * 1000;
         });
-        
+
         if (renewalsNeeded.length === 0) continue;
-        
+
         const fullConnection = await this.providerConnectionRepo.findByIdMapped(conn.id);
         if (!fullConnection) continue;
-        
+
         const token = await this.getValidToken(fullConnection);
         const headers = this.buildHeaders(token);
         const baseUrl = this.getBaseUrl();
-        
+
         const updatedSubscriptions = [...subscriptions];
-        
+
         for (const sub of renewalsNeeded) {
           try {
             // Channel messages get 59 mins, events get 3 days. +59 mins is safe for both.
             const newExp = new Date();
             newExp.setMinutes(newExp.getMinutes() + 59);
-            
+
             const response = await axios.patch(`${baseUrl}/subscriptions/${sub.subscriptionId}`, {
               expirationDateTime: newExp.toISOString()
             }, { headers });
-            
+
             const index = updatedSubscriptions.findIndex(s => s.subscriptionId === sub.subscriptionId);
             if (index > -1) {
               updatedSubscriptions[index].expirationDateTime = response.data.expirationDateTime;
@@ -787,12 +844,12 @@ export class TeamsClientService implements ProviderClient {
             }
           }
         }
-        
+
         await this.providerConnectionRepo.updateConnectionMetadata(conn.id, {
           ...currentMetadata,
           subscriptions: updatedSubscriptions
         });
-        
+
       } catch (err: any) {
         this.logger.error(`Failed to process subscription renewals for connection ${conn.id}: ${err.message}`);
       }

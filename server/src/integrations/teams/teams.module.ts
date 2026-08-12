@@ -29,7 +29,7 @@ export class TeamsModule implements OnModuleInit {
     private readonly teamsAdapter: TeamsAdapterService,
     private readonly teamsValidator: TeamsWebhookValidator,
     private readonly teamsAssembler: TeamsAssemblerService,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     const teamsProvider = await this.prisma.provider.findUnique({

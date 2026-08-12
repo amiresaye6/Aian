@@ -159,10 +159,8 @@ export class TeamsAdapterService implements ProviderAdapter {
    * Generates a globally unique idempotency key for a Teams message or meeting.
    */
   getIdempotencyKey(item: KnowledgeItem): string {
-    if (item.eyeType === EyeType.MEETING) {
-      return `teams:${item.organizationId}:${item.externalResourceId}:meeting:${item.externalEventId}`;
-    }
-    return `teams:${item.organizationId}:${item.externalResourceId}:${item.externalEventId}`;
+    const resourceType = item.metadata?.resourceType || 'unknown';
+    return `teams:${item.organizationId}:${item.eyeType}:${resourceType}:${item.externalResourceId}:${item.externalEventId}`;
   }
 
   /**
@@ -170,8 +168,11 @@ export class TeamsAdapterService implements ProviderAdapter {
    */
   getExternalResourceId(input: ProviderEventInput): string {
     const payload = input.rawPayload as any;
-    if (payload.isOnlineMeeting !== undefined || payload.attendees !== undefined) {
-      return payload.teamIdentity?.teamId || '';
+    if (payload.teamIdentity?.teamId) {
+      return payload.teamIdentity.teamId;
+    }
+    if (payload.calendarIdentity?.calendarId) {
+      return payload.calendarIdentity.calendarId;
     }
     const event = payload as MicrosoftGraphChatMessage;
     return event.channelIdentity?.channelId || event.chatId || '';

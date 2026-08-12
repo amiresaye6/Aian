@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { Provider } from '../../contracts/provider.enum';
 import axios from 'axios';
 
-@Controller('integrations/teams')
+@Controller('integrations/microsoft_teams')
 export class TeamsAuthController {
   private readonly logger = new Logger(TeamsAuthController.name);
 
@@ -46,9 +46,9 @@ export class TeamsAuthController {
 
     const clientId = this.configService.get<string>('TEAMS_CLIENT_ID');
     const redirectUri = this.configService.get<string>('TEAMS_REDIRECT_URI');
-    const scopes =
-      this.configService.get<string>('TEAMS_SCOPES') ||
-      'offline_access User.Read';
+   
+    const scopes = 'offline_access User.Read Team.ReadBasic.All Channel.ReadBasic.All Chat.Read ChannelMessage.Read.All Calendars.Read';
+    
     const authUrl =
       this.configService.get<string>('TEAMS_AUTH_URL') ||
       'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
@@ -71,6 +71,8 @@ export class TeamsAuthController {
     url.searchParams.append('response_mode', 'query');
     url.searchParams.append('scope', scopes);
     url.searchParams.append('state', state);
+
+    this.logger.log(`Redirecting to Teams Auth URL: ${url.toString()}`);
 
     return res.redirect(url.toString());
   }
@@ -243,7 +245,7 @@ export class TeamsAuthController {
         data: { status: 'connected' },
       });
 
-      const redirectUrl = `${frontendUrl}/eyes/teams/redirect`;
+      const redirectUrl = `${frontendUrl}/eyes/microsoft_teams/redirect`;
       return res.redirect(redirectUrl);
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
@@ -257,7 +259,7 @@ export class TeamsAuthController {
         this.logger.error('Teams OAuth callback failed', 'Unknown error');
       }
       return res.redirect(
-        `${frontendUrl}/eyes/teams/error?provider=teams&error=oauth_failed`,
+        `${frontendUrl}/eyes/microsoft_teams/error?provider=teams&error=oauth_failed`,
       );
     }
   }

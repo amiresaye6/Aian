@@ -86,7 +86,7 @@ model IngestionBatch {
   syncRunId      String?     @map("sync_run_id")
 
   // Add the relation:
-  syncRun        SyncRun?    @relation(fields: [syncRunId], references: [id], onDelete: SetNull)
+  syncRun SyncRun? @relation(fields: [syncRunId], references: [id], onDelete: SetNull)
 
   // Relations
   organization Organization         @relation(fields: [organizationId], references: [id])

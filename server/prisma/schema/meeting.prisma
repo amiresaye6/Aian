@@ -1,23 +1,23 @@
 model Meeting {
-  id              String   @id
-  connectionId    String
-  topic           String
-  joinUrl         String
-  startUrl        String
-  startTime       DateTime
-  duration        Int
+  id           String   @id
+  connectionId String
+  topic        String
+  joinUrl      String
+  startUrl     String
+  startTime    DateTime
+  duration     Int
 
-  registrants     MeetingRegistrant[]
+  registrants MeetingRegistrant[]
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model MeetingRegistrant {
-  id           String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  meetingId    String
-  meeting      Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
   connectionId String
   email        String

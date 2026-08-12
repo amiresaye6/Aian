@@ -43,7 +43,7 @@ export interface ProviderConnection {
 
   /** Provider-specific connection metadata (e.g., Jira site ID, GitHub installation ID). */
   connectionMetadata: Record<string, unknown>;
-  
+
   /** Current connection status. */
   status?: string;
 

@@ -2,19 +2,19 @@
 // Tracks each "Sync Now" invocation through all pipeline stages.
 
 model SyncRun {
-  id              String   @id @default(uuid())
-  organizationId  String   @map("organization_id")
-  status          String   @default("running") @db.VarChar(20)  // running, completed, failed, partial
-  triggerType     String   @map("trigger_type") @db.VarChar(20)  // manual, auto
-  totalItems      Int      @default(0) @map("total_items")
-  totalArtifacts  Int      @default(0) @map("total_artifacts")
-  currentStage    String?  @map("current_stage") @db.VarChar(30) // batching, assembly, extraction, resolution, graph_sync
-  startedAt       DateTime @default(now()) @map("started_at") @db.Timestamptz
-  completedAt     DateTime? @map("completed_at") @db.Timestamptz
-  errorMessage    String?  @map("error_message") @db.Text
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  status         String    @default("running") @db.VarChar(20) // running, completed, failed, partial
+  triggerType    String    @map("trigger_type") @db.VarChar(20) // manual, auto
+  totalItems     Int       @default(0) @map("total_items")
+  totalArtifacts Int       @default(0) @map("total_artifacts")
+  currentStage   String?   @map("current_stage") @db.VarChar(30) // batching, assembly, extraction, resolution, graph_sync
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz
+  errorMessage   String?   @map("error_message") @db.Text
 
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  batches         IngestionBatch[]
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  batches      IngestionBatch[]
 
   @@index([organizationId, status])
   @@index([organizationId, startedAt])

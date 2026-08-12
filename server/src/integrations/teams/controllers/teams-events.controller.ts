@@ -15,7 +15,7 @@ import { WebhookService } from '../../../ingestion/collection/webhooks/webhook.s
  *
  * Endpoint: POST /api/v1/integrations/teams/events/:connectionId
  */
-@Controller('integrations/teams')
+@Controller('integrations/microsoft_teams')
 export class TeamsEventsController {
   private readonly logger = new Logger(TeamsEventsController.name);
 

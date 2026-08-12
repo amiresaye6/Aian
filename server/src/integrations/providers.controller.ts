@@ -125,8 +125,7 @@ export class ProvidersController {
           },
         ],
         scopes: (
-          this.configService.get('TEAMS_SCOPES') ||
-          'User.Read Team.ReadBasic.All Channel.ReadBasic.All'
+          'offline_access User.Read Team.ReadBasic.All Channel.ReadBasic.All Chat.Read ChannelMessage.Read.All Calendars.Read'
         ).split(' '),
         defaultWorkspaceName: 'Microsoft 365 Tenant',
       },
