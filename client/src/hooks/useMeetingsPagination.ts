@@ -59,5 +59,9 @@ export function useMeetingsPagination(fetcher: Fetcher, connectionId: string | u
     fetchPage(token);
   };
 
-  return { data, isLoading, hasNext, hasPrevious, goNext, goPrevious, pageNumber: pageIndex + 1 };
+  const refetch = useCallback(() => {
+    fetchPage(tokenHistory[pageIndex]);
+  }, [fetchPage, tokenHistory, pageIndex]);
+
+  return { data, isLoading, hasNext, hasPrevious, goNext, goPrevious, pageNumber: pageIndex + 1, refetch };
 }

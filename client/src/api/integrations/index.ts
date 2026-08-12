@@ -253,3 +253,5 @@ export const addRegistrants = async (
   );
   return response.data.data ?? response.data;
 };
+
+export { MeetingAttendee };
