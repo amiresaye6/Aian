@@ -40,6 +40,7 @@ import {
   // Check,
   LogOut,
   ScrollText,
+  PanelBottomClose
 } from "lucide-react";
 import { AianMark } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -55,6 +56,7 @@ const NAV = [
   { to: "/eyes", label: "Integrations", icon: Plug },
   { to: "/dashboard/pipeline", label: "Pipeline", icon: Database },
   { to: "/dashboard/members", label: "Members", icon: Users },
+  { to: "/dashboard/roles", label: "roles", icon: PanelBottomClose },
   // { to: "/dashboard/organization", label: "Organization", icon: Building2 },
   { to: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { to: "/dashboard/audit", label: "Audit Log", icon: ScrollText },

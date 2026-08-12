@@ -9,6 +9,7 @@ import { EvidenceChainService } from './services/evidence-chain.service';
 import { ContextBuilderService } from './services/context-builder.service';
 import { RetrievalPipelineService } from './retrieval-pipeline.service';
 import { AnswerGenerationService } from './services/answer-generation.service';
+import { AiGraphPruningService } from './services/ai-graph-pruning.service';
 import { ChatController } from './chat.controller';
 
 @Module({
@@ -20,6 +21,7 @@ import { ChatController } from './chat.controller';
     ContextBuilderService,
     RetrievalPipelineService,
     AnswerGenerationService,
+    AiGraphPruningService,
   ],
   controllers: [ChatController],
   exports: [
@@ -29,6 +31,7 @@ import { ChatController } from './chat.controller';
     ContextBuilderService,
     RetrievalPipelineService,
     AnswerGenerationService,
+    AiGraphPruningService,
   ],
 })
 export class RetrievalModule {}

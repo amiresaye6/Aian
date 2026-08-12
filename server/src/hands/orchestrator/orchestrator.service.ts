@@ -108,46 +108,22 @@ CRITICAL: When the user says "me", "my", or "I", they are referring to this user
 Do NOT ask for the user's email address. You already have it: ${userProfile.email}.`;
     }
 
+    const now = new Date();
+    const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const currentTime = now.toLocaleTimeString('en-US');
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    prompt += `\n\nCURRENT SYSTEM TIME:
+- Date: ${currentDate}
+- Time: ${currentTime}
+- Timezone: ${timeZone}
+CRITICAL: When generating dates or times for tool arguments (like scheduling meetings or setting due dates), you MUST resolve relative terms (like "tomorrow", "next week", "in 2 hours") into strict absolute dates (e.g. ISO 8601 strings) using the current system time above. Never pass literal strings like "tomorrow" to tools.`;
+
     return prompt;
   }
 
   // ── Schema Conversion ────────────────────────────────────────────────────
 
-  private simpleZodToJsonSchema(schema: any): any {
-    if (schema._def.typeName === 'ZodObject' || schema.shape) {
-      const properties: any = {};
-      const required: string[] = [];
-      const shape = schema.shape;
-      for (const key in shape) {
-        properties[key] = this.simpleZodToJsonSchema(shape[key]);
-        if (!shape[key].isOptional()) {
-          required.push(key);
-        }
-      }
-      return { type: 'object', properties, required };
-    } else if (
-      schema._def.typeName === 'ZodString' ||
-      schema.constructor.name === 'ZodString'
-    ) {
-      return {
-        type: 'string',
-        description: schema.description || 'string value',
-      };
-    } else if (schema._def.typeName === 'ZodArray') {
-      return {
-        type: 'array',
-        items: this.simpleZodToJsonSchema(schema._def.type),
-      };
-    } else if (schema._def.typeName === 'ZodEnum') {
-      return { type: 'string', enum: schema._def.values };
-    } else if (
-      schema._def.typeName === 'ZodOptional' ||
-      schema._def.typeName === 'ZodNullable'
-    ) {
-      return this.simpleZodToJsonSchema(schema._def.innerType);
-    }
-    return { type: 'string' }; // fallback
-  }
 
   private buildTools(): AiTool[] {
     const definitions = this.skillRegistry.getAllDefinitions();
@@ -155,7 +131,7 @@ Do NOT ask for the user's email address. You already have it: ${userProfile.emai
       return {
         name: def.name,
         description: def.description,
-        schema: this.simpleZodToJsonSchema(def.schema),
+        schema: (def.schema as any).toJSONSchema(),
       };
     });
   }

@@ -65,7 +65,7 @@ private readonly logger = new Logger(MeetingSkill.name);
         this.registry.register({
             name:"meetingSkill.inviteToMeetings",
             description:"invite people to zoom meeting or add registerants",
-            schema:CancelMeetingInputSchema,
+            schema:InviteMeetingInputSchema,
             destructive:false,
             handler: (ctx, input) => this.inviteToMeeting(ctx, input),
             requiredProviders:["ZOOM"]
@@ -390,7 +390,7 @@ private readonly logger = new Logger(MeetingSkill.name);
 
             const newAdded = result?.count || 0;
             const alreadyExists = result?.alreadyExists || 0;
-            const attendeesList = (parsed.data?.attendees as any)
+            const attendeesList = attendees
                 .map((email: string) => `• \`${email}\``)
                 .join('\n');
 

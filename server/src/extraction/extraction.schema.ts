@@ -395,11 +395,13 @@ function normalizeExtraction(raw: any): any {
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 
-const RawExtractionResultSchema = z.object({
+export const RawExtractionResultSchema = z.object({
   title: z
     .string()
     .nullable()
-    .describe('A concise, descriptive title for the event if this is a chat conversation or meeting.'),
+    .describe(
+      'A concise, descriptive title for the event if this is a chat conversation or meeting.',
+    ),
 
   summary: z
     .string()

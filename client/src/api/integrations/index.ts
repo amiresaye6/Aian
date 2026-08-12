@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { CreateMeetingPayload, MeetingAttendee, UpdateMeetingPayload } from '@/types/meeting';
 import api from '../axios';
 import { useAuthStore } from '@/store/auth/auth.store';
 
@@ -213,3 +214,48 @@ export const getLiveMeetings = async (
   });
   return response.data.data;
 };
+
+export const createMeeting = async (
+  connectionId: string,
+  provider: string,
+  payload: CreateMeetingPayload,
+) => {
+  const response = await api.post(`/${provider}/create-meeting/${connectionId}`, payload);
+  return response.data.data ?? response.data;
+};
+
+export const updateMeeting = async (
+  connectionId: string,
+  provider: string,
+  meetingId: string,
+  payload: UpdateMeetingPayload,
+) => {
+  const response = await api.patch(
+    `/${provider}/update-meeting/${connectionId}/${meetingId}`,
+    payload,
+  );
+  return response.data.data ?? response.data;
+};
+
+export const deleteMeeting = async (
+  connectionId: string,
+  provider: string,
+  meetingId: string,
+) => {
+  const response = await api.delete(`/${provider}/delete-meeting/${connectionId}/${meetingId}`);
+  return response.data.data ?? response.data;
+};
+
+export const addRegistrants = async (
+  connectionId: string,
+  provider: string,
+  meetingId: string,
+  attendees?: string[]
+) => {
+  const response = await api.post(
+    `/${provider}/add-registrants/${connectionId}/${meetingId}`,
+    { attendees },
+  );
+  return response.data.data ?? response.data;
+};
+

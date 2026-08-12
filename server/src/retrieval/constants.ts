@@ -2,6 +2,9 @@ export const RETRIEVAL_CONSTANTS = {
   // Graph traversal limits
   GRAPH_MAX_HOPS: 3,
 
+  // Max candidate nodes to fetch from graph before temporal sorting
+  GRAPH_MAX_CANDIDATES: 50,
+
   // Max number of evidence chains to retrieve (top N nodes from graph)
   MAX_EVIDENCE_CHAINS: 15,
 

@@ -7,7 +7,6 @@ import {
   AiUsage,
 } from './ai-provider.interface';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import axios from 'axios';
 
 @Injectable()
@@ -50,7 +49,7 @@ export class StudentBedrockProvider implements AiProvider {
     const payload = {
       model_id: model,
       messages: [{ role: 'user', content: prompt }],
-      system_prompt: 'You are a helpful assistant.',
+      system_prompt: options?.systemPrompt || 'You are a helpful assistant.',
       max_tokens: options?.maxTokens || 1000,
     };
 
@@ -93,8 +92,7 @@ export class StudentBedrockProvider implements AiProvider {
   ): Promise<AiResponse<T>> {
     const model = options?.model || this.DEFAULT_MODEL;
     this.logger.debug(`Generating structured output using model: ${model}`);
-
-    const jsonSchema = zodToJsonSchema(schema as any) as any;
+    const jsonSchema = (schema as any).toJSONSchema() as any;
 
     // We use a battle-tested structured output prompt format
     const userPromptWithSchema = `${prompt}
@@ -116,7 +114,7 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
     const payload = {
       model_id: model,
       messages: [{ role: 'user', content: userPromptWithSchema }],
-      system_prompt: 'You are a strict data extraction AI.',
+      system_prompt: options?.systemPrompt || 'You are a strict data extraction AI.',
       max_tokens: options?.maxTokens || 4000,
     };
 
