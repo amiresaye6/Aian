@@ -66,7 +66,7 @@ export class ZoomWebhookValidator implements WebhookSignatureValidator {
                   this.logger.log('Webhook signature verified successfully via Svix.');
                   return true;
               }
-              console.log(req.body)
+              //console.log(req.body)
               this.logger.warn('Missing MeetingBaas webhook secret or Svix headers.');
               return false;
       

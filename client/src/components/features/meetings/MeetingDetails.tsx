@@ -15,6 +15,7 @@ import {
 
 import { MeetingProviderHero } from "./MeetingProviderHero";
 import { MeetingsList, getProviderLabel } from "./MeetingsList";
+import { CreateMeetingForm } from "./MeetingAction";
 import { useMeetingsPagination } from "@/hooks/useMeetingsPagination";
 import { AppLayout } from "@/layouts/AppLayout";
 
@@ -117,17 +118,29 @@ export function MeetingsDetails({ providerKey }: { providerKey: string }) {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-3">
           {tab === "scheduled" && (
-            <MeetingsList
-              data={scheduled.data}
-              isLoading={scheduled.isLoading}
-              emptyLabel="No upcoming scheduled meetings found."
-              badgeFallback={getProviderLabel(providerKey)}
-              hasNext={scheduled.hasNext}
-              hasPrevious={scheduled.hasPrevious}
-              onNext={scheduled.goNext}
-              onPrevious={scheduled.goPrevious}
-              pageNumber={scheduled.pageNumber}
-            />
+            <>
+              {provider.connectionId && (
+                <CreateMeetingForm
+                  connectionId={provider.connectionId}
+                  providerKey={providerKey}
+                  onCreated={scheduled.refetch}
+                />
+              )}
+              <MeetingsList
+                data={scheduled.data}
+                isLoading={scheduled.isLoading}
+                emptyLabel="No upcoming scheduled meetings found."
+                badgeFallback={getProviderLabel(providerKey)}
+                hasNext={scheduled.hasNext}
+                hasPrevious={scheduled.hasPrevious}
+                onNext={scheduled.goNext}
+                onPrevious={scheduled.goPrevious}
+                pageNumber={scheduled.pageNumber}
+                connectionId={provider.connectionId}
+                providerKey={providerKey}
+                onChanged={scheduled.refetch}
+              />
+            </>
           )}
 
           {tab === "live" && (
@@ -142,6 +155,9 @@ export function MeetingsDetails({ providerKey }: { providerKey: string }) {
               onNext={live.goNext}
               onPrevious={live.goPrevious}
               pageNumber={live.pageNumber}
+              connectionId={provider.connectionId}
+              providerKey={providerKey}
+              onChanged={live.refetch}
             />
           )}
         </div>

@@ -8,7 +8,8 @@ export interface CreateMeetingPayload {
   startTime: string;
   durationMinutes: number;
   timezone: string;
-  attendees?: MeetingAttendee[];
+  attendees?: string[];
+
 }
 
 export interface UpdateMeetingPayload {

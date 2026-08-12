@@ -7,7 +7,6 @@ import {
   updateMeeting,
   deleteMeeting,
   addRegistrants,
-  type MeetingAttendee,
 } from "@/api/integrations";
 
 function inputCls() {
@@ -23,10 +22,10 @@ function AttendeesInput({
   value,
   onChange,
 }: {
-  value: MeetingAttendee[];
-  onChange: (v: MeetingAttendee[]) => void;
+  value: string[];
+  onChange: (v: string[]) => void;
 }) {
-  const [raw, setRaw] = useState(value.map((a) => a.email).join(", "));
+  const [raw, setRaw] = useState(value.join(", "));
 
   const commit = (text: string) => {
     setRaw(text);
@@ -34,7 +33,7 @@ function AttendeesInput({
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    onChange(emails.map((email) => ({ email })));
+    onChange(emails);
   };
 
   return (
@@ -65,7 +64,7 @@ function CreateMeetingForm({
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   );
-  const [attendees, setAttendees] = useState<MeetingAttendee[]>([]);
+  const [attendees, setAttendees] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,7 +82,7 @@ function CreateMeetingForm({
         startTime,
         durationMinutes,
         timezone,
-        attendees,
+        ...(attendees.length > 0 ? { attendees } : {}),
       });
       setTopic("");
       setStartTime("");
@@ -91,7 +90,7 @@ function CreateMeetingForm({
       setAttendees([]);
       onCreated();
     } catch (err: any) {
-      setError(err?.message || "Failed to create meeting.");
+      setError("Failed to create meeting.");
     } finally {
       setIsSubmitting(false);
     }
@@ -202,7 +201,7 @@ function EditMeetingModal({
       onUpdated();
       onClose();
     } catch (err: any) {
-      setError(err?.message || "Failed to update meeting.");
+      setError("Failed to update meeting.");
     } finally {
       setIsSubmitting(false);
     }
@@ -288,7 +287,7 @@ function AddRegistrantsModal({
   onClose: () => void;
   onAdded: () => void;
 }) {
-  const [attendees, setAttendees] = useState<MeetingAttendee[]>([]);
+  const [attendees, setAttendees] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -305,7 +304,7 @@ function AddRegistrantsModal({
       onAdded();
       onClose();
     } catch (err: any) {
-      setError(err?.message || "Failed to add registrants.");
+      setError("Failed to add registrants.");
     } finally {
       setIsSubmitting(false);
     }

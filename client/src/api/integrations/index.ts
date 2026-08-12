@@ -245,7 +245,7 @@ export const addRegistrants = async (
   connectionId: string,
   provider: string,
   meetingId: string,
-  attendees: MeetingAttendee[],
+  attendees?: string[]
 ) => {
   const response = await api.post(
     `/${provider}/add-registrants/${connectionId}/${meetingId}`,
@@ -254,4 +254,3 @@ export const addRegistrants = async (
   return response.data.data ?? response.data;
 };
 
-export { MeetingAttendee };
