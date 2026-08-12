@@ -17,6 +17,7 @@ export class GraphSearchService {
   async searchAndRankArtifacts(
     organizationId: string,
     extractedEntities: string[],
+    relationships: string[] = [],
   ): Promise<RankedArtifactInfo[]> {
     if (!extractedEntities || extractedEntities.length === 0) {
       this.logger.warn('No entities extracted to search the graph.');
@@ -29,34 +30,95 @@ export class GraphSearchService {
       // We will score each artifact based on how close it is to the seed entities
       // and the type of node it is associated with.
 
-      const query = `
-        MATCH path = (start:Entity)-[*0..${RETRIEVAL_CONSTANTS.GRAPH_MAX_HOPS}]-(related)
-        WHERE start.organizationId = $organizationId 
-          AND (
-            toLower(start.canonicalName) IN [e IN $entities | toLower(e)] 
-            OR any(alias IN coalesce(start.aliases, []) WHERE toLower(alias) IN [e IN $entities | toLower(e)])
-          )
-        
-        UNWIND nodes(path) AS n
-        UNWIND coalesce(n.artifactIds, []) AS artifactId
-        
-        // Get the node type/label and start node id for seed counting
-        WITH artifactId, labels(n)[0] AS nodeType, start.id AS seedId, length(path) AS distance
-        
-        // Aggregate per artifact
-        WITH artifactId, collect(DISTINCT seedId) AS connectedSeeds, min(distance) AS minDistance, count(*) AS occurrences, nodeType
-        
-        RETURN artifactId, nodeType, minDistance, occurrences, size(connectedSeeds) AS seedMatchCount
-      `;
+      let result;
 
-      this.logger.debug(
-        `Executing graph search for entities: ${extractedEntities.join(', ')}`,
-      );
+      if (extractedEntities.length >= 2) {
+        this.logger.debug(
+          `Executing shortest-path graph search for entities: ${extractedEntities.join(', ')}`,
+        );
+        // Multi-Entity: Find shortest paths between pairs
+        const shortestPathQuery = `
+          MATCH (start:Entity), (end:Entity)
+          WHERE start.organizationId = $organizationId AND end.organizationId = $organizationId
+            AND start.id <> end.id
+            AND (
+              toLower(start.canonicalName) IN [e IN $entities | toLower(e)] 
+              OR any(alias IN coalesce(start.aliases, []) WHERE toLower(alias) IN [e IN $entities | toLower(e)])
+            )
+            AND (
+              toLower(end.canonicalName) IN [e IN $entities | toLower(e)] 
+              OR any(alias IN coalesce(end.aliases, []) WHERE toLower(alias) IN [e IN $entities | toLower(e)])
+            )
+          
+          // Find shortest paths up to 4 hops
+          MATCH p = allShortestPaths((start)-[*1..4]-(end))
+          
+          // Extract from nodes and relationships safely
+          WITH p, 
+               [n IN nodes(p) | {ids: coalesce(n.artifactIds, []), type: labels(n)[0]}] AS nodeData,
+               [r IN relationships(p) | {ids: coalesce(r.artifactIds, []), type: type(r)}] AS relData
+               
+          UNWIND nodeData + relData AS item
+          UNWIND item.ids AS artifactId
+          
+          // Determine type for weighting
+          WITH artifactId, length(p) AS distance, item.type AS itemType
+          
+          // We can't do seed match counting easily on shortest path elements, so we hardcode a strong match
+          WITH artifactId, min(distance) AS minDistance, count(*) AS occurrences, itemType, 2 AS seedMatchCount, 1 AS matchedRel
+          
+          RETURN artifactId, itemType AS nodeType, minDistance, occurrences, seedMatchCount, matchedRel
+        `;
+        
+        result = await session.run(shortestPathQuery, {
+          organizationId,
+          entities: extractedEntities,
+          relationships,
+        });
 
-      const result = await session.run(query, {
-        organizationId,
-        entities: extractedEntities,
-      });
+        if (result.records.length === 0) {
+          this.logger.warn(`Shortest-path returned 0 results. Falling back to radial search.`);
+        }
+      }
+
+      if (!result || result.records.length === 0) {
+        this.logger.debug(
+          `Executing radial graph search for entities: ${extractedEntities.join(', ')}`,
+        );
+        // Fallback or Single-Entity: Radial expansion
+        const radialQuery = `
+          MATCH path = (start:Entity)-[*0..${RETRIEVAL_CONSTANTS.GRAPH_MAX_HOPS}]-(related)
+          WHERE start.organizationId = $organizationId 
+            AND (
+              toLower(start.canonicalName) IN [e IN $entities | toLower(e)] 
+              OR any(alias IN coalesce(start.aliases, []) WHERE toLower(alias) IN [e IN $entities | toLower(e)])
+            )
+          
+          WITH path, start,
+               CASE WHEN size($relationships) > 0 AND any(r IN relationships(path) WHERE type(r) IN $relationships) THEN 1 ELSE 0 END AS hasMatchingRel
+          
+          // Extract from nodes and relationships safely
+          WITH start, hasMatchingRel, length(path) AS distance, 
+               [n IN nodes(path) | {ids: coalesce(n.artifactIds, []), type: labels(n)[0]}] AS nodeData,
+               [r IN relationships(path) | {ids: coalesce(r.artifactIds, []), type: type(r)}] AS relData
+               
+          UNWIND nodeData + relData AS item
+          UNWIND item.ids AS artifactId
+          
+          WITH artifactId, distance, hasMatchingRel, start.id AS seedId, item.type AS itemType
+          
+          // Aggregate per artifact
+          WITH artifactId, collect(DISTINCT seedId) AS connectedSeeds, min(distance) AS minDistance, count(*) AS occurrences, itemType, max(hasMatchingRel) AS matchedRel
+          
+          RETURN artifactId, itemType AS nodeType, minDistance, occurrences, size(connectedSeeds) AS seedMatchCount, matchedRel
+        `;
+
+        result = await session.run(radialQuery, {
+          organizationId,
+          entities: extractedEntities,
+          relationships,
+        });
+      }
 
       // Step 2: Ranking
       const artifactScores = new Map<string, RankedArtifactInfo>();
@@ -67,6 +129,7 @@ export class GraphSearchService {
         const minDistance = record.get('minDistance').toNumber();
         const occurrences = record.get('occurrences').toNumber();
         const seedMatchCount = record.get('seedMatchCount').toNumber();
+        const matchedRel = record.get('matchedRel').toNumber();
 
         // Calculate score
         const typeWeight =
@@ -79,9 +142,12 @@ export class GraphSearchService {
         
         // Exponential boost for intersection
         const intersectionMultiplier = Math.pow(2, Math.max(0, seedMatchCount - 1));
+        
+        // Massive boost if the specific requested relationship was found in the path
+        const relationshipMultiplier = matchedRel === 1 ? 10 : 1;
 
         const scoreAddition =
-          typeWeight * distanceMultiplier * intersectionMultiplier * (1 + Math.log10(occurrences));
+          typeWeight * distanceMultiplier * intersectionMultiplier * relationshipMultiplier * (1 + Math.log10(occurrences));
 
         if (!artifactScores.has(artifactId)) {
           artifactScores.set(artifactId, {

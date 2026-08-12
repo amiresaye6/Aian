@@ -17,6 +17,11 @@ export const QueryUnderstandingSchema = z.object({
     .describe(
       'List of exact canonical entity names mentioned or implied (e.g. "Slack", "OAuth", "Amir"). Used for graph entry points.',
     ),
+  relationships: z
+    .array(z.string())
+    .describe(
+      'A list of uppercase relationship predicates inferred from the query (e.g. "WORKED_ON", "AUTHORED", "RESOLVED"). Leave empty if no specific action/relationship is mentioned.',
+    ),
   timeFilter: z
     .object({
       requiresRecency: z.boolean(),

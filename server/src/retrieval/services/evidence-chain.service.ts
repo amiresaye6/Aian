@@ -20,6 +20,29 @@ export class EvidenceChainService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  async fetchArtifactMetadata(
+    organizationId: string,
+    artifactIds: string[],
+  ): Promise<Map<string, { title: string; type: string }>> {
+    const artifacts = await this.prisma.knowledgeArtifact.findMany({
+      where: {
+        id: { in: artifactIds },
+        organizationId,
+      },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+      },
+    });
+
+    const map = new Map<string, { title: string; type: string }>();
+    for (const a of artifacts) {
+      map.set(a.id, { title: a.title || 'Untitled', type: a.type });
+    }
+    return map;
+  }
+
   async constructChain(
     organizationId: string,
     rankedArtifacts: RankedArtifactInfo[],
