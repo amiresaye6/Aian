@@ -390,7 +390,7 @@ private readonly logger = new Logger(MeetingSkill.name);
 
             const newAdded = result?.count || 0;
             const alreadyExists = result?.alreadyExists || 0;
-            const attendeesList = (parsed.data?.attendees as any)
+            const attendeesList = attendees
                 .map((email: string) => `• \`${email}\``)
                 .join('\n');
 
