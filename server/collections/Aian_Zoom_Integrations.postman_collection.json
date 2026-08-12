@@ -22,12 +22,12 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://localhost:12345/api/v1/integrations/zoom/install?organizationEyeId=58aedcb5-f420-4f05-a9df-cd1055445061",
+          "raw": "http://localhost:1234/api/v1/integrations/zoom/install?organizationEyeId=63836439-fe55-4f9b-9436-8250849361f3",
           "protocol": "http",
           "host": [
             "localhost"
           ],
-          "port": "12345",
+          "port": "1234",
           "path": [
             "api",
             "v1",
@@ -38,7 +38,7 @@
           "query": [
             {
               "key": "organizationEyeId",
-              "value": "58aedcb5-f420-4f05-a9df-cd1055445061"
+              "value": "63836439-fe55-4f9b-9436-8250849361f3"
             }
           ]
         }
@@ -61,7 +61,7 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://localhost:12345/api/v1/integrations/zoom/test-client/2c3b4a00-16e9-4290-84fb-79d7bc4b7fac",
+          "raw": "http://localhost:12345/api/v1/integrations/zoom/test-client/9d7dfd85-68db-48dd-a02f-6a6cebeb7eab",
           "protocol": "http",
           "host": [
             "localhost"
@@ -73,7 +73,7 @@
             "integrations",
             "zoom",
             "test-client",
-            "2c3b4a00-16e9-4290-84fb-79d7bc4b7fac"
+            "9d7dfd85-68db-48dd-a02f-6a6cebeb7eab"
           ]
         }
       },
@@ -96,6 +96,151 @@
             "v1",
             "eyes",
             "7177570a-9cce-4a8c-b8dc-6b7d817594ea"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "getScheduled",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:1234/api/v1/zoom/scheduled/bdd1fe66-8267-4a51-8ee0-de02da615658",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "1234",
+          "path": [
+            "api",
+            "v1",
+            "zoom",
+            "scheduled",
+            "bdd1fe66-8267-4a51-8ee0-de02da615658"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "createMeeting",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"topic\": \"zoom meeting test3\",\r\n  \"startTime\": \"2026-08-02T10:00:00\",\r\n  \"durationMinutes\": 40,\r\n  \"timezone\": \"Africa/Cairo\",\r\n  \"attendees\": [\"mohammadibraheem.iti@gmail.com\",\"mohammadelazzazy7@gmail.com\"]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:1234/api/v1/zoom/create-meeting/e69c523b-2dfc-4822-a1bf-18f69d817986",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "1234",
+          "path": [
+            "api",
+            "v1",
+            "zoom",
+            "create-meeting",
+            "e69c523b-2dfc-4822-a1bf-18f69d817986"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "UpdateMeeting",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"topic\": \"zoom meeting test7\",\r\n  \"startTime\": \"2026-08-02T11:00:00\",\r\n  \"durationMinutes\": 40,\r\n  \"timezone\": \"Africa/Cairo\",\r\n  \"attendees\": [\"mohammadibraheem.iti@gmail.com\",\"mohammadelazzazy7@gmail.com\"]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:1234/api/v1/zoom/update-meeting/2f21f8c8-9752-463d-b9bc-28e066e8dba5/88182601673",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "1234",
+          "path": [
+            "api",
+            "v1",
+            "zoom",
+            "update-meeting",
+            "2f21f8c8-9752-463d-b9bc-28e066e8dba5",
+            "88182601673"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "deleteMeeting",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:1234/api/v1/zoom/delete-meeting/2f21f8c8-9752-463d-b9bc-28e066e8dba5/88182601673",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "1234",
+          "path": [
+            "api",
+            "v1",
+            "zoom",
+            "delete-meeting",
+            "2f21f8c8-9752-463d-b9bc-28e066e8dba5",
+            "88182601673"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "addRegisterants",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"attendees\":[\"mohamadelazzazy@gmail.com\"]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:1234/api/v1/zoom/add-registrants/2f21f8c8-9752-463d-b9bc-28e066e8dba5/82966655290",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "1234",
+          "path": [
+            "api",
+            "v1",
+            "zoom",
+            "add-registrants",
+            "2f21f8c8-9752-463d-b9bc-28e066e8dba5",
+            "82966655290"
           ]
         }
       },
