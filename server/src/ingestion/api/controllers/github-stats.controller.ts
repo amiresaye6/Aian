@@ -62,4 +62,30 @@ export class GithubStatsController {
 
     return { pendingCount: count };
   }
+
+  /**
+   * Breakdown of Knowledge Items by GitHub source type, for the Data tab.
+   */
+  @Get('breakdown')
+  async getBreakdown(@Param('connectionId') connectionId: string) {
+    const connection = await this.connectionRepo.findByIdMapped(connectionId);
+    if (!connection) throw new NotFoundException('Connection not found');
+
+    const raw = await this.knowledgeItemRepo.countBySourceTypeGroup(
+      connection.organizationId,
+      connection.providerKey.toUpperCase(),
+    );
+
+    return {
+      pullRequests: raw['github_pull_request'] ?? 0,
+      issuesAndComments:
+        (raw['github_issue'] ?? 0) +
+        (raw['github_issue_comment'] ?? 0) +
+        (raw['github_pull_request_comment'] ?? 0),
+      commits: raw['github_commit'] ?? 0,
+      reviews:
+        (raw['github_pull_request_review'] ?? 0) +
+        (raw['github_pull_request_review_comment'] ?? 0),
+    };
+  }
 }
