@@ -7,7 +7,6 @@ import {
   AiUsage,
 } from './ai-provider.interface';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import { GoogleGenAI, Type } from '@google/genai';
 
 @Injectable()
@@ -202,8 +201,9 @@ export class GeminiProvider implements AiProvider {
         },
       };
     } else {
-      // Fallback for other schemas (though we know it currently produces an empty schema due to Zod preprocessing)
-      geminiSchema = zodToJsonSchema(schema as any) as any;
+      if (schema) {
+        geminiSchema = (schema as any).toJSONSchema() as any;
+      }
     }
 
     const userPromptWithSchema = `${prompt}

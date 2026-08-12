@@ -7,7 +7,6 @@ import {
   AiUsage,
 } from './ai-provider.interface';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import axios from 'axios';
 
 @Injectable()
@@ -93,8 +92,7 @@ export class StudentBedrockProvider implements AiProvider {
   ): Promise<AiResponse<T>> {
     const model = options?.model || this.DEFAULT_MODEL;
     this.logger.debug(`Generating structured output using model: ${model}`);
-
-    const jsonSchema = zodToJsonSchema(schema as any) as any;
+    const jsonSchema = (schema as any).toJSONSchema() as any;
 
     // We use a battle-tested structured output prompt format
     const userPromptWithSchema = `${prompt}
