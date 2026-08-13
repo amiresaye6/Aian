@@ -14,7 +14,14 @@ import { MessagingSkill } from './skills/messaging.skill';
 import { EmailSkill } from './skills/email.skill';
 import { RetrievalModule } from '../retrieval/retrieval.module';
 import { KnowledgeSkill } from './skills/knowledge.skill';
+import { MeetingSkill } from './skills/meeting.skill';
+import { ZoomModule } from '../integrations/zoom/zoom.module';
 import { ReportingSkill } from './skills/reporting.skill';
+
+import { JiraModule } from '../integrations/jira/jira.module';
+import { JiraSkill } from './skills/jira.skill';
+import { TrelloModule } from '../integrations/trello/trello.module';
+import { TrelloSkill } from './skills/trello.skill';
 
 @Module({
   imports: [
@@ -23,6 +30,9 @@ import { ReportingSkill } from './skills/reporting.skill';
     EmailModule,
     AiGatewayModule,
     RetrievalModule,
+    ZoomModule,
+    JiraModule,
+    TrelloModule,
   ],
   providers: [
     AuditLogService,
@@ -34,9 +44,12 @@ import { ReportingSkill } from './skills/reporting.skill';
     MessagingSkill,
     EmailSkill,
     KnowledgeSkill,
+    MeetingSkill,
+    JiraSkill,
+    TrelloSkill,
     ReportingSkill,
   ],
   controllers: [AuditController],
-  exports: [OrchestratorService, AuditLogService],
+  exports: [OrchestratorService, SessionService, AuditLogService],
 })
 export class HandsModule {}

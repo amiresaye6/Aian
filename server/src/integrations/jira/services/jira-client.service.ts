@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import axios, { AxiosError } from 'axios';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProviderConnectionRepository } from '../../../ingestion/repositories/provider-connection.repository';
@@ -12,6 +12,90 @@ import {
   RefreshedCredentials,
 } from '../../contracts';
 
+export interface JiraIssue {
+  id: string;
+  key: string;
+  self: string;
+  fields?: Record<string, any>;
+}
+
+export interface JiraUser {
+  accountId: string;
+  displayName: string;
+  emailAddress?: string;
+  active?: boolean;
+}
+
+export interface JiraTransition {
+  id: string;
+  name: string;
+}
+
+export interface JiraSearchResult {
+  issues: JiraIssue[];
+  total: number;
+}
+
+export interface JiraCommentResponse {
+  id: string;
+  body?: string;
+}
+
+export interface JiraCreateIssueResponse {
+  id: string;
+  key: string;
+  self: string;
+}
+
+export interface JiraProject {
+  key: string;
+  id?: string;
+  name?: string;
+}
+
+export interface JiraPriority {
+  name: string;
+  id?: string;
+}
+
+export interface JiraAssignee {
+  accountId: string;
+}
+
+export class JiraIntegrationError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly retryable: boolean,
+    public readonly details?: any,
+  ) {
+    super(message);
+    this.name = 'JiraIntegrationError';
+  }
+}
+
+import {
+  JiraCreateTaskInput,
+  JiraUpdateTaskInput,
+  JiraAssignTaskInput,
+  JiraMoveTaskInput,
+  JiraCommentTaskInput,
+  JiraDeleteTaskInput,
+  JiraListTasksInput,
+  JiraGetTaskInput,
+} from '../../../hands/skills/schemas';
+
+/**
+ * Jira Client Service
+ * 
+ * Production-ready REST and Orchestration client for Jira APIs.
+ * 
+ * Required Atlassian OAuth Scopes:
+ * - read:jira-work (Read issues, search)
+ * - write:jira-work (Create, update, delete, transition, comment issues)
+ * - read:jira-user (Search and resolve user accounts)
+ * - offline_access (Token refresh functionality)
+ */
 @Injectable()
 export class JiraClientService implements ProviderClient {
   private readonly logger = new Logger(JiraClientService.name);
@@ -60,13 +144,7 @@ export class JiraClientService implements ProviderClient {
     return `https://api.atlassian.com/ex/jira/${connection.externalAccountId}/rest/api/3`;
   }
 
-  // Deprecated since we only track Projects now
-  // private getAgileBaseUrl(connection: ProviderConnection): string {
-  //   if (!connection.externalAccountId) {
-  //     throw new Error('Jira connection is missing externalAccountId (cloudId)');
-  //   }
-  //   return `https://api.atlassian.com/ex/jira/${connection.externalAccountId}/rest/agile/1.0`;
-  // }
+
 
   async verifyConnection(
     connection: ProviderConnection,
@@ -492,14 +570,10 @@ export class JiraClientService implements ProviderClient {
     // Use Jira's string format: 'YYYY-MM-DD HH:mm'
     const updatedStr = fromDate.toISOString().replace('T', ' ').substring(0, 16);
 
-    // Fallback: If it's a Board, we would hit the Agile API, but for historical backfill,
-    // we assume the resource is primarily an Issue container. For simplicity and robust fetching,
-    // we will rely on Project JQL first. If it's a board, the Agile API does not support standard JQL search directly.
     const resourceId = resource.externalResourceId;
     const jql = `project = ${resourceId} AND updated >= "${updatedStr}" ORDER BY updated ASC`;
 
     while (hasMore) {
-      let response;
       const payload: any = {
         jql,
         maxResults,
@@ -510,35 +584,12 @@ export class JiraClientService implements ProviderClient {
         payload.nextPageToken = nextPageToken;
       }
 
-      try {
-        response = await axios.post<{
-          issues: any[];
-          nextPageToken?: string;
-        }>(
-          `${baseUrl}/search/jql`,
-          payload,
-          { headers },
-        );
-      } catch (err: unknown) {
-        if (axios.isAxiosError(err) && err.response?.status === 401) {
-          this.logger.warn(`401 Unauthorized in syncHistoricalResource. Forcing token refresh...`);
-          const newToken = await this.getValidToken(connection, true);
-          headers.Authorization = `Bearer ${newToken}`;
-          response = await axios.post<{
-            issues: any[];
-            nextPageToken?: string;
-          }>(
-            `${baseUrl}/search/jql`,
-            payload,
-            { headers },
-          );
-        } else {
-          this.logger.error(`Jira search failed. Status: ${axios.isAxiosError(err) ? err.response?.status : 'unknown'}, Data: ${axios.isAxiosError(err) ? JSON.stringify(err.response?.data) : 'none'}`);
-          throw err;
-        }
-      }
+      const response = await this.executeRequest<{
+        issues: any[];
+        nextPageToken?: string;
+      }>(connection, 'POST', '/search/jql', payload);
 
-      const issues = response.data.issues || [];
+      const issues = response.issues || [];
       if (issues.length === 0) {
         break; // No more issues
       }
@@ -550,7 +601,7 @@ export class JiraClientService implements ProviderClient {
         issue,
       }));
 
-      nextPageToken = response.data.nextPageToken;
+      nextPageToken = response.nextPageToken;
       hasMore = !!nextPageToken;
 
       // Yield the page to the global engine
@@ -558,5 +609,540 @@ export class JiraClientService implements ProviderClient {
     }
 
     this.logger.log(`Finished historical sync for Jira resource ${resource.externalResourceId}`);
+  }
+
+  // --- Helper Methods ---
+
+  private async getConnection(organizationId: string): Promise<ProviderConnection> {
+    const provider = await this.prisma.provider.findUnique({
+      where: { key: 'jira' },
+    });
+
+    if (!provider) {
+      throw new JiraIntegrationError('CONNECTION_NOT_FOUND', 'Jira provider configuration not found in the system.', false);
+    }
+
+    const connection = await this.prisma.providerConnection.findFirst({
+      where: {
+        providerId: provider.id,
+        status: 'connected',
+        organizationEye: {
+          organizationId: organizationId,
+        },
+      },
+      include: {
+        organizationEye: {
+          include: {
+            eyeType: true,
+          },
+        },
+        provider: true,
+      },
+    });
+
+    if (!connection) {
+      throw new JiraIntegrationError('CONNECTION_NOT_CONNECTED', 'Jira integration is not connected for this organization.', false);
+    }
+
+    return {
+      id: connection.id,
+      organizationEyeId: connection.organizationEyeId,
+      organizationId: connection.organizationEye.organizationId,
+      provider: connection.provider.key as any,
+      eyeType: connection.organizationEye.eyeType.key as any,
+      accessTokenEncrypted: connection.accessTokenEncrypted,
+      refreshTokenEncrypted: connection.refreshTokenEncrypted,
+      tokenExpiresAt: connection.tokenExpiresAt,
+      scopes: connection.scopes as string[],
+      externalAccountId: connection.externalAccountId,
+      externalAccountName: connection.externalAccountName,
+      connectionMetadata: connection.connectionMetadata as Record<string, unknown>,
+      status: connection.status,
+      lastSyncAt: connection.lastSyncAt,
+      lastVerifiedAt: connection.lastVerifiedAt,
+    } as ProviderConnection;
+  }
+
+  private async executeRequest<T>(
+    connection: ProviderConnection,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    data?: any,
+  ): Promise<T> {
+    const baseUrl = this.getBaseUrl(connection);
+    let token = await this.getValidToken(connection);
+    let headers = this.buildHeaders(token);
+
+    
+    const normalizedPath = path.startsWith('/rest/api/3') ? path.substring(11) : path;
+    const finalPath = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
+
+    const config = {
+      method,
+      url: `${baseUrl}${finalPath}`,
+      headers,
+      ...(data && { data }),
+    };
+
+    let attempt = 0;
+    while (attempt < 2) {
+      try {
+        const response = await axios.request<T>(config);
+        return response.data;
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err)) {
+          const status = err.response?.status;
+          
+          if (status === 401 && attempt === 0) {
+            this.logger.warn(`401 Unauthorized in executeRequest. Forcing token refresh...`);
+            token = await this.getValidToken(connection, true);
+            headers = this.buildHeaders(token);
+            config.headers = headers;
+            attempt++;
+            continue;
+          }
+
+          if ((status === 429 || (status && status >= 500)) && attempt === 0) {
+            this.logger.warn(`Transient error ${status} in executeRequest. Retrying...`);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            attempt++;
+            continue;
+          }
+        }
+
+        this.logger.error(`Jira request failed: ${path}`);
+        if (axios.isAxiosError(err) && err.response) {
+          this.logger.error(`Jira Error Response Data: ${JSON.stringify(err.response.data)}`);
+        }
+        this.handleHttpError(err, path);
+      }
+    }
+    throw new Error('Unreachable code in executeRequest');
+  }
+
+  private handleHttpError(err: unknown, path?: string): never {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const message = err.response?.data?.errorMessages?.join(', ') || err.message;
+      
+      if (status === 401) {
+        throw new JiraIntegrationError('UNAUTHORIZED', `Jira Unauthorized: ${message}`, true);
+      }
+      if (status === 403) {
+        throw new JiraIntegrationError('FORBIDDEN', `Jira Forbidden: ${message}`, false);
+      }
+      if (status === 404) {
+        const code = path?.includes('/project') ? 'PROJECT_NOT_FOUND' : 'TASK_NOT_FOUND';
+        throw new JiraIntegrationError(code, `Jira Not Found: ${message}`, false);
+      }
+      if (status === 429) {
+        throw new JiraIntegrationError('RATE_LIMITED', `Jira Too Many Requests: ${message}`, true);
+      }
+      if (status && status >= 500) {
+        throw new JiraIntegrationError('JIRA_API_ERROR', `Jira Error (${status}): ${message}`, true);
+      }
+      if (!err.response) {
+        throw new JiraIntegrationError('NETWORK_ERROR', `Jira Network Error: ${message}`, true);
+      }
+      throw new JiraIntegrationError('JIRA_API_ERROR', `Jira Error (${status}): ${message}`, false);
+    }
+    throw new JiraIntegrationError('JIRA_API_ERROR', 'Unknown Jira Error', false);
+  }
+
+  private async withLogging<T>(
+    operation: string,
+    organizationId: string,
+    issueKey: string | undefined,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const start = Date.now();
+    const target = issueKey ? ` on issue ${issueKey}` : '';
+    this.logger.log(`Starting ${operation} for organization ${organizationId}${target}`);
+    try {
+      const result = await fn();
+      const duration = Date.now() - start;
+      this.logger.log(`Successfully completed ${operation} for organization ${organizationId}${target} in ${duration}ms`);
+      return result;
+    } catch (error: any) {
+      const duration = Date.now() - start;
+      const errorMessage = error instanceof JiraIntegrationError ? error.code : error.message || error;
+      this.logger.error(`Failed ${operation} for organization ${organizationId}${target} after ${duration}ms. Error: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  // --- Private Helpers ---
+
+  private async resolveProject(connection: ProviderConnection, projectName: string): Promise<string> {
+    const token = await this.getValidToken(connection);
+    const baseUrl = this.getBaseUrl(connection);
+    const headers = this.buildHeaders(token);
+    
+    try {
+      const projectsResponse = await axios.get<{
+        values: { id: string; name: string; key: string; }[];
+      }>(`${baseUrl}/project/search`, { headers });
+      
+      const projects = projectsResponse.data.values || [];
+      const lowerName = projectName.toLowerCase();
+      
+      const exactMatch = projects.find(p => p.key.toLowerCase() === lowerName || p.name.toLowerCase() === lowerName);
+      if (exactMatch) return exactMatch.key;
+      
+      const partialMatch = projects.find(p => p.name.toLowerCase().includes(lowerName) || p.key.toLowerCase().includes(lowerName));
+      if (partialMatch) return partialMatch.key;
+    } catch (e) {
+      this.logger.warn(`Failed to resolve project by name: ${projectName}`);
+    }
+    
+    return projectName;
+  }
+
+  private async resolveIssue(connection: ProviderConnection, taskIdentifier: string): Promise<string> {
+    if (/^[A-Za-z0-9]+-[0-9]+$/.test(taskIdentifier)) {
+      return taskIdentifier;
+    }
+    
+    const safeName = taskIdentifier.replace(/"/g, '\\"');
+    const jql = `summary ~ "${safeName}" ORDER BY updated DESC`;
+    
+    try {
+      const response = await this.executeRequest<{ issues: { key: string }[] }>(connection, 'POST', '/rest/api/3/search/jql', {
+        jql,
+        maxResults: 1,
+        fields: ['summary'],
+      });
+      
+      if (response.issues && response.issues.length > 0) {
+        return response.issues[0].key;
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to resolve issue by name: ${taskIdentifier}`);
+    }
+    
+    // If we reach here, we didn't find the issue and it doesn't look like a valid key
+    throw new JiraIntegrationError(
+      'ISSUE_NOT_FOUND',
+      `Could not find an issue matching: '${taskIdentifier}'. Note: recently created issues may take a few seconds to become searchable.`,
+      false
+    );
+  }
+
+  private async resolveAssignee(organizationId: string, assigneeName: string): Promise<string> {
+    const users = await this.findUsers(organizationId, assigneeName);
+    if (users.length === 0) {
+      throw new JiraIntegrationError('ASSIGNEE_NOT_FOUND', `Assignee '${assigneeName}' not found in Jira.`, false);
+    }
+    if (users.length > 1) {
+      const lowerQuery = assigneeName.toLowerCase();
+      
+      // 1. Try exact match on displayName
+      let match = users.find(u => u.displayName.toLowerCase() === lowerQuery);
+      
+      // 2. Try exact match on emailAddress
+      if (!match) {
+        match = users.find(u => u.emailAddress?.toLowerCase() === lowerQuery);
+      }
+      
+      // 3. Fallback to the first (most relevant) result
+      if (match) {
+        return match.accountId;
+      } else {
+        this.logger.log(`Multiple assignees found for '${assigneeName}', defaulting to first result: ${users[0].displayName}`);
+        return users[0].accountId;
+      }
+    }
+    return users[0].accountId;
+  }
+
+  private async resolveTransition(organizationId: string, issueIdOrKey: string, targetStatus: string): Promise<string> {
+    const transitions = await this.getTransitions(organizationId, issueIdOrKey);
+    const target = targetStatus.trim().toLowerCase();
+    
+    const match = transitions.find(t => t.name.trim().toLowerCase() === target);
+    if (!match) {
+      const available = transitions.map(t => t.name).join(', ');
+      throw new JiraIntegrationError(
+        'INVALID_TRANSITION',
+        `Cannot transition to '${targetStatus}'. Available transitions are: ${available}`,
+        false,
+        { availableTransitions: transitions.map(t => t.name) }
+      );
+    }
+    return match.id;
+  }
+
+  // --- Task Orchestration Methods ---
+
+  private async normalizeIssueFields(organizationId: string, fields: any): Promise<any> {
+    const normalized: any = { ...fields };
+
+    if (typeof normalized.description === 'string') {
+      normalized.description = {
+        type: 'doc',
+        version: 1,
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: normalized.description }],
+          },
+        ],
+      };
+    }
+
+    if (typeof normalized.priority === 'string') {
+      normalized.priority = { name: normalized.priority };
+    }
+
+    if (typeof normalized.labels === 'string') {
+      normalized.labels = [normalized.labels];
+    }
+
+    if (normalized.dueDate) {
+      normalized.duedate = normalized.dueDate;
+      delete normalized.dueDate;
+    }
+
+    if (typeof normalized.assignee === 'string') {
+      const accountId = await this.resolveAssignee(organizationId, normalized.assignee);
+      normalized.assignee = { accountId };
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Creates a new task in Jira.
+   * @param organizationId The ID of the organization.
+   * @param input Task creation details.
+   * @returns A promise resolving to the created Jira issue details.
+   */
+  async createTask(organizationId: string, input: JiraCreateTaskInput): Promise<JiraCreateIssueResponse> {
+    return this.withLogging('createTask', organizationId, undefined, async () => {
+      const connection = await this.getConnection(organizationId);
+      const projectKey = await this.resolveProject(connection, input.projectName);
+      
+      const rawFields: any = {
+        summary: input.title,
+        project: { key: projectKey },
+        issuetype: { name: 'Task' },
+      };
+
+      if (input.description) rawFields.description = input.description;
+      if (input.priority) rawFields.priority = input.priority;
+      if (input.labels) rawFields.labels = input.labels;
+      if (input.dueDate) rawFields.dueDate = input.dueDate;
+      if (input.assignee) rawFields.assignee = input.assignee;
+
+      const normalizedFields = await this.normalizeIssueFields(organizationId, rawFields);
+
+      return this.createIssue(organizationId, { fields: normalizedFields });
+    });
+  }
+
+  /**
+   * Updates an existing task in Jira.
+   * @param organizationId The ID of the organization.
+   * @param input Task update details.
+   * @returns A promise resolving to a success boolean.
+   */
+  async updateTask(organizationId: string, input: JiraUpdateTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('updateTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, fields } = input;
+      
+      const normalizedFields = await this.normalizeIssueFields(organizationId, fields);
+      
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      await this.updateIssue(organizationId, issueKey, { fields: normalizedFields });
+      return { success: true };
+    });
+  }
+
+  /**
+   * Assigns an existing task to a user.
+   * @param organizationId The ID of the organization.
+   * @param input Task assignment details.
+   * @returns A promise resolving to a success boolean.
+   */
+  async assignTask(organizationId: string, input: JiraAssignTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('assignTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, assignee } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      const accountId = await this.resolveAssignee(organizationId, assignee);
+      await this.updateIssue(organizationId, issueKey, {
+        fields: { assignee: { accountId } },
+      });
+      return { success: true };
+    });
+  }
+
+  /**
+   * Moves a task to a different status.
+   * @param organizationId The ID of the organization.
+   * @param input Task move details.
+   * @returns A promise resolving to a success boolean.
+   */
+  async moveTask(organizationId: string, input: JiraMoveTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('moveTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, targetStatus } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      const transitionId = await this.resolveTransition(organizationId, issueKey, targetStatus);
+      await this.transitionIssue(organizationId, issueKey, transitionId);
+      return { success: true };
+    });
+  }
+
+  /**
+   * Adds a comment to a task.
+   * @param organizationId The ID of the organization.
+   * @param input Comment details.
+   * @returns A promise resolving to the created comment details.
+   */
+  async commentTask(organizationId: string, input: JiraCommentTaskInput): Promise<JiraCommentResponse> {
+    return this.withLogging('commentTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier, text } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      return this.addComment(organizationId, issueKey, text);
+    });
+  }
+
+  /**
+   * Deletes a task from Jira.
+   * @param organizationId The ID of the organization.
+   * @param input Task deletion details.
+   * @returns A promise resolving to a success boolean.
+   */
+  async deleteTask(organizationId: string, input: JiraDeleteTaskInput): Promise<{ success: boolean }> {
+    return this.withLogging('deleteTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      await this.deleteIssue(organizationId, issueKey);
+      return { success: true };
+    });
+  }
+
+  /**
+   * Lists tasks based on filters.
+   * @param organizationId The ID of the organization.
+   * @param input Filter details.
+   * @returns A promise resolving to search results containing tasks.
+   */
+  async listTasks(organizationId: string, input: JiraListTasksInput): Promise<JiraSearchResult> {
+    return this.withLogging('listTasks', organizationId, undefined, async () => {
+      const filters = [];
+
+      const connection = await this.getConnection(organizationId);
+      if (input.projectName) {
+        const projectKey = await this.resolveProject(connection, input.projectName);
+        filters.push(`project = "${projectKey}"`);
+      }
+      if (input.status) {
+        filters.push(`status = "${input.status}"`);
+      }
+      if (input.assignee) {
+        if (input.assignee === 'currentUser()') {
+          filters.push(`assignee = currentUser()`);
+        } else {
+          const accountId = await this.resolveAssignee(organizationId, input.assignee);
+          filters.push(`assignee = "${accountId}"`);
+        }
+      }
+
+      const jql = filters.join(' AND ');
+      return this.searchIssues(organizationId, jql || 'order by updated DESC');
+    });
+  }
+
+  /**
+   * Gets details for a specific task.
+   * @param organizationId The ID of the organization.
+   * @param input Task retrieval details.
+   * @returns A promise resolving to the issue details.
+   */
+  async getTask(organizationId: string, input: JiraGetTaskInput): Promise<JiraIssue> {
+    return this.withLogging('getTask', organizationId, input.taskIdentifier, async () => {
+      const connection = await this.getConnection(organizationId);
+      const { taskIdentifier } = input;
+      const issueKey = await this.resolveIssue(connection, taskIdentifier);
+      return this.getIssue(organizationId, issueKey);
+    });
+  }
+
+  // --- Task Service Rest Methods ---
+
+  async createIssue(organizationId: string, payload: any): Promise<JiraCreateIssueResponse> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraCreateIssueResponse>(connection, 'POST', '/rest/api/3/issue', payload);
+  }
+
+  async updateIssue(organizationId: string, issueIdOrKey: string, payload: any): Promise<void> {
+    const connection = await this.getConnection(organizationId);
+    await this.executeRequest<void>(connection, 'PUT', `/rest/api/3/issue/${issueIdOrKey}`, payload);
+  }
+
+  async deleteIssue(organizationId: string, issueIdOrKey: string): Promise<void> {
+    const connection = await this.getConnection(organizationId);
+    await this.executeRequest<void>(connection, 'DELETE', `/rest/api/3/issue/${issueIdOrKey}`);
+  }
+
+  async transitionIssue(organizationId: string, issueIdOrKey: string, transitionId: string): Promise<void> {
+    const connection = await this.getConnection(organizationId);
+    await this.executeRequest<void>(connection, 'POST', `/rest/api/3/issue/${issueIdOrKey}/transitions`, {
+      transition: { id: transitionId },
+    });
+  }
+
+  async getTransitions(organizationId: string, issueIdOrKey: string): Promise<JiraTransition[]> {
+    const connection = await this.getConnection(organizationId);
+    const res = await this.executeRequest<{ transitions: JiraTransition[] }>(
+      connection,
+      'GET',
+      `/rest/api/3/issue/${issueIdOrKey}/transitions`,
+    );
+    return res.transitions || [];
+  }
+
+  async searchIssues(organizationId: string, jql: string, maxResults: number = 50, startAt: number = 0): Promise<JiraSearchResult> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraSearchResult>(connection, 'POST', '/rest/api/3/search/jql', {
+      jql,
+      maxResults,
+      startAt,
+    });
+  }
+
+  async getIssue(organizationId: string, issueIdOrKey: string): Promise<JiraIssue> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraIssue>(connection, 'GET', `/rest/api/3/issue/${issueIdOrKey}`);
+  }
+
+  async findUsers(organizationId: string, query: string): Promise<JiraUser[]> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraUser[]>(
+      connection,
+      'GET',
+      `/rest/api/3/user/search?query=${encodeURIComponent(query)}`,
+    );
+  }
+
+  async addComment(organizationId: string, issueIdOrKey: string, body: string): Promise<JiraCommentResponse> {
+    const connection = await this.getConnection(organizationId);
+    return this.executeRequest<JiraCommentResponse>(connection, 'POST', `/rest/api/3/issue/${issueIdOrKey}/comment`, {
+      body: {
+        type: 'doc',
+        version: 1,
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: body }],
+          },
+        ],
+      },
+    });
   }
 }

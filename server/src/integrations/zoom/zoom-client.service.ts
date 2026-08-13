@@ -3,11 +3,22 @@ import { ProviderClient, ProviderConnection, ProviderResource } from '../contrac
 import { EncryptionService } from '../../common/encryption.service';
 import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../email/email.service';
 
 
 export enum MeetingType {
   Scheduled = 'scheduled',
   Live = 'live',
+  Upcoming = 'upcoming',
+}
+
+export interface MeetingData {
+  id: string;
+  topic: string;
+  joinUrl: string;
+  startUrl: string;
+  startTime: string;
+  duration: number;
 }
 
 @Injectable()
@@ -16,44 +27,62 @@ export class ZoomClientService implements ProviderClient {
 
   constructor(
     private readonly encryptionService: EncryptionService,
-    private readonly prismaService: PrismaService
+    private readonly prismaService: PrismaService,
+    private readonly emailService:EmailService
   ) {}
+
+  /**
+   * Executes a Zoom API call using the connection's current access token.
+   * If the call fails with 401 (expired token), it refreshes the token once
+   * and retries the SAME call immediately using the fresh token returned
+   * from the refresh — it never re-reads the old encrypted token from the
+   * `connection` object, which is what caused the "first request fails,
+   * second succeeds" bug.
+   *
+   * This replaces calling `verifyConnection()` before every operation:
+   * no extra /users/me calls are made unless the token has actually expired,
+   * which avoids hammering Zoom's rate limit on every single service call.
+   */
+  private async executeWithTokenRefresh<T>(
+    connection: ProviderConnection,
+    requestFn: (accessToken: string) => Promise<T>,
+  ): Promise<T> {
+    const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+
+    try {
+      return await requestFn(accessToken);
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        this.logger.warn(`Access token expired for connection ${connection.id}. Refreshing and retrying...`);
+        const newAccessToken = await this.refreshAccessToken(connection);
+        return await requestFn(newAccessToken);
+      }
+      throw error;
+    }
+  }
 
   /**
    * Verifies if the active connection is healthy and authorized.
    * Decrypts the access token and calls Zoom's /users/me API endpoint.
+   * Kept as an explicit "test connection" check — not meant to be called
+   * before every operation anymore (see executeWithTokenRefresh above).
    */
   async verifyConnection(connection: ProviderConnection): Promise<{ isValid: boolean; message: string }> {
     try {
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
+      const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.get('https://api.zoom.us/v2/users/me', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
+      );
 
-      const response = await axios.get('https://api.zoom.us/v2/users/me', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      //console.log(response)
       this.logger.log(`Zoom connection verified for user: ${response.data.email}`);
       return {
         isValid: true,
         message: `Connected as ${response.data.first_name} ${response.data.last_name} (${response.data.email})`,
       };
     } catch (error: any) {
-      if (error.response?.status === 401) {
-        this.logger.warn(`Access token expired for connection ${connection.id}. Trying to refresh...`);
-        try {
-          const newAccessToken = await this.refreshAccessToken(connection);
-          
-          const retryResponse = await axios.get('https://api.zoom.us/v2/users/me', {
-            headers: {
-              Authorization: `Bearer ${newAccessToken}`,
-            },
-          });
-          return retryResponse.data;
-        } catch (refreshError: any) {
-          throw new Error(`Token refresh failed or retry failed: ${refreshError.message}`);
-        }
-      }
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Zoom connection verification failed: ${errorMsg}`);
       return {
@@ -173,6 +202,14 @@ export class ZoomClientService implements ProviderClient {
         },
       });
 
+      // Keep the in-memory connection object in sync with the DB update,
+      // so if this same `connection` reference gets reused later in the
+      // same call/request, it reflects the refreshed tokens instead of
+      // the stale ones that caused problem #2.
+      connection.accessTokenEncrypted = newAccessTokenEncrypted;
+      connection.refreshTokenEncrypted = newRefreshTokenEncrypted;
+      connection.tokenExpiresAt = tokenExpiresAt;
+
       this.logger.log(`Zoom token refreshed successfully for connection: ${connection.id}`);
       return access_token;
     } catch (error: any) {
@@ -183,13 +220,12 @@ export class ZoomClientService implements ProviderClient {
   }
 
   async getMeetingDetails(connection: ProviderConnection, meetingId: string): Promise<any> {
-    let accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
-
     try {
-      await this.verifyConnection(connection);
-      const response = await axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.get(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      );
       return response.data;
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message;
@@ -198,9 +234,9 @@ export class ZoomClientService implements ProviderClient {
     }
   }
 
-  async getMeetings(
+  async listMeetings(
     connection: ProviderConnection,
-    type: MeetingType,
+    type: MeetingType = MeetingType.Upcoming,
     pageSize = 30,
     nextPageToken?: string,
   ): Promise<{
@@ -210,24 +246,22 @@ export class ZoomClientService implements ProviderClient {
     totalRecords: number;
   }> {
     try {
-      await this.verifyConnection(connection);
-      const accessToken = this.encryptionService.decrypt(connection.accessTokenEncrypted);
-
-      const response = await axios.get('https://api.zoom.us/v2/users/me/meetings', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
-          type,
-          page_size: pageSize,
-          ...(nextPageToken ? { next_page_token: nextPageToken } : {}),
-        },
-      });
+      const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.get('https://api.zoom.us/v2/users/me/meetings', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          params: {
+            type,
+            page_size: pageSize,
+            ...(nextPageToken ? { next_page_token: nextPageToken } : {}),
+          },
+        }),
+      );
 
       const meetings = response.data.meetings || [];
 
-      // Map raw Zoom API meeting response to the standard ProviderResource contract
-      const resources = meetings.map((meeting: any) => ({
+      const resources: ProviderResource[] = meetings.map((meeting: any) => ({
         externalResourceId: meeting.id.toString(),
         name: meeting.topic,
         resourceType: 'meeting',
@@ -241,7 +275,6 @@ export class ZoomClientService implements ProviderClient {
 
       return {
         resources,
-        // Zoom returns an empty string, not null/undefined, when there's no further page
         nextPageToken: response.data.next_page_token ? response.data.next_page_token : null,
         pageSize: response.data.page_size ?? pageSize,
         totalRecords: response.data.total_records ?? resources.length,
@@ -252,4 +285,267 @@ export class ZoomClientService implements ProviderClient {
       throw new Error(`Failed to fetch Zoom resources: ${errorMsg}`);
     }
   }
+
+  async createMeeting(
+    connection: any,
+    data: {
+      topic: string;
+      startTime: string;
+      durationMinutes: number;
+      timezone?: string;
+      attendees?: string[];
+    },
+  ) {
+    const response = await this.executeWithTokenRefresh(connection, (accessToken) =>
+      axios.post(
+        'https://api.zoom.us/v2/users/me/meetings',
+        {
+          topic: data.topic,
+          type: 2,
+          start_time: data.startTime,
+          duration: data.durationMinutes,
+          timezone: data.timezone || 'UTC',
+          settings: {
+            host_video: true,
+            participant_video: true,
+            join_before_host: false,
+            mute_upon_entry: true,
+            approval_type: 0,
+            registrants_email_notification: true,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      ),
+    );
+
+    const meetingData: MeetingData = {
+      id: String(response.data.id),
+      topic: response.data.topic,
+      joinUrl: response.data.join_url,
+      startUrl: response.data.start_url,
+      startTime: response.data.start_time,
+      duration: response.data.duration,
+    };
+
+    await this.prismaService.meeting.create({
+      data: {
+        id: meetingData.id,
+        connectionId: connection.id,
+        topic: meetingData.topic,
+        joinUrl: meetingData.joinUrl,
+        startUrl: meetingData.startUrl,
+        startTime: new Date(meetingData.startTime),
+        duration: meetingData.duration,
+      },
+    });
+
+    if (data.attendees?.length) {
+      await this.addRegistrants(
+        connection,
+        meetingData.id,
+        data.attendees,
+        meetingData,
+      );
+    }
+
+    return meetingData;
+  }
+
+  async addRegistrants(
+    connection: any,
+    meetingId: string,
+    attendees: string[],
+    meetingData?: MeetingData,
+  ): Promise<any> {
+    const meeting =
+      meetingData ??
+      (await this.prismaService.meeting.findUniqueOrThrow({
+        where: {
+          id: meetingId,
+        },
+      }));
+
+    let count =0;
+    let alreadyExists=0;
+
+    const htmlContent = `
+      <p>You have been registered for a Zoom meeting.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Start Time: ${meeting.startTime}</p>
+      <p>Duration: ${meeting.duration} minutes</p>
+      <p><a href="${meeting.joinUrl}">Join Meeting</a></p>
+    `;
+
+    const existingRegistrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+        select: {
+          email: true,
+        },
+      });
+
+    const existingEmails = new Set(
+      existingRegistrants.map((r) => r.email),
+    );
+
+    for (const email of attendees) {
+      if (existingEmails.has(email)) {
+        alreadyExists++;
+        continue;
+      }
+
+      await this.emailService.sendBrandedEmail(
+        email,
+        'Meeting Registration',
+        htmlContent,
+      );
+
+      count++;
+
+      await this.prismaService.meetingRegistrant.create({
+        data: {
+          meetingId,
+          connectionId: connection.id,
+          email,
+        },
+      });
+    }
+    return {count, alreadyExists}
+  }
+
+  async deleteMeeting(
+    connection: any,
+    meetingId: string,
+  ): Promise<void> {
+    const meeting = await this.prismaService.meeting.findUnique({
+      where: {
+        id: meetingId,
+      },
+    });
+
+    if (meeting) {
+      const registrants =
+        await this.prismaService.meetingRegistrant.findMany({
+          where: {
+            meetingId,
+          },
+        });
+
+      const htmlContent = `
+        <p>Your Zoom meeting has been cancelled.</p>
+        <p>Meeting ID: ${meeting.id}</p>
+        <p>Topic: ${meeting.topic}</p>
+        <p>Scheduled Time: ${meeting.startTime}</p>
+      `;
+
+      for (const registrant of registrants) {
+        await this.emailService.sendBrandedEmail(
+          registrant.email,
+          'Meeting Cancelled',
+          htmlContent,
+        );
+      }
+    }
+
+    try {
+      await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.delete(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
+      );
+    } catch (error: any) {
+      // Ignore 404 if the meeting is already deleted on Zoom
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+    }
+
+    await this.prismaService.meetingRegistrant.deleteMany({
+      where: {
+        meetingId,
+      },
+    });
+
+    await this.prismaService.meeting.deleteMany({
+      where: {
+        id: meetingId,
+      },
+    });
+  }
+
+  async updateMeeting(
+    connection: any,
+    meetingId: string,
+    fields: {
+      topic?: string;
+      startTime?: string;
+      durationMinutes?: number;
+      timezone?: string;
+    },
+  ): Promise<void> {
+    console.log(`connection: `,connection);
+    console.log(`meetingId: `,meetingId);
+    console.log(`fields: `,JSON.stringify(fields));
+
+    await this.executeWithTokenRefresh(connection, (accessToken) =>
+      axios.patch(
+        `https://api.zoom.us/v2/meetings/${meetingId}`,
+        {
+          topic: fields.topic,
+          start_time: fields.startTime,
+          duration: fields.durationMinutes,
+          timezone: fields.timezone,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      ),
+    );
+
+    const meeting = await this.prismaService.meeting.update({
+      where: { id: meetingId },
+      data: {
+        ...(fields.topic && { topic: fields.topic }),
+        ...(fields.startTime && { startTime: new Date(fields.startTime) }),
+        ...(fields.durationMinutes && { duration: fields.durationMinutes }),
+      },
+    });
+
+    const registrants =
+      await this.prismaService.meetingRegistrant.findMany({
+        where: {
+          meetingId,
+        },
+      });
+
+    const htmlContent = `
+      <p>Your Zoom meeting has been updated.</p>
+      <p>Meeting ID: ${meeting.id}</p>
+      <p>Topic: ${meeting.topic}</p>
+      <p>Start Time: ${meeting.startTime}</p>
+      <p>Duration: ${meeting.duration} minutes</p>
+      <p><a href="${meeting.joinUrl}">Join Meeting</a></p>
+    `;
+
+    for (const registrant of registrants) {
+      await this.emailService.sendBrandedEmail(
+        registrant.email,
+        'Meeting Updated',
+        htmlContent,
+      );
+    }
+  }
+
+
 }

@@ -1,6 +1,7 @@
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { MeetingRowActions } from "./MeetingAction";
 
 function getProviderLabel(providerKey: string) {
   return providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
@@ -17,6 +18,9 @@ export function MeetingsList({
   onNext,
   onPrevious,
   pageNumber,
+  connectionId,
+  providerKey,
+  onChanged,
 }: {
   data: any;
   isLoading: boolean;
@@ -28,6 +32,10 @@ export function MeetingsList({
   onNext: () => void;
   onPrevious: () => void;
   pageNumber: number;
+  /** Optional — when provided alongside providerKey + onChanged, row actions (edit/registrants/delete) render */
+  connectionId?: string;
+  providerKey?: string;
+  onChanged?: () => void;
 }) {
   const meetingsList = data?.resources || [];
 
@@ -100,6 +108,21 @@ export function MeetingsList({
                       <span>Join</span>
                       <ExternalLink className="h-3 w-3 text-muted-foreground" />
                     </a>
+                  )}
+
+                  {connectionId && providerKey && onChanged && (
+                    <MeetingRowActions
+                      connectionId={connectionId}
+                      providerKey={providerKey}
+                      meetingId={m.externalResourceId || m.id}
+                      initial={{
+                        topic: m.name,
+                        startTime: m.metadata?.start_time,
+                        durationMinutes: m.metadata?.duration,
+                        timezone: m.metadata?.timezone,
+                      }}
+                      onChanged={onChanged}
+                    />
                   )}
                 </div>
               </div>

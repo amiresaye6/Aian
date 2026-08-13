@@ -40,6 +40,7 @@ import {
   // Check,
   LogOut,
   ScrollText,
+  PanelBottomClose
 } from "lucide-react";
 import { AianMark } from "@/components/ui/Logo";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -55,6 +56,7 @@ const NAV = [
   { to: "/eyes", label: "Integrations", icon: Plug },
   { to: "/dashboard/pipeline", label: "Pipeline", icon: Database },
   { to: "/dashboard/members", label: "Members", icon: Users },
+  { to: "/dashboard/roles", label: "roles", icon: PanelBottomClose },
   // { to: "/dashboard/organization", label: "Organization", icon: Building2 },
   { to: "/dashboard/billing", label: "Billing", icon: CreditCard },
   { to: "/dashboard/audit", label: "Audit Log", icon: ScrollText },
@@ -72,7 +74,7 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   return (
     <div
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-2.5",
+        "flex w-full items-center gap-3 rounded-2xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/[0.03] p-2.5",
         collapsed && "justify-center",
       )}
     >
@@ -131,8 +133,8 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
               className={cn(
                 "group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13.5px] font-medium transition-all",
                 active
-                  ? "bg-white/[0.06] text-foreground"
-                  : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground",
+                  ? "bg-black/5 dark:bg-white/[0.06] text-foreground"
+                  : "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/[0.04] hover:text-foreground",
                 collapsed && "justify-center px-0",
               )}
             >
@@ -158,7 +160,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
             key={item.label}
             href={item.to}
             className={cn(
-              "flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-all hover:bg-white/[0.04] hover:text-foreground",
+              "flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-all hover:bg-black/5 dark:hover:bg-white/[0.04] hover:text-foreground",
               collapsed && "justify-center px-0",
             )}
           >
@@ -170,7 +172,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
 
       <div className="p-3">
         {!collapsed && (
-          <div className="relative mb-3 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-4">
+          <div className="relative mb-3 overflow-hidden rounded-2xl border border-black/5 dark:border-white/10 bg-gradient-to-br from-black/5 to-black/[0.01] dark:from-white/[0.06] dark:to-white/[0.02] p-4">
             <div
               className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full blur-2xl"
               style={{ background: "radial-gradient(circle, #E8C86A, transparent 70%)", opacity: 0.35 }}
@@ -182,7 +184,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
               Unlock advanced AI agents & Knowledge Graph.
             </div>
             <Link
-              href="/onboarding/subscription"
+              href="/dashboard/billing"
               className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-foreground hover:text-[color:var(--gold-soft)]"
             >
               Upgrade →
@@ -191,7 +193,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] py-2 text-[12px] text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] py-2 text-[12px] text-muted-foreground transition-colors hover:bg-black/5 dark:hover:bg-white/[0.05] hover:text-foreground"
         >
           {collapsed ? <ChevronsRight className="h-4 w-4" /> : (<><ChevronsLeft className="h-4 w-4" /> Collapse</>)}
         </button>
@@ -205,7 +207,7 @@ function TopBar() {
   const router = useRouter();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/5 bg-[color:var(--background)]/70 px-4 backdrop-blur-xl md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-black/5 dark:border-white/5 bg-black/[0.03] dark:bg-[color:var(--background)]/70 px-4 backdrop-blur-xl md:px-6">
       {/* ...search bar unchanged... */}
       <div className="ml-auto flex items-center gap-2">
         <ThemeToggle />
@@ -213,7 +215,7 @@ function TopBar() {
           <Bell className="h-4 w-4" />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-gold-gradient" />
         </button>
-        <div className="ml-1 flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] py-1 pl-1 pr-3">
+        <div className="ml-1 flex items-center gap-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/[0.03] py-1 pl-1 pr-3">
           <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gold-gradient text-[12px] font-bold text-[#17130A]">
             <img
               src={getImageUrl(user?.avatarUrl) || `https://ui-avatars.com/api/?name=${user?.fullName ?? "?"}&background=E8C86A&color=17130A&bold=true`}
@@ -231,13 +233,13 @@ function TopBar() {
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <button
-              className="ml-2 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+              className="ml-2 flex h-9 w-9 items-center justify-center rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/[0.03] text-muted-foreground transition-colors hover:bg-black/10 dark:hover:bg-white/[0.06] hover:text-foreground"
               title="Sign out"
             >
               <LogOut className="h-4 w-4" />
             </button>
           </AlertDialogTrigger>
-          <AlertDialogContent className="border-white/10 bg-background/95 backdrop-blur-xl">
+          <AlertDialogContent className="border-black/10 dark:border-white/10 bg-background/95 backdrop-blur-xl">
             <AlertDialogHeader>
               <AlertDialogTitle>Sign out</AlertDialogTitle>
               <AlertDialogDescription>
@@ -245,7 +247,7 @@ function TopBar() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-white/10 bg-white/5 hover:bg-white/10 hover:text-foreground text-foreground">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground text-foreground">Cancel</AlertDialogCancel>
               <AlertDialogAction 
                 onClick={() => {
                   logout();

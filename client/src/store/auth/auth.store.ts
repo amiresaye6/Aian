@@ -28,7 +28,7 @@ export const useAuthStore = create<AuthState>()(
   orgId: null,
   isAuthenticated: false,
   isLoading: false,
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setUser: (user) => set({ user, isAuthenticated: !!user, orgId: user?.organizationId || null }),
   setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
   setOrgId: (orgId) => set({ orgId }),
   setIsLoading: (isLoading) => set({ isLoading }),
@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>()(
         return user.role === allowedRoles;
   },
   login: (user, accessToken, refreshToken) => {
-    set({ user, accessToken, refreshToken, isAuthenticated: true })
+    set({ user, accessToken, refreshToken, isAuthenticated: true, orgId: user?.organizationId || null })
     console.log("User logged in:", user);
     //console.log("Access Token:", accessToken);
     //console.log("Refresh Token:", refreshToken);  

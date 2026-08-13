@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Shield, ShieldAlert, MoreVertical, Edit3, Trash2, Users } from "lucide-react";
+import { Shield, ShieldAlert, MoreVertical, Edit3, Trash2, Users, KeyRound } from "lucide-react";
 import { Role } from "@/types/roles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,11 @@ export function RolesList({ roles, onEdit, onDelete }: RolesListProps) {
         {roles.map((role) => {
           const isSystem = role.isSystemRole;
           const userCount = role.users?.length || 0;
+          // Defensive: permissions may or may not be populated at list-level depending on API shape
+          const permList = (role as any).permissions as Array<{ id?: string; permissionId?: string; name?: string; key?: string }> | undefined;
+          const permCount = permList?.length || 0;
+          const visiblePerms = permList?.slice(0, 3) || [];
+          const extraPermCount = Math.max(permCount - visiblePerms.length, 0);
 
           return (
             <motion.div
@@ -47,9 +52,9 @@ export function RolesList({ roles, onEdit, onDelete }: RolesListProps) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -15 }}
-              className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/[0.01] p-4.5 transition-all hover:bg-white/[0.025] hover:border-white/10"
+              className="group flex flex-col sm:flex-row sm:items-start justify-between gap-4 rounded-2xl border border-white/5 bg-white/[0.01] p-4.5 transition-all hover:bg-white/[0.025] hover:border-white/10"
             >
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 min-w-0 flex-1">
                 <div className={cn(
                   "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[14px] transition-transform group-hover:scale-105",
                   isSystem 
@@ -59,7 +64,7 @@ export function RolesList({ roles, onEdit, onDelete }: RolesListProps) {
                   {isSystem ? <ShieldAlert className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
                 </div>
 
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 space-y-1.5 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-display font-medium text-[15px] text-foreground">{role.name}</span>
                     <Badge variant="outline" className="font-mono text-[10px] tracking-wide text-muted-foreground bg-white/[0.02] border-white/10 rounded px-1.5 py-0">
@@ -74,7 +79,27 @@ export function RolesList({ roles, onEdit, onDelete }: RolesListProps) {
                   <p className="text-[13px] text-muted-foreground/90 line-clamp-1 max-w-2xl">
                     {role.description || "System assigned root access role."}
                   </p>
-                  
+
+                  {/* Permission chips - only render if we actually have permission data */}
+                  {permCount > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <KeyRound className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                      {visiblePerms.map((perm, idx) => (
+                        <span
+                          key={perm.id || perm.permissionId || idx}
+                          className="text-[10.5px] font-medium text-muted-foreground/80 bg-white/[0.03] border border-white/[0.06] rounded-md px-2 py-0.5"
+                        >
+                          {perm.name || perm.key || "permission"}
+                        </span>
+                      ))}
+                      {extraPermCount > 0 && (
+                        <span className="text-[10.5px] font-medium text-[color:var(--gold-soft)] bg-[#C9982B]/[0.06] border border-[#C9982B]/15 rounded-md px-2 py-0.5">
+                          +{extraPermCount} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground/60 pt-0.5">
                     <Users className="h-3.5 w-3.5" />
                     <span>{userCount} {userCount === 1 ? 'user account' : 'user accounts'} mapped</span>
@@ -82,7 +107,7 @@ export function RolesList({ roles, onEdit, onDelete }: RolesListProps) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end border-t border-white/5 pt-3 sm:border-0 sm:pt-0">
+              <div className="flex items-center justify-end border-t border-white/5 pt-3 sm:border-0 sm:pt-0 shrink-0">
                 {!isSystem ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

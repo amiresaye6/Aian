@@ -88,7 +88,8 @@ export default function SubscriptionTab() {
   const sub = subData.data;
   const plan = sub.plan;
   const quota = quotaData?.data;
-  const availablePlans = plansData?.data || [];
+  const availablePlans = plansData || [];
+  console.log("Available plans are: ", availablePlans);
 
   return (
     <>

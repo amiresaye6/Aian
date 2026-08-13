@@ -32,6 +32,7 @@ model User {
   createdOrganizations Organization[]              @relation("OrgCreator")
   connectedProviders   ProviderConnection[]
   uploadedFiles        OrganizationKnowledgeFile[]
+  conversations        Conversation[]
 
   @@map("users")
 }

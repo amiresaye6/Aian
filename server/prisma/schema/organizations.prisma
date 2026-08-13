@@ -31,6 +31,8 @@ model Organization {
   auditLogs            AuditLog[]
   aiUsageLogs          AiUsageLog[]
   usagePeriodSnapshots UsagePeriodSnapshot[]
+  conversations        Conversation[]
+  syncRuns             SyncRun[]
 
   @@map("organizations")
 }

@@ -16,7 +16,7 @@ export class BatchService {
     private readonly connectionRepo: ProviderConnectionRepository,
     @Inject('KNOWLEDGE_PROCESSOR_GATEWAY')
     private readonly processorGateway: KnowledgeProcessorGateway,
-  ) {}
+  ) { }
 
   /**
    * Processes pending items for an organization.
@@ -25,6 +25,7 @@ export class BatchService {
   async processOrganizationBatches(
     organizationId: string,
     force: boolean = false,
+    syncRunId?: string,
   ) {
     const settings =
       await this.settingsRepo.findByOrganizationId(organizationId);
@@ -61,6 +62,7 @@ export class BatchService {
       const batch = await this.batchRepo.create(
         organizationId,
         force ? 'manual' : 'auto',
+        syncRunId,
       );
 
       // 2. Fetch pending items

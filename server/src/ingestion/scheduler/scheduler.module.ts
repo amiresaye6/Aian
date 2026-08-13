@@ -4,6 +4,7 @@ import { SchedulerService } from './scheduler.service';
 import { BatchService } from './batch.service';
 import { SyncNowController } from './controllers/sync-now.controller';
 import { ProcessingSettingsController } from './controllers/processing-settings.controller';
+import { PipelineStatusService } from './pipeline-status.service';
 
 /**
  * Scheduler Module.
@@ -12,7 +13,7 @@ import { ProcessingSettingsController } from './controllers/processing-settings.
 @Module({
   imports: [ScheduleModule.forRoot()],
   controllers: [SyncNowController, ProcessingSettingsController],
-  providers: [SchedulerService, BatchService],
+  providers: [SchedulerService, BatchService, PipelineStatusService],
   exports: [BatchService],
 })
 export class SchedulerModule {}

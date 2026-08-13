@@ -12,11 +12,9 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  evidenceChains?: EvidenceNode[];
-}
+import { useChatStore } from "@/store/chat/chat.store";
+import { ChatSidebar } from "./ChatSidebar";
+import { RotateCcw } from "lucide-react";
 
 const SUGGESTIONS = [
   "Summarize the recent engineering discussions on Slack",
@@ -37,12 +35,19 @@ export default function ChatScreen() {
   const router = useRouter();
   const initialQuery = searchParams.get("q");
 
+  const { messages, addMessage, activeConversationId, loadConversations, setActiveConversation, isSidebarOpen } = useChatStore();
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
   const [loadingPhase, setLoadingPhase] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const askMutation = useAskQuestion();
+
+  // Load persisted conversation messages on refresh
+  useEffect(() => {
+    if (activeConversationId && messages.length === 0) {
+      setActiveConversation(activeConversationId);
+    }
+  }, []);
 
   useEffect(() => {
     if (initialQuery && messages.length === 0) {
@@ -75,27 +80,44 @@ export default function ChatScreen() {
     if (!text || askMutation.isPending) return;
 
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    
+    // Add temporary user message
+    addMessage({
+      role: "user",
+      content: text,
+    });
 
     try {
-      const response = await askMutation.mutateAsync(text);
-      setMessages((prev) => [
-        ...prev,
-        {
+      const response = await askMutation.mutateAsync({ 
+        query: text, 
+        conversationId: activeConversationId || undefined 
+      });
+      
+      // If this was a new conversation, we need to refresh the conversation list
+      // and set the active conversation ID
+      if (!activeConversationId && response.conversationId) {
+        await loadConversations();
+        await setActiveConversation(response.conversationId);
+      } else {
+        // Just add the assistant response
+        addMessage({
+          id: response.messageId,
           role: "assistant",
           content: response.answer,
           evidenceChains: response.evidenceChains,
-        },
-      ]);
+        });
+      }
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Sorry, I encountered an error while processing your request.",
-        },
-      ]);
+      addMessage({
+        role: "assistant",
+        content: "Sorry, I encountered an error while processing your request.",
+        isError: true,
+      });
     }
+  };
+
+  const handleRetry = (queryText: string) => {
+    handleSend(queryText);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -106,13 +128,20 @@ export default function ChatScreen() {
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-transparent">
+    <div className="relative flex h-full w-full bg-transparent overflow-hidden">
+      <ChatSidebar />
+      <div className="relative flex h-full min-w-0 flex-1 flex-col">
       
       {/* Background Ambient Glows */}
       <div className="pointer-events-none fixed left-1/2 top-1/2 -z-10 h-[800px] w-[1000px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--gold-soft)] opacity-[0.05] blur-[150px]" />
       
       {/* Floating Tag Header */}
-      <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-black/5 dark:border-white/5 bg-background/50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground shadow-sm backdrop-blur-md md:left-6 md:top-6">
+      <div 
+        className={cn(
+          "absolute top-4 z-20 flex items-center gap-2 rounded-full border border-black/5 dark:border-white/5 bg-background/50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground shadow-sm backdrop-blur-md transition-all duration-300",
+          !isSidebarOpen ? "left-16 md:left-20" : "left-4 md:left-6 md:top-6"
+        )}
+      >
         <Sparkles className="h-3.5 w-3.5 text-[color:var(--gold-soft)]" />
         AIAN Portal
       </div>
@@ -190,6 +219,25 @@ export default function ChatScreen() {
                     ))}
                   </div>
                 )}
+                
+                {/* Retry Button for Errors */}
+                {msg.isError && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-fit gap-2 border-red-500/20 text-red-500 hover:bg-red-500/10"
+                    onClick={() => {
+                      // Find the last user message to retry
+                      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                      if (lastUserMsg) {
+                        handleRetry(lastUserMsg.content);
+                      }
+                    }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Retry
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -247,6 +295,7 @@ export default function ChatScreen() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

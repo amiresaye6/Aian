@@ -1,11 +1,18 @@
-import { Injectable, OnApplicationShutdown, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Injectable,
+  OnApplicationShutdown,
+  Logger,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import neo4j, { Driver, Session } from 'neo4j-driver';
 import { PrismaService } from '../prisma/prisma.service';
 import { GraphResponse, GraphNode, GraphLink } from './graph.types';
 import { GraphQueryDto } from './dto/graph-query.dto';
 @Injectable()
-export class GraphService implements OnApplicationShutdown, OnApplicationBootstrap {
+export class GraphService
+  implements OnApplicationShutdown, OnApplicationBootstrap
+{
   private readonly logger = new Logger(GraphService.name);
   private readonly driver: Driver;
 
@@ -42,8 +49,11 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
     return this.driver.session();
   }
 
-  async getRankedGraph(orgId: string, query: GraphQueryDto): Promise<GraphResponse> {
-    const limit = query.limit || 1  0;
+  async getRankedGraph(
+    orgId: string,
+    query: GraphQueryDto,
+  ): Promise<GraphResponse> {
+    const limit = query.limit || 10;
     const minDegree = query.minDegree || 0;
 
     const session = this.getSession();
@@ -59,14 +69,18 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
         LIMIT $limit
         RETURN n.id AS id, n.canonicalName AS label, n.type AS type, degree
         `,
-        { orgId, limit: neo4j.int(limit), minDegree: neo4j.int(minDegree) }
+        { orgId, limit: neo4j.int(limit), minDegree: neo4j.int(minDegree) },
       );
 
       const topNodeIds = topNodesResult.records.map((r) => r.get('id'));
-      
+
       // If no nodes found, return empty
       if (topNodeIds.length === 0) {
-        return { nodes: [], links: [], meta: { truncated: false, totalNodeCount: 0 } };
+        return {
+          nodes: [],
+          links: [],
+          meta: { truncated: false, totalNodeCount: 0 },
+        };
       }
 
       // 2. Fetch relationships only between these top nodes
@@ -78,13 +92,13 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
         AND id(n) < id(m) 
         RETURN n.id AS source, m.id AS target, type(r) AS type
         `,
-        { nodeIds: topNodeIds }
+        { nodeIds: topNodeIds },
       );
 
       // 3. Count total nodes to know if we truncated
       const countResult = await session.run(
         `MATCH (n) WHERE n.organizationId = $orgId RETURN count(n) AS total`,
-        { orgId }
+        { orgId },
       );
       const totalNodeCount = countResult.records[0].get('total').toNumber();
 
@@ -114,7 +128,10 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
     }
   }
 
-  async getNodeNeighbors(orgId: string, nodeId: string): Promise<GraphResponse> {
+  async getNodeNeighbors(
+    orgId: string,
+    nodeId: string,
+  ): Promise<GraphResponse> {
     const session = this.getSession();
     try {
       const result = await session.run(
@@ -124,7 +141,7 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
         WITH n, r, m, COUNT { (m)--() } AS mDegree
         RETURN m.id AS id, m.canonicalName AS label, m.type AS type, mDegree AS degree, type(r) AS relType, startNode(r) = n AS isOutbound
         `,
-        { orgId, nodeId }
+        { orgId, nodeId },
       );
 
       const nodes: GraphNode[] = [];
@@ -165,13 +182,15 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
     try {
       const result = await session.run(
         `MATCH (n) WHERE n.id = $nodeId AND n.organizationId = $orgId RETURN properties(n) as props`,
-        { nodeId, orgId }
+        { nodeId, orgId },
       );
       if (result.records.length > 0) {
         neo4jNode = result.records[0].get('props');
       }
     } catch (error) {
-      this.logger.error(`Error fetching node details from Neo4j: ${error.message}`);
+      this.logger.error(
+        `Error fetching node details from Neo4j: ${error.message}`,
+      );
     } finally {
       await session.close();
     }
@@ -194,7 +213,7 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
       return null;
     }
 
-    let artifacts = [];
+    let artifacts: any[] = [];
     if (entity) {
       const artifactMap = new Map();
       entity.mentions.forEach((mention) => {
@@ -212,10 +231,10 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
       try {
         const artifactIds = JSON.parse(neo4jNode.artifactIds);
         if (Array.isArray(artifactIds) && artifactIds.length > 0) {
-          const dbArtifacts = await this.prisma.artifact.findMany({
-            where: { id: { in: artifactIds }, organizationId: orgId }
+          const dbArtifacts = await this.prisma.knowledgeArtifact.findMany({
+            where: { id: { in: artifactIds }, organizationId: orgId },
           });
-          artifacts = dbArtifacts.map(a => ({
+          artifacts = dbArtifacts.map((a: any) => ({
             id: a.id,
             title: a.title,
             type: a.type,
@@ -230,11 +249,20 @@ export class GraphService implements OnApplicationShutdown, OnApplicationBootstr
     return {
       entity: {
         id: entity?.id || neo4jNode?.id,
-        canonicalName: entity?.canonicalName || neo4jNode?.canonicalName || neo4jNode?.name || neo4jNode?.title || neo4jNode?.decision || neo4jNode?.id.substring(0, 8),
-        normalizedName: entity?.normalizedName || neo4jNode?.normalizedName || '',
+        canonicalName:
+          entity?.canonicalName ||
+          neo4jNode?.canonicalName ||
+          neo4jNode?.name ||
+          neo4jNode?.title ||
+          neo4jNode?.decision ||
+          neo4jNode?.id.substring(0, 8),
+        normalizedName:
+          entity?.normalizedName || neo4jNode?.normalizedName || '',
         type: entity?.type || neo4jNode?.type || neo4jNode?.label || 'Unknown',
         confidence: entity?.confidence || neo4jNode?.confidence || 1,
-        aliases: entity?.aliases || (neo4jNode?.aliases ? JSON.parse(neo4jNode.aliases) : []),
+        aliases:
+          entity?.aliases ||
+          (neo4jNode?.aliases ? JSON.parse(neo4jNode.aliases) : []),
       },
       artifacts,
     };

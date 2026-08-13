@@ -162,23 +162,43 @@ export class SlackAuthController {
         ? this.encryptionService.encrypt(this.signingSecret)
         : null;
 
-      // Save the connection using the global ProviderConnectionRepository
-      const connection = await this.connectionRepo.create({
-        organizationEyeId,
-        providerId: slackProvider.id, // The DB UUID, not the string 'SLACK'
-        status: 'connected',
-        externalAccountId: teamId,
-        externalAccountName: teamName,
-        accessTokenEncrypted: encryptedAccessToken,
-        scopes: scopes,
-        webhookSecret: encryptedWebhookSecret,
-        connectedAt: new Date(),
-        connectionMetadata: {
-          bot_user_id: data.bot_user_id,
-          app_id: data.app_id,
-          authed_user_id: data.authed_user?.id,
-        },
-      });
+      // Check if a connection already exists for this teamId
+      const existingConnection = await this.connectionRepo.findByExternalAccountId(teamId);
+
+      let connection;
+      if (existingConnection) {
+        connection = await this.connectionRepo.update(existingConnection.id, {
+          organizationEyeId,
+          status: 'connected',
+          externalAccountName: teamName,
+          accessTokenEncrypted: encryptedAccessToken,
+          scopes: scopes,
+          webhookSecret: encryptedWebhookSecret,
+          connectedAt: new Date(),
+          connectionMetadata: {
+            bot_user_id: data.bot_user_id,
+            app_id: data.app_id,
+            authed_user_id: data.authed_user?.id,
+          },
+        });
+      } else {
+        connection = await this.connectionRepo.create({
+          organizationEyeId,
+          providerId: slackProvider.id,
+          status: 'connected',
+          externalAccountId: teamId,
+          externalAccountName: teamName,
+          accessTokenEncrypted: encryptedAccessToken,
+          scopes: scopes,
+          webhookSecret: encryptedWebhookSecret,
+          connectedAt: new Date(),
+          connectionMetadata: {
+            bot_user_id: data.bot_user_id,
+            app_id: data.app_id,
+            authed_user_id: data.authed_user?.id,
+          },
+        });
+      }
 
       // Update the OrganizationEye status to 'connected'
       await this.prisma.organizationEye.update({

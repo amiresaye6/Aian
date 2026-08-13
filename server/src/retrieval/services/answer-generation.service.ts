@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
-import { ANSWER_GENERATION_PROMPT } from '../../ai/prompts';
+import {
+  ANSWER_GENERATION_SYSTEM_PROMPT,
+  ANSWER_GENERATION_USER_PROMPT,
+} from '../../ai/prompts';
 
 @Injectable()
 export class AnswerGenerationService {
@@ -15,16 +18,17 @@ export class AnswerGenerationService {
   ): Promise<string> {
     this.logger.log('Generating final answer based on Evidence Chains.');
 
-    const prompt = ANSWER_GENERATION_PROMPT.replace('{query}', query).replace(
-      '{contextString}',
-      contextString,
-    );
+    const prompt = ANSWER_GENERATION_USER_PROMPT.replace(
+      '{query}',
+      query,
+    ).replace('{contextString}', contextString);
 
     // We can use standard text generation for the conversational answer
     const { data: result } = await this.aiGateway.generateText(prompt, {
       temperature: 0.3,
       organizationId,
       feature: 'retrieval',
+      systemPrompt: ANSWER_GENERATION_SYSTEM_PROMPT,
     });
 
     this.logger.log('Final answer generated successfully.');

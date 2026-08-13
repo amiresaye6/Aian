@@ -14,14 +14,16 @@ export interface EvidenceNode {
 export interface ChatResponse {
   answer: string;
   evidenceChains: EvidenceNode[];
+  conversationId: string;
+  messageId: string;
 }
 
 export const chatApi = {
-  askQuestion: async (query: string): Promise<ChatResponse> => {
-    // Note: The NestJS endpoint returns { success: true, data: { answer, evidenceChains } } 
+  askQuestion: async (query: string, conversationId?: string): Promise<ChatResponse> => {
+    // Note: The NestJS endpoint returns { success: true, data: { answer, evidenceChains, conversationId, messageId } } 
     // depending on global interceptors. If it wraps in 'data', Axios double wraps it.
     // Let's inspect the response shape safely.
-    const response = await api.post("/chat/query", { query });
+    const response = await api.post("/chat/query", { query, conversationId });
     if (response.data && response.data.success && response.data.data) {
       return response.data.data;
     }

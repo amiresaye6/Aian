@@ -80,66 +80,93 @@ export class KnowledgeProcessorService implements KnowledgeProcessorGateway {
         // Collect created artifact IDs to safely dispatch extraction outside the transaction
         const createdArtifactIds: string[] = [];
 
-        // Save artifacts and update knowledge items
-        await this.prisma.$transaction(async (tx) => {
-          for (const artifactData of artifactsData) {
-            // Create the artifact
-            const artifact = await tx.knowledgeArtifact.create({
-              data: artifactData as any,
+        // Save artifacts and update knowledge items in chunks to avoid Prisma transaction timeout (P2028)
+        const chunkSize = 50;
+        for (let i = 0; i < artifactsData.length; i += chunkSize) {
+          const chunk = artifactsData.slice(i, i + chunkSize);
+
+          await this.prisma.$transaction(
+            async (tx) => {
+              for (const artifactData of chunk) {
+                // Create the artifact
+                const artifact = await tx.knowledgeArtifact.create({
+                  data: artifactData as any,
+                });
+
+                createdArtifactIds.push(artifact.id);
+
+                // Find all items that belong to this artifact
+                const resourceId = (artifactData.metadata as any)?.resourceId;
+                const prNumber = (artifactData.metadata as any)?.prNumber;
+                const issueNumber = (artifactData.metadata as any)?.issueNumber;
+
+                if (resourceId) {
+                  const orConditions: any[] = [
+                    { externalResourceId: resourceId },
+                    { parentExternalResourceId: resourceId },
+                  ];
+
+                  if (prNumber !== undefined && prNumber !== null) {
+                    orConditions.push({
+                      metadata: {
+                        path: ['prNumber'],
+                        equals: prNumber,
+                      },
+                    });
+                  }
+
+                  if (issueNumber !== undefined && issueNumber !== null) {
+                    orConditions.push({
+                      metadata: {
+                        path: ['issueNumber'],
+                        equals: issueNumber,
+                      },
+                    });
+                  }
+
+                  await tx.knowledgeItem.updateMany({
+                    where: {
+                      id: { in: items.map((item) => item.id) },
+                      OR: orConditions,
+                    },
+                    data: {
+                      artifactId: artifact.id,
+                      ingestionStatus: 'handed_off',
+                    },
+                  });
+                }
+              }
+            },
+            { timeout: 30000 },
+          );
+        }
+
+        // After creating artifacts, update sync run artifact count
+        if (createdArtifactIds.length > 0) {
+          // Get the batch's syncRunId
+          const freshBatch = await this.prisma.ingestionBatch.findUnique({
+            where: { id: batchId },
+            select: { syncRunId: true },
+          });
+          if (freshBatch?.syncRunId) {
+            await this.prisma.syncRun.update({
+              where: { id: freshBatch.syncRunId },
+              data: {
+                totalArtifacts: { increment: createdArtifactIds.length },
+                currentStage: 'extraction',
+              },
             });
-
-            createdArtifactIds.push(artifact.id);
-
-            // Find all items that belong to this artifact
-            const resourceId = (artifactData.metadata as any)?.resourceId;
-            const prNumber = (artifactData.metadata as any)?.prNumber;
-            const issueNumber = (artifactData.metadata as any)?.issueNumber;
-
-            if (resourceId) {
-              const orConditions: any[] = [
-                { externalResourceId: resourceId },
-                { parentExternalResourceId: resourceId },
-              ];
-
-              if (prNumber !== undefined && prNumber !== null) {
-                orConditions.push({
-                  metadata: {
-                    path: ['prNumber'],
-                    equals: prNumber,
-                  },
-                });
-              }
-
-              if (issueNumber !== undefined && issueNumber !== null) {
-                orConditions.push({
-                  metadata: {
-                    path: ['issueNumber'],
-                    equals: issueNumber,
-                  },
-                });
-              }
-
-              await tx.knowledgeItem.updateMany({
-                where: {
-                  id: { in: items.map((i) => i.id) },
-                  OR: orConditions,
-                },
-                data: {
-                  artifactId: artifact.id,
-                  ingestionStatus: IngestionStatus.handed_off,
-                },
-              });
-            }
           }
-        });
+        }
 
         // --- Stage 2 Hook ---
         // Trigger Knowledge Extraction asynchronously AFTER the transaction completes.
         // We use a single background setImmediate that iterates sequentially
         // to avoid slamming the AI Provider with parallel requests and hitting rate limits.
         if (createdArtifactIds.length > 0) {
-          const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-          
+          const sleep = (ms: number) =>
+            new Promise((resolve) => setTimeout(resolve, ms));
+
           setImmediate(async () => {
             for (const artifactId of createdArtifactIds) {
               try {
