@@ -28,8 +28,7 @@ export class QuotaService {
    * Helper to determine quota status based on percentage
    */
   private determineStatus(percentage: number): QuotaStatus {
-    if (percentage >= 110) return QuotaStatus.hard_blocked;
-    if (percentage >= 100) return QuotaStatus.grace_period;
+    if (percentage >= 100) return QuotaStatus.hard_blocked;
     if (percentage >= 80) return QuotaStatus.warning;
     return QuotaStatus.within_limits;
   }
@@ -86,7 +85,36 @@ export class QuotaService {
     const used = BigInt(usage._sum.totalTokens || 0);
     const percentage =
       Number((used * 10000n) / (limit > 0n ? limit : 1n)) / 100;
-    const status = this.determineStatus(percentage);
+
+    // Plan-aware status determination
+    let status: QuotaStatus;
+    if (percentage < 80) {
+      status = QuotaStatus.within_limits;
+    } else if (percentage < 100) {
+      status = QuotaStatus.warning;
+    } else if (plan.isTrial) {
+      // Free Trial: hard block at 100%, no overage allowed
+      status = QuotaStatus.hard_blocked;
+    } else {
+      // Paid plan at or over 100% — check hard cap
+      if (
+        sub.overageHardCapCents !== null &&
+        sub.overageHardCapCents > 0
+      ) {
+        const overageTokens = used > limit ? used - limit : 0n;
+        const overageCostCents = Math.ceil(
+          (Number(overageTokens) / 1_000_000) * plan.overageTokenPriceCents,
+        );
+        if (overageCostCents >= sub.overageHardCapCents) {
+          status = QuotaStatus.hard_blocked;
+        } else {
+          status = QuotaStatus.overage_active;
+        }
+      } else {
+        // No hard cap: unlimited overage
+        status = QuotaStatus.overage_active;
+      }
+    }
 
     return {
       allowed: status !== QuotaStatus.hard_blocked,
@@ -220,8 +248,8 @@ export class QuotaService {
     const overageTokens =
       totalTokensUsed > tokenLimit ? totalTokensUsed - tokenLimit : 0n;
 
-    // Per 10M tokens overage pricing
-    const tokenBlocks = Number(overageTokens) / 10_000_000;
+    // Per 1M tokens overage pricing ($2 per 1M tokens per spec)
+    const tokenBlocks = Number(overageTokens) / 1_000_000;
     const overageTokenCostCents = Math.ceil(
       tokenBlocks * plan.overageTokenPriceCents,
     );
