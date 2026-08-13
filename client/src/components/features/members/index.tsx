@@ -8,14 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InviteMemberSection } from "./InviteMemberSection";
 import { MembersTable } from "./MembersTable";
 import { MemberDetailsSheet } from "./MemberDetailsSheet";
-import { useRemoveMember } from "@/hooks/use-members";
+// import { useRemoveMember } from "@/hooks/use-members";
 import { Users } from "lucide-react";
 
 export default function MembersPage() {
   const user = useAuthStore((s) => s.user);
   const organizationId = user?.organizationId;
   const { data: members, isLoading, isError } = useMembers(organizationId ?? "");
-  const { mutate: removeMember } = useRemoveMember(organizationId ?? "");
+  // const { mutate: removeMember } = useRemoveMember(organizationId ?? "");
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
@@ -66,7 +66,8 @@ export default function MembersPage() {
             isLoading={isLoading}
             onSelectMember={setSelectedMemberId}
             selectedMemberId={selectedMemberId ?? undefined}
-            onRemoveMember={(id) => removeMember(id)}
+            // onRemoveMember={(id) => removeMember(id)}
+             organizationId={organizationId}
           />
         )}
       </div>
