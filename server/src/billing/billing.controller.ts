@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -15,6 +16,7 @@ import { BillingService } from './billing.service';
 import { QuotaService } from './quota.service';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { CheckoutDto } from './dto/checkout.dto';
+import { DowngradePlanDto } from './dto/downgrade-plan.dto';
 import { AuthGaurd } from '../auth/auth.gaurd';
 import type { PaymobCallbackPayload } from '../paymob/paymob.types';
 import { RequiredPermissions } from '../decorators/required-permissions.decorator';
@@ -72,6 +74,8 @@ export class BillingController {
     return this.billingService.getActiveSubscription(organizationId);
   }
 
+  // ─── Plan Changes ─────────────────────────────────────────────────────────
+
   @Post('subscription/upgrade')
   @UseGuards(AuthGaurd)
   @RequiredPermissions('billing.manage')
@@ -81,6 +85,31 @@ export class BillingController {
   ) {
     return this.billingService.upgradePlan(organizationId, planSlug);
   }
+
+  @Post('subscription/downgrade')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async schedulePlanDowngrade(
+    @Query('organizationId') organizationId: string,
+    @Body() dto: DowngradePlanDto,
+  ) {
+    return this.billingService.schedulePlanDowngrade(
+      organizationId,
+      dto.planSlug,
+    );
+  }
+
+  @Delete('subscription/downgrade')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  @HttpCode(HttpStatus.OK)
+  async cancelScheduledDowngrade(
+    @Query('organizationId') organizationId: string,
+  ) {
+    return this.billingService.cancelScheduledDowngrade(organizationId);
+  }
+
+  // ─── Quota & Usage ────────────────────────────────────────────────────────
 
   @Get('quota-dashboard')
   @UseGuards(AuthGaurd)
