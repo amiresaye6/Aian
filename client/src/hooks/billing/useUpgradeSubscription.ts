@@ -17,7 +17,7 @@ export function useUpgradeSubscription() {
       queryClient.invalidateQueries({ queryKey: ["quotaDashboard", organizationId] });
       
       if (data.paymentUrl && !data.appliedImmediately) {
-        toast.success("Redirecting to payment for plan upgrade...");
+        toast.info("Redirecting to payment securely...");
         window.location.href = data.paymentUrl;
       } else {
         toast.success("Subscription upgraded successfully!");

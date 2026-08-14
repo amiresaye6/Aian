@@ -194,6 +194,7 @@ export class BillingService {
     );
 
     return {
+      success: true,
       paymentUrl: paymobResult.paymentUrl,
       paymentId: payment.id,
       orderId: paymobResult.orderId,
@@ -502,7 +503,22 @@ export class BillingService {
     id: string;
     organizationId: string;
     subscriptionId: string;
+    type: string;
   }) {
+    if (payment.type === 'upgrade_proration') {
+      this.logger.warn(
+        `Upgrade payment failed — Payment: ${payment.id}. Subscription ${payment.subscriptionId} remains on current plan without changes.`,
+      );
+      
+      await this.repository.createLedgerEvent({
+        organizationId: payment.organizationId,
+        type: 'payment_failed',
+        description: `Upgrade payment ${payment.id} failed. Subscription remains active on the current plan.`,
+        paymentId: payment.id,
+      });
+      return;
+    }
+
     const GRACE_PERIOD_DAYS = 3;
     const gracePeriodEnd = new Date();
     gracePeriodEnd.setDate(gracePeriodEnd.getDate() + GRACE_PERIOD_DAYS);
@@ -546,6 +562,32 @@ export class BillingService {
       currency: payment.currency,
       paidAt: payment.paidAt,
     };
+  }
+
+  // ─── Redirect Resolution ───────────────────────────────────────────────────
+
+  async resolveRedirectUrl(
+    providerPaymentId: string,
+    successStr: string,
+  ): Promise<string> {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const success = successStr === 'true';
+
+    const payment =
+      await this.repository.findPaymentByProviderPaymentId(providerPaymentId);
+
+    if (!payment) {
+      // Fallback if payment not found
+      return `${frontendUrl}/dashboard/billing?payment=${success ? 'success' : 'failed'}`;
+    }
+
+    if (payment.type === 'upgrade_proration') {
+      // Existing user upgrading
+      return `${frontendUrl}/dashboard/billing?payment=${success ? 'success' : 'failed'}`;
+    } else {
+      // Initial checkout/subscription
+      return `${frontendUrl}/payment-result?merchant_order_id=${providerPaymentId}`;
+    }
   }
 
   // ─── Private Helpers ───────────────────────────────────────────────────────

@@ -6,11 +6,11 @@ import {
   Param,
   Body,
   UseGuards,
-  Request,
   Logger,
   HttpCode,
   HttpStatus,
   Query,
+  Res,
 } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { QuotaService } from './quota.service';
@@ -57,6 +57,14 @@ export class BillingController {
     this.logger.log('Received billing webhook');
     await this.billingService.handleWebhook(payload);
     return { received: true };
+  }
+
+  @Get('webhook')
+  async handleRedirect(@Query() query: any, @Res() res: any) {
+    this.logger.log('Received billing redirect from Paymob');
+    const merchantOrderId = query.merchant_order_id;
+    const url = await this.billingService.resolveRedirectUrl(merchantOrderId, query.success);
+    return res.redirect(url);
   }
 
   @Get('verify/:providerPaymentId')

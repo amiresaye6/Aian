@@ -6,9 +6,34 @@ import { AppLayout } from "@/layouts/AppLayout";
 import SubscriptionTab from "./_components/SubscriptionTab";
 import AiUsageTab from "./_components/AiUsageTab";
 
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, Suspense } from "react";
+import { toast } from "sonner";
+
+function PaymentNotification() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  useEffect(() => {
+    const paymentStatus = searchParams.get("payment");
+    if (paymentStatus === "success") {
+      toast.success("Payment successful! Your subscription has been updated.");
+      router.replace("/dashboard/billing");
+    } else if (paymentStatus === "failed") {
+      toast.error("Payment failed. Your subscription was not changed.");
+      router.replace("/dashboard/billing");
+    }
+  }, [searchParams, router]);
+
+  return null;
+}
+
 export default function BillingPage() {
   return (
     <AppLayout>
+      <Suspense fallback={null}>
+        <PaymentNotification />
+      </Suspense>
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         
         {/* Header */}
