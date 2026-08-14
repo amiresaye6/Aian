@@ -6,6 +6,7 @@ import { Users, Search } from "lucide-react";
 import { Member } from "@/types/members";
 import { MemberRow } from "./MemberRow";
 import { useRemoveMember } from "@/hooks/use-members";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 const STATUS_FILTERS = [
   { value: "all", label: "All" },
@@ -17,7 +18,8 @@ const STATUS_FILTERS = [
 export function MembersList({ members, organizationId }: { members: Member[]; organizationId: string }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const { mutate: remove } = useRemoveMember(organizationId);
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const { mutate: remove, isPending: isRemoving } = useRemoveMember(organizationId);
 
   const filtered = useMemo(() => {
     return members.filter((m) => {
@@ -28,6 +30,12 @@ export function MembersList({ members, organizationId }: { members: Member[]; or
       return matchesSearch && matchesStatus;
     });
   }, [members, search, statusFilter]);
+  const handleConfirmRemove = () => {
+    if (!memberToRemove) return;
+    remove(memberToRemove.id, {
+      onSuccess: () => setMemberToRemove(null),
+    });
+  };
 
  return (
     <div className="mt-8">
@@ -82,12 +90,25 @@ export function MembersList({ members, organizationId }: { members: Member[]; or
                 key={m.id}
                 member={m}
                 isFirst={i === 0}
-                onRemove={() => remove(m.id)}
+                onRemove={() => setMemberToRemove(m)}
               />
             ))}
           </AnimatePresence>
         </div>
       )}
+      <ConfirmActionDialog
+        open={!!memberToRemove}
+        onClose={() => setMemberToRemove(null)}
+        onConfirm={handleConfirmRemove}
+        isPending={isRemoving}
+        title="Remove member"
+        description={
+          memberToRemove
+            ? `Are you sure you want to remove "${memberToRemove.fullName}" from the organization? This action cannot be undone.`
+            : ""
+        }
+      confirmLabel="Remove"
+      />
     </div>
   );
 }

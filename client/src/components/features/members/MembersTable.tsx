@@ -16,6 +16,8 @@ import { formatDistanceToNow } from "date-fns";
 import { Users, Search, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { Member } from "@/types/members";
 import { RoleBadge } from "./RoleBadge";
+import { useRemoveMember } from "@/hooks/use-members";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
 const STATUS_FILTERS = [
   { value: "all", label: "All Statuses" },
@@ -45,21 +47,25 @@ function MemberStatusBadge({ status }: { status: Member["memberStatus"] }) {
 interface MembersTableProps {
   members?: Member[];
   isLoading: boolean;
+  organizationId: string;
   onSelectMember: (id: string) => void;
   selectedMemberId?: string;
-  onRemoveMember: (id: string) => void;
+  // onRemoveMember: (id: string) => void;
 }
 
 export function MembersTable({
   members,
   isLoading,
+  organizationId,
   onSelectMember,
   selectedMemberId,
-  onRemoveMember,
+  // onRemoveMember,
 }: MembersTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const { mutate: removeMember, isPending: isRemoving } =useRemoveMember(organizationId);
 
   const filtered = useMemo(() => {
     if (!members) return [];
@@ -86,6 +92,7 @@ export function MembersTable({
   };
 
   return (
+    <>
     <Card className="glass overflow-hidden flex flex-col border-white/5">
       {/* Toolbar */}
       <div className="p-4 md:p-5 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/[0.02]">
@@ -209,7 +216,7 @@ export function MembersTable({
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onRemoveMember(member.id);
+                        setMemberToRemove(member);
                       }}
                       className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     >
@@ -250,5 +257,26 @@ export function MembersTable({
         </div>
       </div>
     </Card>
+    <ConfirmActionDialog
+      open={!!memberToRemove}
+      onClose={() => setMemberToRemove(null)}
+      onConfirm={() => {
+        if (!memberToRemove) return;
+
+        removeMember(memberToRemove.id, {
+          onSuccess: () => setMemberToRemove(null),
+        });
+      }}
+      isPending={isRemoving}
+      title="Remove member"
+      description={
+        memberToRemove
+          ? `Are you sure you want to remove "${memberToRemove.fullName}" from the organization? This action cannot be undone.`
+          : ""
+      }
+      confirmLabel="Remove"
+    />
+    </>
+    
   );
 }
