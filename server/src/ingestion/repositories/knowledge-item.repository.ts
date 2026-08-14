@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -83,5 +84,19 @@ export class KnowledgeItemRepository {
     return this.prisma.knowledgeItem.deleteMany({
       where: { ingestionStatus: 'acknowledged', createdAt: { lt: date } },
     });
+  }
+  async countBySourceTypeGroup(
+    organizationId: string,
+    provider: string,
+  ): Promise<Record<string, number>> {
+    const results = await this.prisma.knowledgeItem.groupBy({
+      by: ['sourceType'],
+      where: { organizationId, provider },
+      _count: { sourceType: true },
+    });
+    return results.reduce((acc, r) => {
+      acc[r.sourceType] = r._count.sourceType;
+      return acc;
+    }, {} as Record<string, number>);
   }
 }

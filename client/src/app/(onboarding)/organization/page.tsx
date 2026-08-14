@@ -29,9 +29,10 @@ import {
 const STEPS = [
   { id: 1, label: "Identity", icon: Building2 },
   { id: 2, label: "Profile", icon: Globe },
-  { id: 3, label: "Operations", icon: Clock },
-  { id: 4, label: "AI Setup", icon: Brain },
-  { id: 5, label: "Review", icon: Sparkles },
+  // { id: 3, label: "Operations", icon: Clock },
+  // { id: 4, label: "AI Setup", icon: Brain },
+  // { id: 5, label: "Review", icon: Sparkles },
+  { id: 3, label: "Review", icon: Sparkles },
 ];
 
 function Field({
@@ -161,16 +162,16 @@ const TIMEZONES = [
   "Europe/Berlin",
   "Asia/Dubai",
 ];
-const WORKING_DAYS = ["Sun–Thu", "Mon–Fri", "Mon–Sat", "7 days"];
-const FISCAL_YEARS = ["January", "April", "July", "October"];
-const CURRENCIES = ["USD", "EUR", "GBP", "EGP", "SAR"];
-const TONES = [
-  "Professional",
-  "Friendly",
-  "Concise",
-  "Analytical",
-  "Executive",
-];
+// const WORKING_DAYS = ["Sun–Thu", "Mon–Fri", "Mon–Sat", "7 days"];
+// const FISCAL_YEARS = ["January", "April", "July", "October"];
+// const CURRENCIES = ["USD", "EUR", "GBP", "EGP", "SAR"];
+// const TONES = [
+//   "Professional",
+//   "Friendly",
+//   "Concise",
+//   "Analytical",
+//   "Executive",
+// ];
 
 function slugify(text: string) {
   return text
@@ -180,16 +181,16 @@ function slugify(text: string) {
     .replace(/(^-|-$)+/g, "");
 }
 
-interface FutureFields {
-  workingDays: string;
-  fiscalYear: string;
-  currency: string;
-  goals: string;
-  tone: string;
-  knowledgeGraph: boolean;
-  meetings: boolean;
-  email: boolean;
-}
+// interface FutureFields {
+//   workingDays: string;
+//   fiscalYear: string;
+//   currency: string;
+//   goals: string;
+//   tone: string;
+//   knowledgeGraph: boolean;
+//   meetings: boolean;
+//   email: boolean;
+// }
 
 export default function CreateOrganizationPage() {
   const router = useRouter();
@@ -220,16 +221,16 @@ export default function CreateOrganizationPage() {
     timezone: TIMEZONES[0],
   });
 
-  const [future, setFuture] = useState<FutureFields>({
-    workingDays: WORKING_DAYS[0],
-    fiscalYear: FISCAL_YEARS[0],
-    currency: CURRENCIES[0],
-    goals: "",
-    tone: TONES[0],
-    knowledgeGraph: true,
-    meetings: true,
-    email: false,
-  });
+  // const [future, setFuture] = useState<FutureFields>({
+  //   workingDays: WORKING_DAYS[0],
+  //   fiscalYear: FISCAL_YEARS[0],
+  //   currency: CURRENCIES[0],
+  //   goals: "",
+  //   tone: TONES[0],
+  //   knowledgeGraph: true,
+  //   meetings: true,
+  //   email: false,
+  // });
 
   // const update = (k: keyof CreateOrganizationPayload, v: string) => {
   //   setForm((f) => {
@@ -273,12 +274,12 @@ export default function CreateOrganizationPage() {
   setGlobalError(null);
 };
 
-  const updateFuture = <K extends keyof FutureFields>(
-    k: K,
-    v: FutureFields[K],
-  ) => {
-    setFuture((f) => ({ ...f, [k]: v }));
-  };
+  // const updateFuture = <K extends keyof FutureFields>(
+  //   k: K,
+  //   v: FutureFields[K],
+  // ) => {
+  //   setFuture((f) => ({ ...f, [k]: v }));
+  // };
 
 
   const validateStep = (s: number) => {
@@ -546,7 +547,7 @@ export default function CreateOrganizationPage() {
               </div>
             )}
 
-            {step === 3 && (
+            {/* {step === 3 && (
               <div className="grid gap-6 md:grid-cols-2">
                 <Field label="Working days">
                   <Select
@@ -581,9 +582,9 @@ export default function CreateOrganizationPage() {
                   </Select>
                 </Field>
               </div>
-            )}
+            )} */}
 
-            {step === 4 && (
+            {/* {step === 4 && (
               <div className="space-y-6">
                 <Field label="Primary goals for AIAN">
                   <textarea
@@ -637,9 +638,9 @@ export default function CreateOrganizationPage() {
                   />
                 </div>
               </div>
-            )}
+            )} */}
 
-            {step === 5 && (
+            {step === 3 && (
               <div>
                 <div className="mb-6 flex items-center gap-4">
                   <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gold-gradient text-[24px] font-bold text-[#17130A]">
@@ -668,19 +669,19 @@ export default function CreateOrganizationPage() {
                     ["Company size", form.companySize],
                     ["Country", form.country],
                     ["Timezone", form.timezone],
-                    ["Working days", future.workingDays],
-                    ["Fiscal year", future.fiscalYear],
-                    ["Currency", future.currency],
-                    ["AI tone", future.tone],
-                    [
-                      "Knowledge Graph",
-                      future.knowledgeGraph ? "Enabled" : "Off",
-                    ],
-                    [
-                      "Meeting Intelligence",
-                      future.meetings ? "Enabled" : "Off",
-                    ],
-                    ["Email Intelligence", future.email ? "Enabled" : "Off"],
+                    // ["Working days", future.workingDays],
+                    // ["Fiscal year", future.fiscalYear],
+                    // ["Currency", future.currency],
+                    // ["AI tone", future.tone],
+                    // [
+                    //   "Knowledge Graph",
+                    //   future.knowledgeGraph ? "Enabled" : "Off",
+                    // ],
+                    // [
+                    //   "Meeting Intelligence",
+                    //   future.meetings ? "Enabled" : "Off",
+                    // ],
+                    // ["Email Intelligence", future.email ? "Enabled" : "Off"],
                   ].map(([k, v]) => (
                     <div
                       key={k}
@@ -695,10 +696,10 @@ export default function CreateOrganizationPage() {
                     </div>
                   ))}
                 </div>
-                <p className="mt-4 text-[11px] text-muted-foreground/70">
+                {/* <p className="mt-4 text-[11px] text-muted-foreground/70">
                   Note: Operations and AI Setup preferences are saved locally
                   for now and will sync once supported by the backend.
-                </p>
+                </p> */}
               </div>
             )}
           </motion.div>
