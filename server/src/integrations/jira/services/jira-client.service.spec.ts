@@ -84,7 +84,7 @@ describe('JiraClientService Task Workflows', () => {
       const result = await service.createTask('org_1', {
         title: 'New Task',
         description: 'Desc',
-        projectKey: 'PROJ',
+        projectName: 'PROJ',
         priority: 'High',
         labels: ['bug'],
       });
@@ -99,7 +99,7 @@ describe('JiraClientService Task Workflows', () => {
       
       await service.createTask('org_1', {
         title: 'Task 2',
-        projectKey: 'PROJ',
+        projectName: 'PROJ',
         assignee: 'John',
       });
       expect(mockedAxios.request).toHaveBeenCalledTimes(2);
@@ -113,20 +113,20 @@ describe('JiraClientService Task Workflows', () => {
         .mockResolvedValueOnce({ data: { issues: [], total: 0 } }); // search issues
 
       await service.listTasks('org_1', {
-        projectKey: 'DEV',
+        projectName: 'DEV',
         status: 'Done',
         assignee: 'John',
-        dateRange: { from: '2025-01-01', to: '2025-01-31' }
+        maxResults: 50,
       });
 
       const reqConfig = mockedAxios.request.mock.calls[1][0];
-      expect((reqConfig.data as any).jql).toBe('project = "DEV" AND status = "Done" AND assignee = "john123" AND updated >= "2025-01-01" AND updated <= "2025-01-31"');
+      expect((reqConfig.data as any).jql).toBe('project = "DEV" AND status = "Done" AND assignee = "john123"');
     });
 
     it('bypasses user resolution for currentUser()', async () => {
       mockedAxios.request.mockResolvedValueOnce({ data: { issues: [], total: 0 } });
 
-      await service.listTasks('org_1', { assignee: 'currentUser()' });
+      await service.listTasks('org_1', { assignee: 'currentUser()', maxResults: 50 });
 
       const reqConfig = mockedAxios.request.mock.calls[0][0];
       expect((reqConfig.data as any).jql).toBe('assignee = currentUser()');

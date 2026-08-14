@@ -424,41 +424,50 @@ export class ZoomClientService implements ProviderClient {
     connection: any,
     meetingId: string,
   ): Promise<void> {
-    const meeting = await this.prismaService.meeting.findUniqueOrThrow({
+    const meeting = await this.prismaService.meeting.findUnique({
       where: {
         id: meetingId,
       },
     });
 
-    const registrants =
-      await this.prismaService.meetingRegistrant.findMany({
-        where: {
-          meetingId,
-        },
-      });
+    if (meeting) {
+      const registrants =
+        await this.prismaService.meetingRegistrant.findMany({
+          where: {
+            meetingId,
+          },
+        });
 
-    const htmlContent = `
-      <p>Your Zoom meeting has been cancelled.</p>
-      <p>Meeting ID: ${meeting.id}</p>
-      <p>Topic: ${meeting.topic}</p>
-      <p>Scheduled Time: ${meeting.startTime}</p>
-    `;
+      const htmlContent = `
+        <p>Your Zoom meeting has been cancelled.</p>
+        <p>Meeting ID: ${meeting.id}</p>
+        <p>Topic: ${meeting.topic}</p>
+        <p>Scheduled Time: ${meeting.startTime}</p>
+      `;
 
-    for (const registrant of registrants) {
-      await this.emailService.sendBrandedEmail(
-        registrant.email,
-        'Meeting Cancelled',
-        htmlContent,
-      );
+      for (const registrant of registrants) {
+        await this.emailService.sendBrandedEmail(
+          registrant.email,
+          'Meeting Cancelled',
+          htmlContent,
+        );
+      }
     }
 
-    await this.executeWithTokenRefresh(connection, (accessToken) =>
-      axios.delete(`https://api.zoom.us/v2/meetings/${meetingId}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }),
-    );
+    try {
+      await this.executeWithTokenRefresh(connection, (accessToken) =>
+        axios.delete(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
+      );
+    } catch (error: any) {
+      // Ignore 404 if the meeting is already deleted on Zoom
+      if (error?.response?.status !== 404) {
+        throw error;
+      }
+    }
 
     await this.prismaService.meetingRegistrant.deleteMany({
       where: {
@@ -466,7 +475,7 @@ export class ZoomClientService implements ProviderClient {
       },
     });
 
-    await this.prismaService.meeting.delete({
+    await this.prismaService.meeting.deleteMany({
       where: {
         id: meetingId,
       },

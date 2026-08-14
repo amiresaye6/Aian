@@ -2,7 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export type SessionState =
-  'idle' | 'collecting_info' | 'confirming' | 'executing';
+  | 'idle'
+  | 'collecting_info'
+  | 'confirming'
+  | 'executing'
+  | 'chaining'
+  | 'awaiting_clarification'
+  | 'awaiting_chain_confirmation';
 
 @Injectable()
 export class SessionService {

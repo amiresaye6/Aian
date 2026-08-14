@@ -92,30 +92,30 @@ export class SlackEventsController {
 
     // ─── Case 2.5: Isolate DMs for Hands Subsystem ───────────────────
     const event = body.event;
-    if (
-      event &&
-      event.type === 'message' &&
-      event.channel_type === 'im' &&
-      !event.bot_id
-    ) {
-      this.logger.log(
-        `[Hands Subsystem] Isolated DM from user ${event.user} in team ${teamId}`,
-      );
-      // TODO: Perform signature validation for DMs here before calling Orchestrator
-      // For now, delegate directly to the Orchestrator Service
-      this.orchestratorService
-        .handleDM({
-          organizationId: connection.organizationId,
-          connectionId: connection.id,
-          teamId: teamId,
-          userId: event.user,
-          channelId: event.channel,
-          text: event.text,
-          threadTs: event.thread_ts || event.ts,
-        })
-        .catch((err) => {
-          this.logger.error(`Orchestrator failed to handle DM: ${err.message}`);
-        });
+    if (event && event.type === 'message' && event.channel_type === 'im') {
+      if (!event.bot_id) {
+        this.logger.log(
+          `[Hands Subsystem] Isolated DM from user ${event.user} in team ${teamId}`,
+        );
+        // Delegate directly to the Orchestrator Service
+        this.orchestratorService
+          .handleDM({
+            organizationId: connection.organizationId,
+            connectionId: connection.id,
+            teamId: teamId,
+            userId: event.user,
+            channelId: event.channel,
+            text: event.text,
+            threadTs: event.thread_ts || event.ts,
+          })
+          .catch((err) => {
+            this.logger.error(`Orchestrator failed to handle DM: ${err.message}`);
+          });
+      } else {
+        this.logger.debug(
+          `Ignoring bot DM message in team ${teamId}. DMs are not ingested into organizational memory.`,
+        );
+      }
 
       return { received: true };
     }

@@ -6,6 +6,7 @@ export interface AiOptions {
   maxTokens?: number;
   organizationId?: string;
   feature?: string;
+  systemPrompt?: string;
 }
 
 export interface AiUsage {

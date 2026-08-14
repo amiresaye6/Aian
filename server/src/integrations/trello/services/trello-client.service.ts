@@ -128,6 +128,9 @@ export class TrelloClientService implements ProviderClient {
             await new Promise(res => setTimeout(res, 1000 * attempt));
             continue;
           }
+          if (status === 400) {
+            throw new TrelloIntegrationError('BAD_REQUEST', `Trello API rejected the request: ${typeof error.response?.data === 'string' ? error.response.data : JSON.stringify(error.response?.data) || error.message}`, false, error.response?.data);
+          }
         }
         throw new TrelloIntegrationError('TRELLO_API_ERROR', 'Failed to communicate with Trello', false, error);
       }
@@ -420,7 +423,7 @@ export class TrelloClientService implements ProviderClient {
     const partialBoard = boards.find(b => b.name.toLowerCase().includes(lowerBoard));
     if (partialBoard) return partialBoard.id;
     
-    return boardNameOrId; // Fallback
+    throw new Error(`Board not found: "${boardNameOrId}". Please ask the user to clarify the correct board name.`);
   }
 
   private async resolveList(connection: ProviderConnection, boardNameOrId: string, listName: string): Promise<string> {
@@ -435,7 +438,7 @@ export class TrelloClientService implements ProviderClient {
     const partialList = lists.find(l => l.name.toLowerCase().includes(lowerList));
     if (partialList) return partialList.id;
     
-    return listName; // Fallback
+    throw new Error(`List not found: "${listName}" on board "${boardNameOrId}". Please ask the user to clarify the correct list name.`);
   }
 
   private async resolveCard(connection: ProviderConnection, taskIdentifier: string): Promise<string> {

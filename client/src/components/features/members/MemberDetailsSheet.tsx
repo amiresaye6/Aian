@@ -204,42 +204,6 @@ export function MemberDetailsSheet({ member, organizationId, onClose }: MemberDe
                       </div>
                     )}
                   </div>
-
-                  {/* Access Limits */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                      <ShieldX className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                        Access Limits
-                      </h3>
-                    </div>
-                    {roleLoading || permsLoading ? (
-                      <Skeleton className="h-24 w-full rounded-2xl" />
-                    ) : Object.keys(limitsGrouped).length === 0 ? (
-                      <p className="text-sm text-muted-foreground">This role has full access to everything.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {Object.entries(limitsGrouped).map(([category, perms]) => (
-                          <div key={category} className="p-3 rounded-xl bg-white/[0.01] border border-white/5">
-                            <p className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider mb-2">
-                              {category}
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {perms.map((p) => (
-                                <Badge
-                                  key={p.id}
-                                  variant="outline"
-                                  className="bg-white/[0.02] text-muted-foreground/60 border-white/10 text-[11px] font-normal"
-                                >
-                                  {p.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </>
               )}
 

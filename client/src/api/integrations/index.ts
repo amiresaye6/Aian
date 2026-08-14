@@ -176,6 +176,11 @@ export async function getPendingCount(connectionId: string) {
   const res = await api.get(`/eyes/${connectionId}/stats/pending-count?organizationId=${orgId}`);
   return res.data.data || res.data;
 }
+export async function getGithubBreakdown(connectionId: string) {
+  const orgId = useAuthStore.getState().orgId;
+  const res = await api.get(`/eyes/${connectionId}/stats/breakdown?organizationId=${orgId}`);
+  return res.data.data || res.data;
+}
 
 
 // meeting's providers specific

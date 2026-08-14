@@ -588,7 +588,8 @@ async function main() {
     data: {
       organizationId: org.id,
       eyeTypeId: taskEye.id,
-      selectedProviderId: jira.id,
+      // selectedProviderId: jira.id,
+      selectedProviderId: trello.id,
       status: 'disconnected',
       syncSchedule: 'hourly',
       settings: { include_subtasks: true },

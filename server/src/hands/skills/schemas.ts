@@ -62,10 +62,22 @@ export type SummarizeInput = z.infer<typeof SummarizeInputSchema>;
 
 function cleanEmail(raw: string): string {
   let cleaned = raw.trim();
-  cleaned = cleaned.replace(/^<mailto:/i, '').replace(/>$/, '');
-  if (cleaned.includes('|')) {
-    cleaned = cleaned.split('|')[0].trim();
+
+  // Extract from markdown: [text](mailto:email@a.com) or [text](email@a.com)
+  const markdownMatch = cleaned.match(/\[.*?\]\((?:mailto:)?(.*?)\)/i);
+  if (markdownMatch && markdownMatch[1]) {
+    cleaned = markdownMatch[1];
   }
+
+  // Extract from Slack/HTML: <mailto:email@a.com|text> or <email@a.com>
+  cleaned = cleaned.replace(/^</, '').replace(/>$/, '');
+  cleaned = cleaned.replace(/^mailto:/i, '');
+  
+  if (cleaned.includes('|')) {
+    cleaned = cleaned.split('|')[0];
+    cleaned = cleaned.replace(/^mailto:/i, '');
+  }
+
   return cleaned.trim();
 }
 
@@ -76,9 +88,9 @@ export const CreateMeetingInputSchema = z
 
       // 1. duration / durationMinutes
       const rawDuration = input.durationMinutes ?? input.duration;
-      if (rawDuration !== undefined && rawDuration !== null) {
-        normalized.durationMinutes = Number(rawDuration) || 30;
-      }
+      normalized.durationMinutes = (rawDuration !== undefined && rawDuration !== null)
+        ? (Number(rawDuration) || 30)
+        : 30;
 
       // 2. startTime / time / date / dateTime
       let rawDate = input.startTime ?? input.start_time ?? input.time ?? input.dateTime;
