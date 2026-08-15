@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import { ResilienceService } from '../core/resilience.service';
 import { SkillRegistryService } from '../core/registry.service';
 import { SkillContext, SkillResult } from '../core/types';
@@ -8,6 +8,7 @@ import { GenerateReportInputSchema } from './schemas';
 import { RetrievalPipelineService } from '../../retrieval/retrieval-pipeline.service';
 import { AnswerGenerationService } from '../../retrieval/services/answer-generation.service';
 import { JiraClientService } from '../../integrations/jira/services/jira-client.service';
+import { TrelloClientService } from '../../integrations/trello/services/trello-client.service';
 import { ZoomClientService, MeetingType } from '../../integrations/zoom/zoom-client.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -17,6 +18,7 @@ export class ReportingSkill implements OnModuleInit {
     private readonly retrievalPipeline: RetrievalPipelineService,
     private readonly answerGeneration: AnswerGenerationService,
     private readonly jiraClient: JiraClientService,
+    @Optional() private readonly trelloClient: TrelloClientService,
     private readonly zoomClient: ZoomClientService,
     private readonly prisma: PrismaService,
     private readonly resilienceService: ResilienceService,
@@ -27,11 +29,11 @@ export class ReportingSkill implements OnModuleInit {
     this.registry.register({
       name: 'ReportingSkill.generateReport',
       description:
-        'Generates structured markdown reports (Daily, Weekly, Performance, or Planning) by aggregating Jira tasks, Zoom meetings, and cross-platform Knowledge Graph context.',
+        'Generates structured markdown reports (Daily, Weekly, Performance, or Planning) by aggregating Jira or Trello tasks, Zoom meetings, and cross-platform Knowledge Graph context.',
       schema: GenerateReportInputSchema,
       destructive: false,
       requiredProviders: [],
-      optionalProviders: ['JIRA', 'ZOOM', 'jira', 'zoom'],
+      optionalProviders: ['JIRA', 'Jira', 'jira', 'TRELLO', 'Trello', 'trello', 'ZOOM', 'Zoom', 'zoom'],
       handler: (ctx: SkillContext, input: any) => this.generateReport(ctx, input),
     });
   }
@@ -95,7 +97,7 @@ export class ReportingSkill implements OnModuleInit {
   }
 
   /**
-   * 📅 Daily Status Report
+   * Daily Status Report
    */
   private async buildDailyReport(
     ctx: SkillContext,
@@ -107,7 +109,7 @@ export class ReportingSkill implements OnModuleInit {
     const toStr = timeframe?.to ?? new Date().toISOString().split('T')[0];
 
     const tasksMarkdown = sections.includes('tasks')
-      ? await this.fetchJiraTasksSection(ctx, `updated >= -1d`, 'Daily Tasks (Last 24h)')
+      ? await this.fetchTasksSection(ctx, `updated >= -1d`, 'Daily Tasks (Last 24h)', scope)
       : '';
 
     const meetingsMarkdown = sections.includes('meetings')
@@ -118,7 +120,7 @@ export class ReportingSkill implements OnModuleInit {
       ? await this.fetchKnowledgeContextSection(ctx, `${scope} daily updates and key decisions made today`)
       : '';
 
-    return `# 📅 Daily Report: ${scope}
+    return `# Daily Report: ${scope}
 *Period: ${fromStr} — ${toStr}*
 
 ${tasksMarkdown}
@@ -132,7 +134,7 @@ ${knowledgeMarkdown}
   }
 
   /**
-   * 📊 Weekly Sprint Summary Report
+   * Weekly Sprint Summary Report
    */
   private async buildWeeklyReport(
     ctx: SkillContext,
@@ -144,7 +146,7 @@ ${knowledgeMarkdown}
     const toStr = timeframe?.to ?? new Date().toISOString().split('T')[0];
 
     const tasksMarkdown = sections.includes('tasks')
-      ? await this.fetchJiraTasksSection(ctx, `updated >= -7d`, 'Weekly Sprint Tasks')
+      ? await this.fetchTasksSection(ctx, `updated >= -7d`, 'Weekly Sprint Tasks', scope)
       : '';
 
     const meetingsMarkdown = sections.includes('meetings')
@@ -155,7 +157,7 @@ ${knowledgeMarkdown}
       ? await this.fetchKnowledgeContextSection(ctx, `${scope} weekly sprint accomplishments and architectural changes`)
       : '';
 
-    return `# 📊 Weekly Report: ${scope}
+    return `# Weekly Report: ${scope}
 *Period: ${fromStr} — ${toStr}*
 
 ${tasksMarkdown}
@@ -169,7 +171,7 @@ ${knowledgeMarkdown}
   }
 
   /**
-   * 👤 Individual Performance & Activity Report
+   * Individual Performance & Activity Report
    */
   private async buildPerformanceReport(
     ctx: SkillContext,
@@ -186,10 +188,11 @@ ${knowledgeMarkdown}
       ? `assignee ~ "${targetUser}" OR text ~ "${targetUser}"`
       : `updated >= -7d`;
 
-    const tasksMarkdown = await this.fetchJiraTasksSection(
+    const tasksMarkdown = await this.fetchTasksSection(
       ctx,
       jql,
       `Assigned Tasks & Ticket Contributions (${userName})`,
+      userName,
     );
 
     const meetingsMarkdown = await this.fetchZoomMeetingsSection(
@@ -202,11 +205,11 @@ ${knowledgeMarkdown}
       `Detailed contributions, pull requests, commits, and activity by ${userName} in ${scope}`,
     );
 
-    return `# 👤 Performance Report: ${userName}
+    return `# Performance Report: ${userName}
 *Scope: ${scope} | Period: ${fromStr} — ${toStr}*
 
-### 📌 Summary of Activity & Contributions
-This report aggregates Jira ticket assignments, Zoom meeting participations, and cross-platform Knowledge Graph commits/discussions for **${userName}**.
+### Summary of Activity & Contributions
+This report aggregates Jira and Trello ticket assignments, Zoom meeting participations, and cross-platform Knowledge Graph commits/discussions for **${userName}**.
 
 ${tasksMarkdown}
 
@@ -219,7 +222,7 @@ ${knowledgeMarkdown}
   }
 
   /**
-   * 🗺️ Today's Planning & Roadmap Report
+   * Today's Planning & Roadmap Report
    */
   private async buildPlanningReport(
     ctx: SkillContext,
@@ -230,10 +233,11 @@ ${knowledgeMarkdown}
     const todayStr = new Date().toISOString().split('T')[0];
 
     const tasksMarkdown = sections.includes('tasks')
-      ? await this.fetchJiraTasksSection(
+      ? await this.fetchTasksSection(
           ctx,
           `status in ("To Do", "In Progress", "In Review")`,
           'Active & Pending Tasks (Roadmap)',
+          scope,
         )
       : '';
 
@@ -245,7 +249,7 @@ ${knowledgeMarkdown}
       ? await this.fetchKnowledgeContextSection(ctx, `${scope} active action items and open roadmap targets for today`)
       : '';
 
-    return `# 🗺️ Planning & Roadmap Report: ${scope}
+    return `# Planning & Roadmap Report: ${scope}
 *Target Date: ${todayStr}*
 
 ${tasksMarkdown}
@@ -260,14 +264,20 @@ ${knowledgeMarkdown}
 
   // ── Helper Data Fetchers ──────────────────────────────────────────────────
 
-  private async fetchJiraTasksSection(
+  /**
+   * Fetches tasks from Jira OR Trello depending on active connection.
+   */
+  private async fetchTasksSection(
     ctx: SkillContext,
     jql: string,
     title: string,
+    userFilter?: string,
   ): Promise<string> {
+    // 1. Try Jira Connection
     try {
       const jiraConnection =
         ctx?.connections?.['JIRA'] ||
+        ctx?.connections?.['Jira'] ||
         ctx?.connections?.['jira'] ||
         (await this.prisma.providerConnection.findFirst({
           where: {
@@ -277,32 +287,72 @@ ${knowledgeMarkdown}
           },
         }));
 
-      if (!jiraConnection) {
-        return `## 📋 ${title}\n*Jira integration not connected.*`;
+      if (jiraConnection) {
+        const searchResult = await this.jiraClient.searchIssues(ctx.organizationId, jql, 15);
+        const issues = searchResult?.issues || [];
+
+        if (Array.isArray(issues) && issues.length > 0) {
+          const tableRows = issues
+            .map((i: any) => {
+              const key = i.key || 'N/A';
+              const summary = i.fields?.summary || 'No summary';
+              const status = i.fields?.status?.name || 'To Do';
+              const assignee = i.fields?.assignee?.displayName || 'Unassigned';
+              return `| ${key} | ${summary} | ${status} | ${assignee} |`;
+            })
+            .join('\n');
+
+          return `## ${title}\n| Key | Summary | Status | Assignee |\n|---|---|---|---|\n${tableRows}`;
+        }
       }
-
-      // Execute search via searchIssues method on JiraClientService
-      const searchResult = await this.jiraClient.searchIssues(ctx.organizationId, jql, 15);
-      const issues = searchResult?.issues || [];
-
-      if (!Array.isArray(issues) || issues.length === 0) {
-        return `## 📋 ${title}\n*No active tasks found matching criteria.*`;
-      }
-
-      const tableRows = issues
-        .map((i: any) => {
-          const key = i.key || 'N/A';
-          const summary = i.fields?.summary || 'No summary';
-          const status = i.fields?.status?.name || 'To Do';
-          const assignee = i.fields?.assignee?.displayName || 'Unassigned';
-          return `| ${key} | ${summary} | ${status} | ${assignee} |`;
-        })
-        .join('\n');
-
-      return `## 📋 ${title}\n| Key | Summary | Status | Assignee |\n|---|---|---|---|\n${tableRows}`;
     } catch (err: any) {
-      return `## 📋 ${title}\n*Error fetching Jira tasks: ${err.message}*`;
+      // Fallback to Trello if Jira fails
     }
+
+    // 2. Try Trello Connection
+    try {
+      const trelloConnection =
+        ctx?.connections?.['TRELLO'] ||
+        ctx?.connections?.['Trello'] ||
+        ctx?.connections?.['trello'] ||
+        (await this.prisma.providerConnection.findFirst({
+          where: {
+            organizationEyeId: ctx.organizationId,
+            provider: { key: 'trello' },
+            status: 'connected',
+          },
+        }));
+
+      if (trelloConnection && this.trelloClient) {
+        const boards = await this.trelloClient.getBoards(trelloConnection as any);
+        if (Array.isArray(boards) && boards.length > 0) {
+          const mainBoard = boards[0];
+          const cards = await this.trelloClient.listTasks(ctx.organizationId, {
+            boardName: mainBoard.name,
+            maxResults: 15,
+          });
+
+          if (Array.isArray(cards) && cards.length > 0) {
+            const tableRows = cards
+              .slice(0, 15)
+              .map((c: any) => {
+                const key = c.id?.slice(-6) || 'Card';
+                const summary = c.name || 'Untitled Card';
+                const status = c.closed ? 'Archived' : 'Active';
+                const assignee = userFilter || 'Team Member';
+                return `| ${key} | ${summary} | ${status} | ${assignee} |`;
+              })
+              .join('\n');
+
+            return `## ${title}\n| Key | Summary | Status | Assignee |\n|---|---|---|---|\n${tableRows}`;
+          }
+        }
+      }
+    } catch (err: any) {
+      // Ignore provider error
+    }
+
+    return `## ${title}\n*No active tasks found in Jira or Trello.*`;
   }
 
   private async fetchZoomMeetingsSection(
@@ -312,6 +362,7 @@ ${knowledgeMarkdown}
     try {
       const zoomConnection =
         ctx?.connections?.['ZOOM'] ||
+        ctx?.connections?.['Zoom'] ||
         ctx?.connections?.['zoom'] ||
         (await this.prisma.providerConnection.findFirst({
           where: {
@@ -322,7 +373,7 @@ ${knowledgeMarkdown}
         }));
 
       if (!zoomConnection) {
-        return `## 📅 ${title}\n*Zoom integration not connected.*`;
+        return `## ${title}\n*Zoom integration not connected.*`;
       }
 
       // Execute listMeetings via ZoomClientService
@@ -334,7 +385,7 @@ ${knowledgeMarkdown}
       const meetings = meetingsResult?.resources || [];
 
       if (!Array.isArray(meetings) || meetings.length === 0) {
-        return `## 📅 ${title}\n*No meetings recorded for this period.*`;
+        return `## ${title}\n*No meetings recorded for this period.*`;
       }
 
       const tableRows = meetings
@@ -353,9 +404,9 @@ ${knowledgeMarkdown}
         })
         .join('\n');
 
-      return `## 📅 ${title}\n| Topic | Date/Time | Duration | Host/Attendees |\n|---|---|---|---|\n${tableRows}`;
+      return `## ${title}\n| Topic | Date/Time | Duration | Host/Attendees |\n|---|---|---|---|\n${tableRows}`;
     } catch (err: any) {
-      return `## 📅 ${title}\n*Error fetching Zoom meetings: ${err.message}*`;
+      return `## ${title}\n*Error fetching Zoom meetings: ${err.message}*`;
     }
   }
 
@@ -371,13 +422,13 @@ ${knowledgeMarkdown}
       const contextString = retrievalResult?.contextString || '';
 
       if (!contextString) {
-        return `## 🧠 Knowledge Context\n*No relevant knowledge graph context found.*`;
+        return `## Knowledge Context\n*No relevant knowledge graph context found.*`;
       }
 
       const summaryAnswer = await this.answerGeneration.generateAnswer(
+        ctx.organizationId,
         `Summarize the key developments, PRs, and architectural insights for: ${queryPrompt}`,
         contextString,
-        {} as any,
       );
 
       const sources: string[] = [];
@@ -391,9 +442,9 @@ ${knowledgeMarkdown}
 
       const sourcesFormatted = sources.length > 0 ? Array.from(new Set(sources)).join(', ') : 'Knowledge Graph';
 
-      return `## 🧠 Knowledge Context\n${summaryAnswer}\n\n*Sources: ${sourcesFormatted}*`;
+      return `## Knowledge Context\n${summaryAnswer}\n\n*Sources: ${sourcesFormatted}*`;
     } catch (err: any) {
-      return `## 🧠 Knowledge Context\n*Error generating knowledge summary: ${err.message}*`;
+      return `## Knowledge Context\n*Error generating knowledge summary: ${err.message}*`;
     }
   }
 }
