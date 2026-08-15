@@ -16,32 +16,8 @@ import { format } from "date-fns";
 import { AiUsageLog } from "@/types/billing/billing";
 
 const AVAILABLE_MODELS = [
-  "amazon.nova-2-multimodal-embeddings-v1:0",
-  "amazon.nova-2-sonic-v1:0",
-  "amazon.nova-reel-v1:1",
-  "amazon.titan-embed-image-v1",
-  "amazon.titan-embed-text-v2:0:8k",
-  "amazon.titan-image-generator-v2:0",
-  "anthropic.claude-haiku-4-5-20251001-v1:0",
-  "anthropic.claude-opus-4-7",
-  "anthropic.claude-sonnet-4-6",
-  "deepseek.r1-v1:0",
-  "deepseek.v3.2",
-  "global.twelvelabs.pegasus-1-2-v1:0",
-  "mistral.voxtral-small-24b-2507",
-  "openai.gpt-oss-120b-1:0",
-  "openai.gpt-oss-20b-1:0",
-  "openai.gpt-oss-safeguard-120b",
-  "openai.gpt-oss-safeguard-20b",
-  "qwen.qwen3-vl-235b-a22b",
-  "stability.stable-fast-upscale-v1:0",
-  "stability.stable-image-inpaint-v1:0",
-  "stability.stable-image-remove-background-v1:0",
-  "stability.stable-outpaint-v1:0",
-  "us.amazon.nova-2-lite-v1:0",
-  "us.cohere.embed-v4:0",
-  "us.meta.llama3-3-70b-instruct-v1:0",
-  "us.twelvelabs.marengo-embed-3-0-v1:0"
+  "gemini",
+  "student-bedrock"
 ];
 
 export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string; toDate?: string }) {
@@ -88,8 +64,8 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
             <SelectContent>
               <SelectItem value="all">All Features</SelectItem>
               <SelectItem value="knowledge_extraction">Knowledge Extraction</SelectItem>
-              <SelectItem value="chat">Chat</SelectItem>
-              <SelectItem value="rag_pipeline">RAG Pipeline</SelectItem>
+              <SelectItem value="dm_chat">Chat</SelectItem>
+              <SelectItem value="retrieval">Retrieval</SelectItem>
             </SelectContent>
           </Select>
 
@@ -126,7 +102,6 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
             <SelectContent>
               <SelectItem value="createdAt">Date (Newest)</SelectItem>
               <SelectItem value="totalTokens">Total Tokens</SelectItem>
-              <SelectItem value="costUsd">Highest Cost</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -141,21 +116,20 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
               <th className="px-6 py-4 font-medium">Feature</th>
               <th className="px-6 py-4 font-medium">Model Used</th>
               <th className="px-6 py-4 font-medium text-right">Tokens (In/Out/Total)</th>
-              <th className="px-6 py-4 font-medium text-right">Cost (USD)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {isLoading ? (
               Array(5).fill(0).map((_, i) => (
                 <tr key={i}>
-                  <td colSpan={5} className="px-6 py-4">
+                  <td colSpan={4} className="px-6 py-4">
                     <div className="h-6 w-full animate-pulse-soft bg-white/5 rounded" />
                   </td>
                 </tr>
               ))
             ) : isError ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-red-500/80">
+                <td colSpan={4} className="px-6 py-12 text-center text-red-500/80">
                   Failed to load usage logs.
                 </td>
               </tr>
@@ -177,14 +151,11 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
                   <td className="px-6 py-4 text-right text-xs">
                     {log.inputTokens} / {log.outputTokens} = <span className="font-semibold text-foreground">{log.totalTokens}</span>
                   </td>
-                  <td className="px-6 py-4 text-right font-mono text-xs text-gold-soft">
-                    ${log.costUsd.toFixed(6)}
-                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
                   No AI usage logs found matching your filters.
                 </td>
               </tr>
