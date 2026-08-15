@@ -606,4 +606,18 @@ export class BillingService {
         return 'pending';
     }
   }
+  async updateHardCap(organizationId: string, overageHardCapCents: number | null) {
+    const activeSub = await this.repository.findSubscriptionByOrganizationId(organizationId);
+    if (!activeSub) {
+      throw new BadRequestException('Organization does not have an active subscription.');
+    }
+
+    const updatedSub = await this.repository.updateHardCap(organizationId, overageHardCapCents);
+
+    this.logger.log(
+      `Updated overage hard cap for organization ${organizationId} to ${overageHardCapCents} cents`,
+    );
+
+    return { success: true, data: updatedSub };
+  }
 }

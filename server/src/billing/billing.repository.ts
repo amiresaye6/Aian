@@ -287,4 +287,15 @@ export class BillingRepository {
       include: { plan: true },
     });
   }
+  // ─── Hard Cap ──────────────────────────────────────────────────────────────
+
+  async updateHardCap(organizationId: string, overageHardCapCents: number | null) {
+    const activeSub = await this.findSubscriptionByOrganizationId(organizationId);
+    if (!activeSub) return null;
+
+    return this.prisma.subscription.update({
+      where: { id: activeSub.id },
+      data: { overageHardCapCents },
+    });
+  }
 }

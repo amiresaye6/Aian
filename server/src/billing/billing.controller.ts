@@ -17,9 +17,11 @@ import { QuotaService } from './quota.service';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { DowngradePlanDto } from './dto/downgrade-plan.dto';
+import { UpdateHardCapDto } from './dto/update-hard-cap.dto';
 import { AuthGaurd } from '../auth/auth.gaurd';
 import type { PaymobCallbackPayload } from '../paymob/paymob.types';
 import { RequiredPermissions } from '../decorators/required-permissions.decorator';
+import { Put } from '@nestjs/common';
 
 @Controller('billing')
 export class BillingController {
@@ -115,6 +117,19 @@ export class BillingController {
     @Query('organizationId') organizationId: string,
   ) {
     return this.billingService.cancelScheduledDowngrade(organizationId);
+  }
+
+  @Put('subscription/hard-cap')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async updateHardCap(
+    @Query('organizationId') organizationId: string,
+    @Body() dto: UpdateHardCapDto,
+  ) {
+    return this.billingService.updateHardCap(
+      organizationId,
+      dto.overageHardCapCents ?? null,
+    );
   }
 
   // ─── Quota & Usage ────────────────────────────────────────────────────────
