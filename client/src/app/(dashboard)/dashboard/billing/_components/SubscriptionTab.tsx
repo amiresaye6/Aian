@@ -6,25 +6,42 @@ import { useUpgradeSubscription } from "@/hooks/billing/useUpgradeSubscription";
 import { useDowngradeSubscription } from "@/hooks/billing/useDowngradeSubscription";
 import { useCancelDowngrade } from "@/hooks/billing/useCancelDowngrade";
 import { useSubscriptionPlans } from "@/hooks/billing/useSubscriptionPlans";
+import { useUpdateHardCap } from "@/hooks/billing/useUpdateHardCap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Sparkles, Users, Database, CheckCircle2, AlertCircle, Cpu, Clock, AlertTriangle } from "lucide-react";
+import { Sparkles, Users, Database, CheckCircle2, AlertCircle, Cpu, Clock, AlertTriangle, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { QuotaResult, SubscriptionPlan } from "@/types/billing/billing";
 
-function QuotaProgress({ title, icon: Icon, quota, formatter = (v) => v.toString() }: { title: string, icon: any, quota?: QuotaResult, formatter?: (val: number) => string }) {
+function QuotaProgress({ 
+  title, 
+  icon: Icon, 
+  quota, 
+  formatter = (v) => v.toString(),
+  overageRatePerMillion
+}: { 
+  title: string, 
+  icon: any, 
+  quota?: QuotaResult, 
+  formatter?: (val: number) => string,
+  overageRatePerMillion?: number
+}) {
   if (!quota) return <Skeleton className="h-10 w-full" />;
   
   const isDanger = quota.status === 'hard_blocked';
   const isOverage = quota.status === 'overage_active';
   const isWarning = quota.status === 'warning';
+
+  const overageAmount = Math.max(0, quota.used - quota.limit);
+  const overageCost = overageRatePerMillion ? (overageAmount / 1000000) * overageRatePerMillion : 0;
 
   return (
     <div className="space-y-3">
@@ -33,30 +50,37 @@ function QuotaProgress({ title, icon: Icon, quota, formatter = (v) => v.toString
           <Icon className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium">{title}</span>
         </div>
-        <span className="text-sm font-mono text-muted-foreground">
-          {formatter(quota.used)} / {quota.limit > 0 ? formatter(quota.limit) : '∞'}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className="text-sm font-mono text-muted-foreground">
+            {formatter(quota.used)} / {quota.limit > 0 ? formatter(quota.limit) : '∞'}
+          </span>
+          {isDanger && (
+            <div className="text-xs text-destructive font-medium flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> Blocked
+            </div>
+          )}
+          {isOverage && (
+            <div className="text-xs text-gold font-medium flex flex-col items-end gap-0.5">
+              <div className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Overage Active
+              </div>
+              {overageCost > 0 && (
+                <div className="text-[10px] text-muted-foreground/70 font-sans font-normal">
+                  + {formatter(overageAmount)} extra (${overageCost.toFixed(2)})
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="relative">
-        <Progress 
-          value={Math.min(quota.percentage, 100)} 
-          className={cn("h-2 bg-white/5", 
-            isDanger && "[&>div]:bg-destructive", 
-            isWarning && "[&>div]:bg-warning",
-            isOverage && "[&>div]:bg-gold"
-          )} 
-        />
-        {isDanger && (
-          <div className="absolute -top-6 right-0 text-xs text-destructive font-medium flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" /> Blocked
-          </div>
-        )}
-        {isOverage && (
-          <div className="absolute -top-6 right-0 text-xs text-gold font-medium flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Overage Active
-          </div>
-        )}
-      </div>
+      <Progress 
+        value={Math.min(quota.percentage, 100)} 
+        className={cn("h-2 bg-white/5", 
+          isDanger && "[&>div]:bg-destructive", 
+          isWarning && "[&>div]:bg-warning",
+          isOverage && "[&>div]:bg-gold"
+        )} 
+      />
     </div>
   );
 }
@@ -69,8 +93,16 @@ export default function SubscriptionTab() {
   const upgradeMutation = useUpgradeSubscription();
   const downgradeMutation = useDowngradeSubscription();
   const cancelDowngradeMutation = useCancelDowngrade();
+  const updateHardCapMutation = useUpdateHardCap();
   
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [hardCapValue, setHardCapValue] = useState<(number | null)[]>([null]);
+
+  useEffect(() => {
+    if (subData?.data) {
+      setHardCapValue([subData.data.overageHardCapCents === null ? null : subData.data.overageHardCapCents / 100]);
+    }
+  }, [subData]);
 
   if (subLoading || quotaLoading) {
     return (
@@ -235,6 +267,7 @@ export default function SubscriptionTab() {
                 icon={Cpu} 
                 quota={quota?.tokens} 
                 formatter={(v) => new Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short" }).format(v)}
+                overageRatePerMillion={plan ? plan.overageTokenPriceCents / 100 : undefined}
               />
               <QuotaProgress 
                 title="Storage Capacity" 
@@ -250,6 +283,67 @@ export default function SubscriptionTab() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Hard Cap Card */}
+        <Card className="glass-strong border border-white/5 bg-gradient-to-r from-background to-white/[0.02]">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-gold-soft" /> Overage Budget & Hard Cap
+            </CardTitle>
+            <CardDescription>
+              Set a monthly limit on how much you are willing to spend on overage AI tokens. 
+              Once this limit is reached, your AI usage will be temporarily blocked until the next billing cycle or until you increase the limit.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Overage Budget (USD)</span>
+                <span className="text-xl font-bold font-mono text-gold-soft">
+                  {hardCapValue[0] === null ? "Unlimited" : `$${hardCapValue[0].toFixed(2)}`}
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-2 my-2">
+                <input 
+                  type="checkbox" 
+                  id="unlimited-overage" 
+                  className="rounded border-white/20 bg-transparent text-gold w-4 h-4 cursor-pointer"
+                  checked={hardCapValue[0] === null}
+                  onChange={(e) => setHardCapValue(e.target.checked ? [null] : [0])}
+                />
+                <label htmlFor="unlimited-overage" className="text-sm font-medium leading-none cursor-pointer text-muted-foreground">
+                  Allow unlimited overage
+                </label>
+              </div>
+
+              <Slider 
+                value={hardCapValue[0] === null ? [500] : (hardCapValue as number[])}
+                onValueChange={(val) => setHardCapValue(val)}
+                max={500}
+                step={5}
+                disabled={hardCapValue[0] === null}
+                className={cn("[&_[role=slider]]:border-gold [&_[role=slider]]:bg-gold [&_[role=slider]]:shadow-glow-gold", hardCapValue[0] === null && "opacity-50")}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>$0 (No Overage)</span>
+                <span>$250</span>
+                <span>$500</span>
+              </div>
+              
+              <Button 
+                onClick={() => updateHardCapMutation.mutate(hardCapValue[0] === null ? null : hardCapValue[0] * 100)}
+                disabled={
+                  updateHardCapMutation.isPending || 
+                  (hardCapValue[0] === (sub.overageHardCapCents === null ? null : sub.overageHardCapCents / 100))
+                }
+                className="w-fit mt-4 bg-white/5 hover:bg-white/10 text-foreground border border-white/10"
+              >
+                {updateHardCapMutation.isPending ? "Saving..." : "Save Limit"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={isUpgradeModalOpen} onOpenChange={setIsUpgradeModalOpen}>
