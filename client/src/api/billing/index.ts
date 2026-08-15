@@ -45,6 +45,16 @@ export const billingApi = {
     return response.data;
   },
 
+  updateHardCap: async (
+    organizationId: string,
+    overageHardCapCents: number | null
+  ): Promise<{ success: boolean }> => {
+    const response = await api.put(`/billing/subscription/hard-cap?organizationId=${organizationId}`, {
+      overageHardCapCents,
+    });
+    return response.data;
+  },
+
   getQuotaDashboard: async (
     organizationId: string
   ): Promise<{ success: boolean; data: FullQuotaSummary }> => {
