@@ -8,7 +8,7 @@ export type SubscriptionStatus =
   | "unpaid";
 
 export type PaymentStatus = "pending" | "paid" | "failed";
-export type QuotaStatus = "within_limits" | "warning" | "grace_period" | "hard_blocked";
+export type QuotaStatus = "within_limits" | "warning" | "grace_period" | "hard_blocked" | "overage_active";
 
 export interface QuotaResult {
   allowed: boolean;
@@ -53,6 +53,9 @@ export interface SubscriptionResponse {
   paymentProvider: string;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
+  pendingDowngradePlanId: string | null;
+  gracePeriodEnd: string | null;
+  overageHardCapCents: number | null;
   plan: SubscriptionPlan;
 }
 

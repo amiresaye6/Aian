@@ -45,6 +45,16 @@ export const billingApi = {
     return response.data;
   },
 
+  updateHardCap: async (
+    organizationId: string,
+    overageHardCapCents: number | null
+  ): Promise<{ success: boolean }> => {
+    const response = await api.put(`/billing/subscription/hard-cap?organizationId=${organizationId}`, {
+      overageHardCapCents,
+    });
+    return response.data;
+  },
+
   getQuotaDashboard: async (
     organizationId: string
   ): Promise<{ success: boolean; data: FullQuotaSummary }> => {
@@ -55,10 +65,41 @@ export const billingApi = {
   upgradeSubscription: async (
     organizationId: string,
     planSlug: string
-  ): Promise<{ success: boolean; newPlan: string }> => {
+  ): Promise<{ 
+    success: boolean; 
+    paymentUrl?: string; 
+    paymentId?: string; 
+    orderId?: string | number; 
+    proratedAmountCents?: number; 
+    newPlan: string;
+    appliedImmediately?: boolean;
+  }> => {
     const response = await api.post(`/billing/subscription/upgrade?organizationId=${organizationId}`, {
       planSlug,
     });
+    return response.data;
+  },
+
+  schedulePlanDowngrade: async (
+    organizationId: string,
+    planSlug: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    effectiveDate: string;
+    currentPlan: string;
+    targetPlan: string;
+  }> => {
+    const response = await api.post(`/billing/subscription/downgrade?organizationId=${organizationId}`, {
+      planSlug,
+    });
+    return response.data;
+  },
+
+  cancelScheduledDowngrade: async (
+    organizationId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/billing/subscription/downgrade?organizationId=${organizationId}`);
     return response.data;
   },
 

@@ -35,6 +35,9 @@ export interface SubscriptionResponse {
   paymentProvider: string;
   currentPeriodStart: Date | null;
   currentPeriodEnd: Date | null;
+  pendingDowngradePlanId: string | null;
+  gracePeriodEnd: Date | null;
+  overageHardCapCents: number | null;
   plan: PlanResponse;
 }
 

@@ -130,7 +130,8 @@ export class AiUsageService {
       where,
       _sum: {
         totalTokens: true,
-        costUsd: true,
+        inputTokens: true,
+        outputTokens: true,
       },
       _count: {
         id: true, // total calls
@@ -145,7 +146,8 @@ export class AiUsageService {
       where,
       _sum: {
         totalTokens: true,
-        costUsd: true,
+        inputTokens: true,
+        outputTokens: true,
       },
       _count: {
         id: true,
@@ -158,12 +160,14 @@ export class AiUsageService {
         modelUsed: item.modelUsed,
         totalCalls: item._count.id,
         totalTokens: item._sum.totalTokens || 0,
-        totalCostUsd: item._sum.costUsd || 0,
+        inputTokens: item._sum.inputTokens || 0,
+        outputTokens: item._sum.outputTokens || 0,
       })),
       grandTotal: {
         totalCalls: grandTotal._count.id,
         totalTokens: grandTotal._sum.totalTokens || 0,
-        totalCostUsd: grandTotal._sum.costUsd || 0,
+        inputTokens: grandTotal._sum.inputTokens || 0,
+        outputTokens: grandTotal._sum.outputTokens || 0,
       },
     };
   }
