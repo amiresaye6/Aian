@@ -19,7 +19,7 @@ import {
 } from './chain-context';
 
 /** Max character length for a tool result before truncation in LLM context */
-const MAX_TOOL_RESULT_CHARS = 3000;
+const MAX_TOOL_RESULT_CHARS = 6000;
 
 export interface HandleDMInput {
   organizationId: string;
@@ -82,11 +82,34 @@ export class OrchestratorService {
 
   // ── System Prompt ────────────────────────────────────────────────────────
 
+  /**
+   * Generates a dynamic capabilities summary from the skill registry.
+   * Groups skills by their prefix (e.g. "Jira", "meetingSkill") and
+   * lists each skill's description. Includes usage hints when provided.
+   */
+  private buildCapabilitiesSummary(): string {
+    const definitions = this.skillRegistry.getAllDefinitions();
+    if (definitions.length === 0) return '';
+
+    const lines: string[] = ['AVAILABLE TOOLS:'];
+    for (const def of definitions) {
+      let line = `- ${def.name}: ${def.description}`;
+      if (def.usageHint) {
+        line += ` (Hint: ${def.usageHint})`;
+      }
+      lines.push(line);
+    }
+
+    return lines.join('\n');
+  }
+
   private buildSystemPrompt(userProfile?: {
     fullName: string;
     email: string;
   }): string {
-    let prompt = `You are AIAN, an enterprise workspace assistant. You help people manage tasks, meetings, emails, and organizational knowledge.
+    const capabilities = this.buildCapabilitiesSummary();
+
+    let prompt = `You are AIAN, an enterprise workspace assistant.
 
 PERSONALITY & TONE:
 - Be concise. Slack is a chat — not a report. Keep replies short and scannable.
@@ -95,16 +118,10 @@ PERSONALITY & TONE:
 - Never apologize excessively. One "sorry" max if something failed.
 - Use emoji sparingly — one per message at most, and only when it adds clarity.
 
-WHAT YOU CAN DO:
-- Manage Jira and Trello tasks (create, update, assign, move, comment, list, delete)
-- Schedule, update, list, and cancel Zoom meetings
-- Send emails with company branding
-- Send messages to Slack channels
-- Search organizational knowledge and answer questions about the company
-- Generate reports (daily, weekly, performance, planning)
+${capabilities}
 
 WHAT YOU CANNOT DO:
-- Answer general knowledge, math, or coding questions. If asked, say: "I can only help with workspace tasks — things like Jira tickets, meetings, emails, and organizational questions."
+- Answer general knowledge, math, or coding questions. If asked, say: "I can only help with workspace tasks. Try asking me about tasks, meetings, emails, or organizational questions."
 - Make up information. If a knowledge search returns nothing, say so.
 - However, NEVER refuse requests to use your tools (like sending emails, creating tasks, or searching).
 - If a user provides a short answer (like an email address, "yes", or a name) during a multi-step conversation, DO NOT refuse it. It is just context for the ongoing task.
@@ -113,30 +130,22 @@ FORMATTING RULES FOR SLACK:
 - Use *bold* for emphasis (NOT **bold**)
 - Use _italic_ for secondary emphasis
 - Use \`code\` for technical values like IDs, emails, keys
-
-TOOL EXECUTION RULES (CRITICAL):
-- Once a tool succeeds (e.g. returns {"success":true}), DO NOT call that same tool again for the same task.
-- When a task is complete, generate a conversational text response to the user and STOP generating tool calls.
 - Use • for bullet points (NOT - or *)
 - Do NOT use # headers — Slack doesn't render them
 - For links, use <url|display text> format
 - Keep messages under 3000 characters. If a response is long, summarize the key points.
 
 TOOL USAGE RULES:
-1. Use the right tool for the job. If the user asks about the org, use KnowledgeSkill.answerQuestion.
-2. Sequential dependencies: If tool B needs output from tool A, call A first. Wait for the result, then call B. NEVER use placeholders like {report_content}.
-3. Independent actions: If tools don't depend on each other, you may call them all at once.
-4. Missing info: If you don't have a required parameter, ask the user. Don't guess.
-5. Format conversion: When converting content between formats (e.g. markdown to HTML for email), do it yourself in the tool arguments.
+1. Pick the right tool by reading each tool's name and description. Match the user's intent to the tool that fits.
+2. Each tool defines its own required and optional parameters in its schema. Before calling any tool, verify you have values for ALL required parameters. If any are missing, ask the user — do not guess.
+3. Only ask the user for required parameters that you cannot infer from context. Do not ask for optional parameters unless the user's request clearly needs them.
+4. Sequential dependencies: If tool B needs output from tool A, call A first. Wait for the result, then call B. NEVER use placeholders like {report_content}.
+5. Independent actions: If tools don't depend on each other, you may call them all at once.
+6. Format conversion: When converting content between formats (e.g. markdown to HTML for email), do it yourself in the tool arguments.
 
-REQUIRED PARAMETERS — CHECK BEFORE CALLING:
-- Jira tasks: always need "title" and "projectName"
-- Trello cards: always need "title", "boardName", and "listName"
-- Meetings: always need "topic" and "startTime" (as ISO 8601)
-- Emails: always need "to" (valid email), "subject", and "contentHtml"
-- Messages: always need "channelId" and "text"
-- Reports: always need "scope"
-If ANY required parameter is missing, ask the user for it. Do not call the tool.`;
+TOOL EXECUTION RULES (CRITICAL):
+- Once a tool succeeds (e.g. returns {"success":true}), DO NOT call that same tool again for the same task.
+- When a task is complete, generate a conversational text response to the user and STOP generating tool calls.`;
 
     if (userProfile) {
       const nameStr = userProfile.fullName || 'there';
@@ -168,7 +177,6 @@ If ANY required parameter is missing, ask the user for it. Do not call the tool.
   }
 
   // ── Schema Conversion ────────────────────────────────────────────────────
-
 
   private buildTools(): AiTool[] {
     const definitions = this.skillRegistry.getAllDefinitions();
@@ -322,11 +330,24 @@ If ANY required parameter is missing, ask the user for it. Do not call the tool.
   private summarizeStepResult(step: ChainStepResult): string {
     if (!step.result?.data) return '';
     const data = step.result.data as any;
-    if (data.reportMarkdown) return ' — Report generated';
-    if (data.answer) return ` — "${data.answer.substring(0, 80)}..."`;
-    if (data.summary) return ` — Summary generated`;
-    if (data.meetingSkillMessage)
-      return ` — ${data.meetingSkillMessage.substring(0, 80)}`;
+
+    // Scan for common summary-like fields generically — no skill-specific checks
+    const candidateFields = [
+      'message',
+      'answer',
+      'summary',
+      'reportMarkdown',
+      'meetingSkillMessage',
+      'result',
+      'text',
+      'content',
+    ];
+    for (const field of candidateFields) {
+      if (typeof data[field] === 'string' && data[field].length > 0) {
+        const preview = data[field].substring(0, 80);
+        return ` — ${preview}${data[field].length > 80 ? '...' : ''}`;
+      }
+    }
     return '';
   }
 
@@ -353,9 +374,11 @@ If ANY required parameter is missing, ask the user for it. Do not call the tool.
    * Returns null if valid, or a structured object describing missing/invalid fields.
    * This saves token round-trips by catching problems before burning an LLM cycle.
    */
-  private preValidateToolCall(
-    call: { id: string; name: string; input: any },
-  ): { valid: boolean; missingFields?: string[]; errors?: string } {
+  private preValidateToolCall(call: { id: string; name: string; input: any }): {
+    valid: boolean;
+    missingFields?: string[];
+    errors?: string;
+  } {
     const def = this.skillRegistry.resolve(call.name);
     if (!def) return { valid: true }; // Will fail at execution with SKILL_NOT_FOUND
 
@@ -388,22 +411,14 @@ If ANY required parameter is missing, ask the user for it. Do not call the tool.
 
   /**
    * Generates a human-readable description of a skill action for confirmation prompts.
-   * No internal skill names or step numbers — just plain English.
+   * Pulls the description from the skill's own registration (actionDescription),
+   * falling back to a generic message. No hardcoded skill names.
    */
   private describeAction(skillName: string, input: any): string {
-    const descriptions: Record<string, (i: any) => string> = {
-      'Jira.deleteTask': (i) =>
-        `I'll delete the Jira task "${i.taskIdentifier || 'unknown'}"`,
-      'Trello.deleteTask': (i) =>
-        `I'll delete the Trello card "${i.taskIdentifier || 'unknown'}"`,
-      'meetingSkill.cancelMeetings': (i) =>
-        `I'll cancel the meeting (ID: ${i.meetingId || 'unknown'})`,
-    };
-
-    const describer = descriptions[skillName];
-    if (describer) {
+    const def = this.skillRegistry.resolve(skillName);
+    if (def?.actionDescription) {
       try {
-        return describer(input);
+        return def.actionDescription(input);
       } catch {
         // Fallback below
       }
@@ -714,14 +729,14 @@ If ANY required parameter is missing, ask the user for it. Do not call the tool.
             await this.sendReply(
               input.connectionId,
               input.channelId,
-              "✅ Task processing completed.",
+              'Task processing completed.',
               input.threadTs,
             );
           } else {
             await this.sendReply(
               input.connectionId,
               input.channelId,
-              "❌ I encountered an error processing your request.",
+              '❌ I encountered an error processing your request.',
               input.threadTs,
             );
           }
@@ -905,7 +920,10 @@ If ANY required parameter is missing, ask the user for it. Do not call the tool.
         );
 
         // Build a human-readable description of the destructive action
-        const actionDescription = this.describeAction(destructiveCall.name, destructiveCall.input);
+        const actionDescription = this.describeAction(
+          destructiveCall.name,
+          destructiveCall.input,
+        );
         await this.sendReply(
           input.connectionId,
           input.channelId,

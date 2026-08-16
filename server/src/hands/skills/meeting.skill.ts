@@ -58,6 +58,8 @@ private readonly logger = new Logger(MeetingSkill.name);
             description:"cancel/remove/delete zoom meeting",
             schema:CancelMeetingInputSchema,
             destructive:true,
+            actionDescription: (input) =>
+                `I'll cancel the meeting (ID: ${input.meetingId || 'unknown'})`,
             handler: (ctx, input) => this.cancelMeeting(ctx, input),
             requiredProviders:["ZOOM"]
         } as SkillDefinition  )
