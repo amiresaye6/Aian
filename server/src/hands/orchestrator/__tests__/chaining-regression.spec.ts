@@ -94,6 +94,9 @@ describe('OrchestratorService - Chaining Regression', () => {
       resolveForSkill: jest
         .fn()
         .mockResolvedValue({ connections: [], missing: [] }),
+      getConnectedProviderKeys: jest
+        .fn()
+        .mockResolvedValue(['JIRA', 'TRELLO', 'ZOOM', 'SLACK']),
     };
 
     userResolverMock = {

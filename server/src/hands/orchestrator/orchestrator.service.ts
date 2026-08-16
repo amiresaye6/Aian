@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
-import { SkillRegistryService } from '../core/registry.service';
+import { SkillRegistryService, SkillDefinition } from '../core/registry.service';
 import { SessionService } from './session.service';
 import { AiMessage, AiTool } from '../../ai/providers/ai-provider.interface';
 import { SkillContext, SkillResult } from '../core/types';
@@ -82,17 +82,32 @@ export class OrchestratorService {
 
   // ── System Prompt ────────────────────────────────────────────────────────
 
+  private async getEnabledSkills(organizationId: string): Promise<SkillDefinition[]> {
+    const definitions = this.skillRegistry.getAllDefinitions();
+    const connectedProviders = await this.connectionResolver.getConnectedProviderKeys(organizationId);
+
+    return definitions.filter(def => {
+      // If the skill requires no providers, it's always enabled
+      if (!def.requiredProviders || def.requiredProviders.length === 0) {
+        return true;
+      }
+      // Otherwise, verify ALL required providers are connected
+      return def.requiredProviders.every(req =>
+        connectedProviders.includes(req.toUpperCase())
+      );
+    });
+  }
+
   /**
    * Generates a dynamic capabilities summary from the skill registry.
    * Groups skills by their prefix (e.g. "Jira", "meetingSkill") and
    * lists each skill's description. Includes usage hints when provided.
    */
-  private buildCapabilitiesSummary(): string {
-    const definitions = this.skillRegistry.getAllDefinitions();
-    if (definitions.length === 0) return '';
+  private buildCapabilitiesSummary(enabledSkills: SkillDefinition[]): string {
+    if (enabledSkills.length === 0) return '';
 
     const lines: string[] = ['AVAILABLE TOOLS:'];
-    for (const def of definitions) {
+    for (const def of enabledSkills) {
       let line = `- ${def.name}: ${def.description}`;
       if (def.usageHint) {
         line += ` (Hint: ${def.usageHint})`;
@@ -103,11 +118,14 @@ export class OrchestratorService {
     return lines.join('\n');
   }
 
-  private buildSystemPrompt(userProfile?: {
-    fullName: string;
-    email: string;
-  }): string {
-    const capabilities = this.buildCapabilitiesSummary();
+  private buildSystemPrompt(
+    enabledSkills: SkillDefinition[],
+    userProfile?: {
+      fullName: string;
+      email: string;
+    }
+  ): string {
+    const capabilities = this.buildCapabilitiesSummary(enabledSkills);
 
     let prompt = `You are AIAN, an enterprise workspace assistant.
 
@@ -178,9 +196,8 @@ TOOL EXECUTION RULES (CRITICAL):
 
   // ── Schema Conversion ────────────────────────────────────────────────────
 
-  private buildTools(): AiTool[] {
-    const definitions = this.skillRegistry.getAllDefinitions();
-    return definitions.map((def) => {
+  private buildTools(enabledSkills: SkillDefinition[]): AiTool[] {
+    return enabledSkills.map((def) => {
       return {
         name: def.name,
         description: def.description,
@@ -623,8 +640,9 @@ TOOL EXECUTION RULES (CRITICAL):
     chainContext: ChainExecutionContext,
     userProfile?: { fullName: string; email: string },
   ): Promise<void> {
-    const tools = this.buildTools();
-    const systemPrompt = this.buildSystemPrompt(userProfile);
+    const enabledSkills = await this.getEnabledSkills(input.organizationId);
+    const tools = this.buildTools(enabledSkills);
+    const systemPrompt = this.buildSystemPrompt(enabledSkills, userProfile);
     const aiOptions = {
       organizationId: input.organizationId,
       feature: 'dm_chat',
