@@ -334,7 +334,7 @@ export const TrelloDeleteTaskInputSchema = z.object({
 export type TrelloDeleteTaskInput = z.infer<typeof TrelloDeleteTaskInputSchema>;
 
 export const TrelloListTasksInputSchema = z.object({
-  boardName: z.string().optional().describe('Filter by board name.'),
+  boardName: z.string().describe('The name of the Trello board to list tasks from. DO NOT GUESS OR ASSUME THIS VALUE. If not provided, omit it.'),
   listName: z.string().optional().describe('Filter by list name.'),
   assignee: z.string().optional().describe('Filter by assignee name.'),
   maxResults: z.number().optional().default(50).describe('Max number of cards to return.'),

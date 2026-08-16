@@ -6,6 +6,7 @@ import { SessionService } from '../session.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProviderClientFactory } from '../../../integrations/provider-client.factory';
 import { ConnectionResolverService } from '../../core/connection-resolver.service';
+import { UserResolverService } from '../../core/user-resolver.service';
 
 describe('OrchestratorService - Chaining Regression', () => {
   let orchestrator: OrchestratorService;
@@ -16,6 +17,7 @@ describe('OrchestratorService - Chaining Regression', () => {
   let prismaMock: any;
   let clientFactoryMock: jest.Mocked<Partial<ProviderClientFactory>>;
   let connectionResolverMock: jest.Mocked<Partial<ConnectionResolverService>>;
+  let userResolverMock: jest.Mocked<Partial<UserResolverService>>;
   let providerClientMock: any;
 
   const defaultInput: HandleDMInput = {
@@ -94,6 +96,10 @@ describe('OrchestratorService - Chaining Regression', () => {
         .mockResolvedValue({ connections: [], missing: [] }),
     };
 
+    userResolverMock = {
+      resolveSlackUser: jest.fn().mockResolvedValue(undefined),
+    };
+
     orchestrator = new OrchestratorService(
       aiGatewayMock as any,
       skillRegistryMock as any,
@@ -101,6 +107,7 @@ describe('OrchestratorService - Chaining Regression', () => {
       prismaMock,
       clientFactoryMock as any,
       connectionResolverMock as any,
+      userResolverMock as any,
     );
   });
 
@@ -157,6 +164,10 @@ describe('OrchestratorService - Chaining Regression', () => {
       .mockResolvedValue({ success: true, data: { status: 'sent' } });
     (skillRegistryMock.resolve as jest.Mock).mockReturnValue({
       name: 'SendMessage',
+      schema: {
+        safeParse: jest.fn().mockReturnValue({ success: true }),
+        toJSONSchema: jest.fn().mockReturnValue({}),
+      },
       destructive: false,
       handler: mockSkillHandler,
     });
@@ -189,6 +200,10 @@ describe('OrchestratorService - Chaining Regression', () => {
       .mockResolvedValue({ success: true, data: { deleted: true } });
     (skillRegistryMock.resolve as jest.Mock).mockReturnValue({
       name: 'DeleteTask',
+      schema: {
+        safeParse: jest.fn().mockReturnValue({ success: true }),
+        toJSONSchema: jest.fn().mockReturnValue({}),
+      },
       destructive: true,
       handler: mockSkillHandler,
     });
@@ -203,7 +218,7 @@ describe('OrchestratorService - Chaining Regression', () => {
     expect(providerClientMock.sendMessage).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        text: expect.stringContaining('requires confirmation'),
+        text: expect.stringContaining('confirm'),
       }),
     );
 
@@ -241,6 +256,10 @@ describe('OrchestratorService - Chaining Regression', () => {
       .mockResolvedValue({ success: true, data: { deleted: true } });
     (skillRegistryMock.resolve as jest.Mock).mockReturnValue({
       name: 'DeleteTask',
+      schema: {
+        safeParse: jest.fn().mockReturnValue({ success: true }),
+        toJSONSchema: jest.fn().mockReturnValue({}),
+      },
       destructive: true,
       handler: mockSkillHandler,
     });
@@ -288,9 +307,25 @@ describe('OrchestratorService - Chaining Regression', () => {
     (skillRegistryMock.resolve as jest.Mock).mockImplementation(
       (name: string) => {
         if (name === 'SendMessage')
-          return { name, destructive: false, handler: mockHandler1 };
+          return {
+            name,
+            schema: {
+              safeParse: jest.fn().mockReturnValue({ success: true }),
+              toJSONSchema: jest.fn().mockReturnValue({}),
+            },
+            destructive: false,
+            handler: mockHandler1,
+          };
         if (name === 'SendEmail')
-          return { name, destructive: false, handler: mockHandler2 };
+          return {
+            name,
+            schema: {
+              safeParse: jest.fn().mockReturnValue({ success: true }),
+              toJSONSchema: jest.fn().mockReturnValue({}),
+            },
+            destructive: false,
+            handler: mockHandler2,
+          };
         return null;
       },
     );
@@ -326,6 +361,10 @@ describe('OrchestratorService - Chaining Regression', () => {
 
     (skillRegistryMock.resolve as jest.Mock).mockReturnValue({
       name: 'SendEmail',
+      schema: {
+        safeParse: jest.fn().mockReturnValue({ success: true }),
+        toJSONSchema: jest.fn().mockReturnValue({}),
+      },
       destructive: false,
       requiredProviders: ['gmail'],
       handler: jest.fn(),
@@ -359,7 +398,7 @@ describe('OrchestratorService - Chaining Regression', () => {
     expect(providerClientMock.sendMessage).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        text: expect.stringContaining('Sorry, something went wrong'),
+        text: expect.stringContaining('Something went wrong'),
       }),
     );
   });

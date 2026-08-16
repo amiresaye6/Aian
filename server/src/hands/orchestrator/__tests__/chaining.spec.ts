@@ -6,6 +6,7 @@ import { SessionService } from '../session.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProviderClientFactory } from '../../../integrations/provider-client.factory';
 import { ConnectionResolverService } from '../../core/connection-resolver.service';
+import { UserResolverService } from '../../core/user-resolver.service';
 
 describe('OrchestratorService - Chaining', () => {
   let service: OrchestratorService;
@@ -17,6 +18,7 @@ describe('OrchestratorService - Chaining', () => {
   let prismaMock: any;
   let clientFactoryMock: any;
   let connectionResolverMock: any;
+  let userResolverMock: any;
 
   let mockSkills: Record<string, any>;
 
@@ -37,7 +39,7 @@ describe('OrchestratorService - Chaining', () => {
   ) => ({
     name,
     description: `Description for ${name}`,
-    schema: { _def: { typeName: 'ZodObject' }, shape: {} } as any,
+    schema: { _def: { typeName: 'ZodObject' }, shape: {}, toJSONSchema: jest.fn().mockReturnValue({}), safeParse: jest.fn().mockReturnValue({ success: true }) } as any,
     destructive,
     handler: jest.fn().mockResolvedValue(handlerResult),
   });
@@ -121,6 +123,10 @@ describe('OrchestratorService - Chaining', () => {
         .mockResolvedValue({ connections: [], missing: [] }),
     };
 
+    userResolverMock = {
+      resolveSlackUser: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrchestratorService,
@@ -132,6 +138,10 @@ describe('OrchestratorService - Chaining', () => {
         {
           provide: ConnectionResolverService,
           useValue: connectionResolverMock,
+        },
+        {
+          provide: UserResolverService,
+          useValue: userResolverMock,
         },
       ],
     }).compile();
@@ -447,9 +457,8 @@ describe('OrchestratorService - Chaining', () => {
     const hasLimitMessage = calls.some((call) => {
       const text = call[1].text;
       return (
-        text.includes('timed out') ||
-        text.includes('maximum number of tool calls') ||
-        text.includes('limit')
+        text.includes('took too long') ||
+        text.includes('complex request')
       );
     });
     expect(hasLimitMessage).toBe(true);
