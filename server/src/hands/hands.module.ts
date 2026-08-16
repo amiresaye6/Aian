@@ -22,6 +22,7 @@ import { JiraModule } from '../integrations/jira/jira.module';
 import { JiraSkill } from './skills/jira.skill';
 import { TrelloModule } from '../integrations/trello/trello.module';
 import { TrelloSkill } from './skills/trello.skill';
+import { UserResolverService } from './core/user-resolver.service';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { TrelloSkill } from './skills/trello.skill';
     ResilienceService,
     SkillRegistryService,
     ConnectionResolverService,
+    UserResolverService,
     SessionService,
     OrchestratorService,
     MessagingSkill,
