@@ -216,19 +216,24 @@ function TopBar() {
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-gold-gradient" />
         </button>
         <div className="ml-1 flex items-center gap-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/[0.03] py-1 pl-1 pr-3">
-          <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gold-gradient text-[12px] font-bold text-[#17130A]">
-            <img
-              src={getImageUrl(user?.avatarUrl) || `https://ui-avatars.com/api/?name=${user?.fullName ?? "?"}&background=E8C86A&color=17130A&bold=true`}
-              alt={user?.fullName ?? "User"}
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="hidden text-left leading-tight sm:block">
-            <div className="text-[12.5px] font-semibold text-foreground">
-              {user?.fullName ?? "Loading..."}
+          <Link
+            href="/dashboard/profile"
+            className="ml-1 flex items-center gap-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/[0.03] py-1 pl-1 pr-3 transition-colors hover:bg-black/10 dark:hover:bg-white/[0.06] cursor-pointer"
+          >
+            <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gold-gradient text-[12px] font-bold text-[#17130A]">
+              <img
+                src={getImageUrl(user?.avatarUrl) || `https://ui-avatars.com/api/?name=${user?.fullName ?? "?"}&background=E8C86A&color=17130A&bold=true`}
+                alt={user?.fullName ?? "User"}
+                className="h-full w-full object-cover"
+              />
             </div>
-            <div className="text-[10.5px] text-muted-foreground">{user?.role ?? ""}</div>
-          </div>
+            <div className="hidden text-left leading-tight sm:block">
+              <div className="text-[12.5px] font-semibold text-foreground">
+                {user?.fullName ?? "Loading..."}
+              </div>
+              <div className="text-[10.5px] text-muted-foreground">{user?.role ?? ""}</div>
+            </div>
+          </Link>
         </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -248,7 +253,7 @@ function TopBar() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel className="border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground text-foreground">Cancel</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogAction
                 onClick={() => {
                   logout();
                   router.push("/login");
