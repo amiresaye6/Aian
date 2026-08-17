@@ -89,14 +89,7 @@ export class AuthService {
 
     return user;
   }
-  private async getPermissionKeysForRole(roleId: string | null | undefined): Promise<string[]> {
-  if (!roleId) return [];
-  const rolePermissions = await this.prismaService.rolePermission.findMany({
-    where: { roleId },
-    select: { permission: { select: { key: true } } },
-  });
-  return rolePermissions.map((rp) => rp.permission.key);
-  }
+
   async SignIn(email: string, password: string) {
     const existedUser = await this.usersService.findOneByEmail(email);
     if (!existedUser) {
@@ -122,7 +115,6 @@ export class AuthService {
     const userForPayload = isInvitedFirstLogin
     ? await this.memberActivationService.activateFirstLogin(existedUser.id)
     : existedUser;
-    const permissions = await this.getPermissionKeysForRole(userForPayload.roleId);
     const payload = {
       id: userForPayload.id,
       email: userForPayload.email,
@@ -134,7 +126,6 @@ export class AuthService {
       organization: userForPayload.organization?.name || 'unkown',
       organizationLogo: userForPayload.organization?.logoUrl || null,
       isSuperAdmin: existedUser.isSuperAdmin,
-      permissions,
     };
 
     const { access_token, refresh_token } = await this.getTokens(payload);
@@ -199,7 +190,7 @@ export class AuthService {
     if (!isMatched) {
       throw new ForbiddenException('Access denied');
     }
-    const permissions = await this.getPermissionKeysForRole(user.roleId);
+
     const payload = {
       id: user.id,
       email: user.email,
@@ -211,7 +202,6 @@ export class AuthService {
       organization: user.organization?.name || 'unkown',
       organizationLogo: user.organization?.logoUrl || null,
       isSuperAdmin: user.isSuperAdmin,
-       permissions,
     };
 
     const { access_token, refresh_token } = await this.getTokens(payload);
