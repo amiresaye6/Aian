@@ -359,6 +359,12 @@ export const GenerateReportInputSchema = z.object({
     .describe(
       'Optional target user name or email to restrict the report data to a specific person (e.g., "Amir").',
     ),
+  deliveryEmail: z
+    .string()
+    .email()
+    .describe(
+      'The email address to send the generated report to. MUST ask the user for this if not provided.',
+    ),
   timeframe: z
     .object({
       from: z.string().optional().nullable().describe('Start date in ISO 8601 format.'),

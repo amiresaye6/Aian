@@ -12,6 +12,7 @@ import { TrelloClientService } from '../../integrations/trello/services/trello-c
 import { ZoomClientService, MeetingType } from '../../integrations/zoom/zoom-client.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GraphService } from '../../graph/graph.service';
+import { EmailService } from '../../email/email.service';
 
 @Injectable()
 export class ReportingSkill implements OnModuleInit {
@@ -25,6 +26,7 @@ export class ReportingSkill implements OnModuleInit {
     private readonly resilienceService: ResilienceService,
     private readonly registry: SkillRegistryService,
     private readonly graphService: GraphService,
+    private readonly emailService: EmailService,
   ) {}
 
   onModuleInit() {
@@ -66,7 +68,7 @@ export class ReportingSkill implements OnModuleInit {
       'multiple',
       parsed.data,
       async () => {
-        const { reportTopic, targetUser, timeframe, sections } = parsed.data;
+        const { reportTopic, targetUser, timeframe, sections, deliveryEmail } = parsed.data;
         const activeSections = sections || ['tasks', 'meetings', 'knowledge'];
 
         // 1. Gather raw data
@@ -94,6 +96,24 @@ export class ReportingSkill implements OnModuleInit {
           rawMeetings,
           graphContext,
         );
+
+        if (deliveryEmail) {
+          const htmlContent = `
+            <div style="font-family: sans-serif; white-space: pre-wrap;">
+              ${fullReport}
+            </div>
+          `;
+          await this.emailService.sendBrandedEmail(
+            deliveryEmail,
+            reportTopic || 'Your Requested Report',
+            htmlContent
+          );
+          
+          return {
+            success: true,
+            message: `The report has been successfully generated and sent to ${deliveryEmail}.`
+          };
+        }
 
         return { reportMarkdown: fullReport };
       },
