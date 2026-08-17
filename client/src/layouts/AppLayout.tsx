@@ -47,19 +47,19 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn, getImageUrl } from "@/lib/utils";
 
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dashboard/chat", label: "AI Portal", icon: Sparkles },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard , permission: "dashboard.read"},
+  { to: "/dashboard/chat", label: "AI Portal", icon: Sparkles , permission: "chat.use"},
   { to: "/dashboard/knowledge/artifacts", label: "Knowledge", icon: BookOpen },
   { to: "/dashboard/knowledge/entities", label: "Entities", icon: Network },
-  { to: "/dashboard/zoom/meetings", label: "Meetings", icon: Video },
+  { to: "/dashboard/zoom/meetings", label: "Meetings", icon: Video  ,permission: "eyes.read"},
   // { to: "/dashboard/Reports", label: "Reports", icon: BarChart3 },
-  { to: "/eyes", label: "Integrations", icon: Plug },
-  { to: "/dashboard/pipeline", label: "Pipeline", icon: Database },
-  { to: "/dashboard/members", label: "Members", icon: Users },
-  { to: "/dashboard/roles", label: "roles", icon: PanelBottomClose },
+  { to: "/eyes", label: "Integrations", icon: Plug ,permission: "integrations.read"},
+  { to: "/dashboard/pipeline", label: "Pipeline", icon: Database ,permission: "eyes.manage"},
+  { to: "/dashboard/members", label: "Members", icon: Users , permission: "members.read"},
+  { to: "/dashboard/roles", label: "roles", icon: PanelBottomClose , permission: "roles.read"},
   // { to: "/dashboard/organization", label: "Organization", icon: Building2 },
-  { to: "/dashboard/billing", label: "Billing", icon: CreditCard },
-  { to: "/dashboard/audit", label: "Audit Log", icon: ScrollText },
+  { to: "/dashboard/billing", label: "Billing", icon: CreditCard , permission: "billing.read"},
+  { to: "/dashboard/audit", label: "Audit Log", icon: ScrollText , permission: "eyes.manage"},
 ];
 
 const SECONDARY = [
@@ -97,6 +97,8 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
 }
 function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed: (v: boolean) => void }) {
   const pathname = usePathname();
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  const visibleNav = NAV.filter((item) => !item.permission || permissions?.includes(item.permission) );
   return (
     <aside
       className={cn(
@@ -124,7 +126,7 @@ function Sidebar({ collapsed, setCollapsed }: { collapsed: boolean; setCollapsed
             Workspace
           </div>
         )}
-        {NAV.map((item, i) => {
+        {visibleNav.map((item, i) => {
           const active = pathname === item.to;
           return (
             <Link
