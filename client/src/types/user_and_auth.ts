@@ -9,7 +9,6 @@ export interface User {
   organization: string;
   organizationLogo: string | null;
   isSuperAdmin?: boolean;
-  permissions?: string[];
 }
 
 export interface AuthResponse {
