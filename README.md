@@ -38,4 +38,4 @@ Orchestrator testingn:
 > Show me all the "Change all aian images form all providers and integrations" ticket details.
 ### 19. ReportingSkill.generateReport: Generate structured markdown reports (Daily, Weekly, Performance, or Planning) by aggregating Jira or Trello >
 tasks, Zoom meetings, and cross-platform Knowledge Graph context.
->
+> Can you generate a performance report for Amir Alsayed for the last 2 weeks? I want to know what he achieved and whether there were any blockers. Send it to me at amyralsyd367@gmail.com.
