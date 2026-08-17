@@ -347,24 +347,17 @@ export const TrelloGetTaskInputSchema = z.object({
 export type TrelloGetTaskInput = z.infer<typeof TrelloGetTaskInputSchema>;
 
 export const GenerateReportInputSchema = z.object({
-  reportType: z
-    .enum(['daily', 'weekly', 'performance', 'planning'])
-    .optional()
-    .nullable()
-    .describe(
-      'Type of report: "daily" for today status, "weekly" for sprint summary, "performance" for individual activity, "planning" for today roadmap. Defaults to "daily".',
-    ),
-  scope: z
+  reportTopic: z
     .string()
     .describe(
-      'What the report is about, e.g., "Project AIAN", "Sprint 5", "Backend team".',
+      'The topic or focus of the report, e.g., "Performance Report for Q3", "Daily Standup Update".',
     ),
   targetUser: z
     .string()
     .optional()
     .nullable()
     .describe(
-      'Target user name or email for performance report (e.g. "Amir", "Hager", "donia"). Required if reportType is "performance".',
+      'Optional target user name or email to restrict the report data to a specific person (e.g., "Amir").',
     ),
   timeframe: z
     .object({
