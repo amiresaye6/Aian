@@ -15,6 +15,12 @@ export function buildBaseEmailTemplate(
 ): string {
   const currentYear = new Date().getFullYear();
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  // The logo travels as an embedded (CID) attachment on every send — see
+  // the sendMail() usage note below — rather than a hosted URL. That means
+  // it doesn't depend on your app being publicly reachable, which matters
+  // since a URL pointing at localhost only resolves on your own machine,
+  // never on the recipient's.
+  const logoCid = 'aian-logo';
 
   // Padding characters that force the preheader to end and stop the email
   // client from pulling in the start of the visible content as preview text.
@@ -22,7 +28,7 @@ export function buildBaseEmailTemplate(
 
   return `
     <!DOCTYPE html>
-    <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+    <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -122,7 +128,7 @@ export function buildBaseEmailTemplate(
           .content { padding: 32px 24px 28px !important; }
           .header-cell { padding: 34px 24px 26px !important; }
           .footer { padding: 26px 24px 28px !important; }
-          .logo-svg, .logo-vml { width: 168px !important; height: 47px !important; }
+          .logo-img { width: 168px !important; height: auto !important; }
           .btn { display: block !important; text-align: center; }
         }
       </style>
@@ -148,37 +154,15 @@ export function buildBaseEmailTemplate(
 
                 <!-- ============ HEADER ============ -->
                 <!-- Dark ground, exact gold mark — matches the source logo as shipped
-                     rather than inverting it into a solid color block. The seven
-                     polygons below are traced 1:1 from the brand artwork; the SVG and
-                     VML versions share the exact same coordinates (viewBox/coordsize
-                     992x281) so both renderings are the same shape, just two different
-                     vector formats for two different rendering engines. -->
+                     rather than inverting it into a solid color block. Bulletproof
+                     <img> conventions: explicit width/height, display:block, real alt
+                     text. See LOGO_TECHNICAL_NOTE above for why this is an <img> and
+                     not inline SVG/VML. -->
                 <tr>
                   <td class="header-cell" align="center" bgcolor="#111111"
                     style="background-color:#111111; padding:46px 30px 38px; border-radius:10px 10px 0 0;">
-
-                    <!--[if mso]>
-                    <v:group coordsize="992,281" coordorigin="0,0" style="width:212px;height:60px;">
-                      <v:shape coordsize="992,281" path="m44,196 l0,281,100,281,145,196 x m686,188 l637,281,738,281 x m759,2 l759,280,991,281 x m903,1 l903,79,991,182,992,2 x m413,1 l324,89,324,281,413,281 x m151,1 l103,91,201,273,304,281 x m585,0 l435,281,578,281,657,132 x e"
-                        fillcolor="#D4AF37" stroked="f" style="width:992px;height:281px;position:absolute;top:0;left:0;">
-                      </v:shape>
-                    </v:group>
-                    <![endif]-->
-                    <!--[if !mso]><!-->
-                    <svg class="logo-svg" width="212" height="60" viewBox="0 0 992 281" xmlns="http://www.w3.org/2000/svg"
-                      role="img" aria-label="Aian" style="display:inline-block;">
-                      <g fill="#D4AF37">
-                        <polygon points="44,196 0,281 100,281 145,196"/>
-                        <polygon points="686,188 637,281 738,281"/>
-                        <polygon points="759,2 759,280 991,281"/>
-                        <polygon points="903,1 903,79 991,182 992,2"/>
-                        <polygon points="413,1 324,89 324,281 413,281"/>
-                        <polygon points="151,1 103,91 201,273 304,281"/>
-                        <polygon points="585,0 435,281 578,281 657,132"/>
-                      </g>
-                    </svg>
-                    <!--<![endif]-->
-
+                    <img src="cid:${logoCid}" width="212" height="76" alt="AIAN" class="logo-img"
+                      style="display:block; margin:0 auto; border:0; outline:none; text-decoration:none; max-width:212px; height:auto;">
                   </td>
                 </tr>
 

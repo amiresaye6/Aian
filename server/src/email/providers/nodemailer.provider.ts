@@ -23,13 +23,19 @@ export class NodemailerProvider implements EmailProvider {
     });
   }
 
-  async sendMail(to: string, subject: string, html: string): Promise<void> {
+  async sendMail(
+    to: string, 
+    subject: string, 
+    html: string,
+    attachments?: import('./email.provider').EmailAttachment[]
+  ): Promise<void> {
     try {
       const info = await this.transporter.sendMail({
         from: process.env.EMAIL_FROM || '"Aian System" <no-reply@example.com>',
         to,
         subject,
         html,
+        attachments,
       });
       this.logger.log(
         `Email sent successfully to ${to}. Message ID: ${info.messageId}`,

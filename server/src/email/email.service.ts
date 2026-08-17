@@ -1,6 +1,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import * as path from 'path';
 import { EmailProvider } from './providers/email.provider';
 import { buildBaseEmailTemplate } from './templates/email-template.builder';
+
+// Embedded (not hosted) — travels with the email itself as a CID attachment,
+// referenced inside buildBaseEmailTemplate() via `cid:aian-logo`. The `cid`
+// value here MUST match the logoCid constant in email-template.builder.ts.
+const LOGO_ATTACHMENT = {
+  filename: 'aian-logo.png',
+  path: path.join(process.cwd(), 'assets/email/aian-logo.png'),
+  cid: 'aian-logo',
+};
 
 /**
  * 🚀 EmailService (Global Email Sender)
@@ -46,10 +56,11 @@ export class EmailService {
     // 1. Wrap the specific content in the standard company template
     const fullHtml = buildBaseEmailTemplate(contentHtml);
 
-    // 2. Delegate the actual sending to the underlying provider (e.g., Nodemailer)
+    // 2. Delegate the actual sending to the underlying provider (e.g., Nodemailer),
+    // including the logo attachment every branded email needs.
     // Note: This is an async operation. If you don't want to block the HTTP request,
     // you can remove the `await` keyword in the caller, and it will execute in the background.
-    await this.emailProvider.sendMail(to, subject, fullHtml);
+    await this.emailProvider.sendMail(to, subject, fullHtml, [LOGO_ATTACHMENT]);
   }
 
   /**
