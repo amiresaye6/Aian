@@ -9,10 +9,14 @@ import { RetrievalPipelineService } from '../../retrieval/retrieval-pipeline.ser
 import { AiGatewayService } from '../../ai/ai-gateway.service';
 import { JiraClientService } from '../../integrations/jira/services/jira-client.service';
 import { TrelloClientService } from '../../integrations/trello/services/trello-client.service';
-import { ZoomClientService, MeetingType } from '../../integrations/zoom/zoom-client.service';
+import {
+  ZoomClientService,
+  MeetingType,
+} from '../../integrations/zoom/zoom-client.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GraphService } from '../../graph/graph.service';
 import { EmailService } from '../../email/email.service';
+import { marked } from 'marked';
 
 @Injectable()
 export class ReportingSkill implements OnModuleInit {
@@ -37,12 +41,16 @@ export class ReportingSkill implements OnModuleInit {
       schema: GenerateReportInputSchema,
       destructive: false,
       requiredProviders: [],
-      optionalProviders: ['JIRA', 'Jira', 'jira', 'TRELLO', 'Trello', 'trello', 'ZOOM', 'Zoom', 'zoom'],
-      handler: (ctx: SkillContext, input: any) => this.generateReport(ctx, input),
+      optionalProviders: ['jira', 'trello', 'zoom'],
+      handler: (ctx: SkillContext, input: any) =>
+        this.generateReport(ctx, input),
     });
   }
 
-  async generateReport(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
+  async generateReport(
+    ctx: SkillContext,
+    input: any,
+  ): Promise<SkillResult<any>> {
     const parsed = GenerateReportInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -68,12 +76,18 @@ export class ReportingSkill implements OnModuleInit {
       'multiple',
       parsed.data,
       async () => {
-        const { reportTopic, targetUser, timeframe, sections, deliveryEmail } = parsed.data;
+        const { reportTopic, targetUser, timeframe, sections, deliveryEmail } =
+          parsed.data;
         const activeSections = sections || ['tasks', 'meetings', 'knowledge'];
 
         // 1. Gather raw data
         const rawTasks = activeSections.includes('tasks')
-          ? await this.fetchRawTasks(ctx, targetUser, timeframe)
+          ? await this.fetchRawTasks(
+              ctx,
+              targetUser,
+              timeframe,
+              parsed.data.projects,
+            )
           : [];
 
         const rawMeetings = activeSections.includes('meetings')
@@ -83,7 +97,13 @@ export class ReportingSkill implements OnModuleInit {
         // 2. Fetch specific Knowledge Graph context
         let graphContext = '';
         if (activeSections.includes('knowledge')) {
-          graphContext = await this.fetchGraphContext(ctx, targetUser, rawTasks, rawMeetings);
+          graphContext = await this.fetchGraphContext(
+            ctx,
+            targetUser,
+            timeframe,
+            rawTasks,
+            rawMeetings,
+          );
         }
 
         // 3. Generate Insightful Report using LLM
@@ -98,20 +118,21 @@ export class ReportingSkill implements OnModuleInit {
         );
 
         if (deliveryEmail) {
+          const parsedHtml = await marked.parse(fullReport);
           const htmlContent = `
-            <div style="font-family: sans-serif; white-space: pre-wrap;">
-              ${fullReport}
+            <div class="content" style="font-family: sans-serif;">
+              ${parsedHtml}
             </div>
           `;
           await this.emailService.sendBrandedEmail(
             deliveryEmail,
             reportTopic || 'Your Requested Report',
-            htmlContent
+            htmlContent,
           );
-          
+
           return {
             success: true,
-            message: `The report has been successfully generated and sent to ${deliveryEmail}.`
+            message: `The report has been successfully generated and sent to ${deliveryEmail}.`,
           };
         }
 
@@ -126,28 +147,53 @@ export class ReportingSkill implements OnModuleInit {
     ctx: SkillContext,
     targetUser?: string | null,
     timeframe?: any,
+    projects?: string[] | null,
   ): Promise<any[]> {
-    let jql = 'updated >= -30d';
-    if (targetUser) {
-      jql = `assignee ~ "${targetUser}" OR text ~ "${targetUser}" ORDER BY updated DESC`;
+    let jql = '';
+    
+    const formatDateForJQL = (isoStr: string) => {
+      const d = new Date(isoStr);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
+
+    if (timeframe?.from && timeframe?.to) {
+      jql = `updated >= "${formatDateForJQL(timeframe.from)}" AND updated <= "${formatDateForJQL(timeframe.to)}"`;
+    } else if (timeframe?.from) {
+      jql = `updated >= "${formatDateForJQL(timeframe.from)}"`;
+    } else if (timeframe?.to) {
+      jql = `updated <= "${formatDateForJQL(timeframe.to)}"`;
+    } else {
+      jql = `updated >= -30d`;
     }
+
+    if (targetUser) {
+      jql += ` AND (assignee ~ "${targetUser}" OR text ~ "${targetUser}")`;
+    }
+
+    if (projects && projects.length > 0) {
+      const projectsStr = projects.map((p) => `"${p}"`).join(', ');
+      jql += ` AND project IN (${projectsStr})`;
+    }
+    jql += ` ORDER BY updated DESC`;
 
     // Try Jira
     try {
       const jiraConnection =
-        ctx?.connections?.['JIRA'] ||
-        ctx?.connections?.['Jira'] ||
         ctx?.connections?.['jira'] ||
         (await this.prisma.providerConnection.findFirst({
           where: {
-            organizationEyeId: ctx.organizationId,
+            organizationEye: { organizationId: ctx.organizationId },
             provider: { key: 'jira' },
             status: 'connected',
           },
         }));
 
       if (jiraConnection) {
-        const searchResult = await this.jiraClient.searchIssues(ctx.organizationId, jql, 25);
+        const searchResult = await this.jiraClient.searchIssues(
+          ctx.organizationId,
+          jql,
+          50,
+        );
         if (searchResult?.issues && Array.isArray(searchResult.issues)) {
           return searchResult.issues.map((i: any) => ({
             id: i.key,
@@ -166,34 +212,65 @@ export class ReportingSkill implements OnModuleInit {
     // Try Trello
     try {
       const trelloConnection =
-        ctx?.connections?.['TRELLO'] ||
-        ctx?.connections?.['Trello'] ||
         ctx?.connections?.['trello'] ||
         (await this.prisma.providerConnection.findFirst({
           where: {
-            organizationEyeId: ctx.organizationId,
+            organizationEye: { organizationId: ctx.organizationId },
             provider: { key: 'trello' },
             status: 'connected',
           },
         }));
 
       if (trelloConnection && this.trelloClient) {
-        const boards = await this.trelloClient.getBoards(trelloConnection as any);
-        if (Array.isArray(boards) && boards.length > 0) {
-          const mainBoard = boards[0];
-          const cards = await this.trelloClient.listTasks(ctx.organizationId, {
-            boardName: mainBoard.name,
-            maxResults: 25,
-          });
-          if (Array.isArray(cards)) {
-            return cards.map((c: any) => ({
+        const allBoards = await this.trelloClient.getBoards(
+          trelloConnection as any,
+        );
+        if (Array.isArray(allBoards) && allBoards.length > 0) {
+          let targetBoards = allBoards;
+          if (projects && projects.length > 0) {
+            targetBoards = allBoards.filter((b) =>
+              projects.some((p) =>
+                b.name.toLowerCase().includes(p.toLowerCase()),
+              ),
+            );
+          }
+          if (!projects || projects.length === 0) {
+            targetBoards = targetBoards.slice(0, 5); // Fallback to top 5 boards
+          }
+
+          let allCards: any[] = [];
+          for (const board of targetBoards) {
+            const cards = await this.trelloClient.listTasks(
+              ctx.organizationId,
+              {
+                boardName: board.name,
+                maxResults: 50,
+              },
+            );
+            if (Array.isArray(cards)) {
+              allCards = allCards.concat(cards);
+            }
+          }
+
+          return allCards
+            .filter((c: any) => {
+              if (!timeframe) return true;
+              const activityDate = new Date(
+                c.lastActivity || c.due || Date.now(),
+              );
+              if (timeframe.from && activityDate < new Date(timeframe.from))
+                return false;
+              if (timeframe.to && activityDate > new Date(timeframe.to))
+                return false;
+              return true;
+            })
+            .map((c: any) => ({
               id: c.id?.slice(-6) || 'Card',
               summary: c.name,
               status: c.closed ? 'Archived' : 'Active',
               assignee: targetUser || 'Unassigned',
               source: 'Trello',
             }));
-          }
         }
       }
     } catch (err: any) {
@@ -210,12 +287,10 @@ export class ReportingSkill implements OnModuleInit {
   ): Promise<any[]> {
     try {
       const zoomConnection =
-        ctx?.connections?.['ZOOM'] ||
-        ctx?.connections?.['Zoom'] ||
         ctx?.connections?.['zoom'] ||
         (await this.prisma.providerConnection.findFirst({
           where: {
-            organizationEyeId: ctx.organizationId,
+            organizationEye: { organizationId: ctx.organizationId },
             provider: { key: 'zoom' },
             status: 'connected',
           },
@@ -230,14 +305,22 @@ export class ReportingSkill implements OnModuleInit {
       );
       const meetings = meetingsResult?.resources || [];
 
-      return meetings.map((m: any) => ({
-        id: m.id,
-        topic: m.name,
-        startTime: m.metadata?.start_time,
-        duration: m.metadata?.duration,
-        host: m.metadata?.host_email,
-        source: 'Zoom',
-      }));
+      return meetings
+        .map((m: any) => ({
+          id: m.id,
+          topic: m.name,
+          startTime: m.metadata?.start_time,
+          duration: m.metadata?.duration,
+          host: m.metadata?.host_email,
+          source: 'Zoom',
+        }))
+        .filter((m: any) => {
+          if (!timeframe || !m.startTime) return true;
+          const start = new Date(m.startTime);
+          if (timeframe.from && start < new Date(timeframe.from)) return false;
+          if (timeframe.to && start > new Date(timeframe.to)) return false;
+          return true;
+        });
     } catch (err: any) {
       return [];
     }
@@ -246,6 +329,7 @@ export class ReportingSkill implements OnModuleInit {
   private async fetchGraphContext(
     ctx: SkillContext,
     targetUser: string | null | undefined,
+    timeframe: any,
     tasks: any[],
     meetings: any[],
   ): Promise<string> {
@@ -267,19 +351,19 @@ export class ReportingSkill implements OnModuleInit {
     const session = this.graphService.getSession();
     try {
       // Custom Query: Find the user, expand 1-2 hops to find related context
-      const query = `
+      let query = `
         MATCH (u:Entity {organizationId: $orgId})
         WHERE u.type IN ['Person', 'User'] AND toLower(u.canonicalName) CONTAINS toLower($targetUser)
         
         // Traverse to find related Tickets, Meetings, Tasks, Projects, PullRequests, Messages, Decisions, Claims
         MATCH (u)-[r]-(n)
-        WHERE n:Claim OR n:Decision OR n:ActionItem OR (n:Entity AND n.type IN ['Ticket', 'Meeting', 'Task', 'Project', 'PullRequest', 'Message'])
+        WHERE (n:Claim OR n:Decision OR n:ActionItem OR (n:Entity AND n.type IN ['Ticket', 'Meeting', 'Task', 'Project', 'PullRequest', 'Message']))
         
         // Collect artifact IDs from the nodes and relationships
         WITH n, coalesce(n.artifactIds, []) + coalesce(r.artifactIds, []) AS artifactIds
         UNWIND artifactIds AS artifactId
         RETURN DISTINCT artifactId
-        LIMIT 20
+        LIMIT 40
       `;
 
       const result = await session.run(query, {
@@ -294,11 +378,18 @@ export class ReportingSkill implements OnModuleInit {
       }
 
       // Fetch artifact contents from DB
+      const dateFilter: any = {};
+      if (timeframe?.from) dateFilter.gte = new Date(timeframe.from);
+      if (timeframe?.to) dateFilter.lte = new Date(timeframe.to);
+      const createdAtQuery = Object.keys(dateFilter).length > 0 ? dateFilter : undefined;
+
       const artifacts = await this.prisma.knowledgeArtifact.findMany({
         where: {
           id: { in: artifactIds },
           organizationId: ctx.organizationId,
+          ...(createdAtQuery ? { createdAt: createdAtQuery } : {}),
         },
+        orderBy: { createdAt: 'desc' },
         select: {
           title: true,
           content: true,
@@ -364,4 +455,4 @@ ${graphContext}
 
     return result;
   }
-}
+}

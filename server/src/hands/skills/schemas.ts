@@ -373,6 +373,11 @@ export const GenerateReportInputSchema = z.object({
     .optional()
     .nullable()
     .describe('Optional time period constraint for the report.'),
+  projects: z
+    .array(z.string())
+    .optional()
+    .nullable()
+    .describe('Optional list of target projects, boards, or spaces (e.g. Jira Project keys, Trello board names).'),
   sections: z
     .array(z.enum(['tasks', 'meetings', 'knowledge']))
     .optional()
