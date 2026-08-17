@@ -389,19 +389,64 @@ export class TrelloClientService implements ProviderClient {
   async archiveTask(organizationId: string, input: TrelloDeleteTaskInput): Promise<any> {
     const connection = await this.getConnection(organizationId);
     const cardId = await this.resolveCard(connection, input.taskIdentifier);
-    return this.updateCard(connection, cardId, { closed: true });
+    const result = await this.updateCard(connection, cardId, { closed: true });
+    console.log("result from deletion is ", {systemMessage: "ticket deleted successfully", ...result})
+    return {systemMessage: "ticket deleted successfully", ...result};
   }
 
-  async listTasks(organizationId: string, input: TrelloListTasksInput): Promise<any[]> {
+  async listTasks(
+    organizationId: string,
+    input: TrelloListTasksInput,
+  ): Promise<any[]> {
     const connection = await this.getConnection(organizationId);
     if (!input.boardName) {
       throw new Error('boardName is required to list Trello tasks.');
     }
     const boardId = await this.resolveBoard(connection, input.boardName);
-    const url = input.listName 
+    const url = input.listName
       ? `/lists/${await this.resolveList(connection, input.boardName, input.listName)}/cards`
       : `/boards/${boardId}/cards/visible`;
-    return this.executeRequest<any[]>(connection, 'GET', url);
+
+    const result = await this.executeRequest<any[]>(connection, 'GET', url);
+
+    return result.map((card) => {
+      const desc = typeof card.desc === 'string' ? card.desc.trim() : '';
+      const hasRealDesc =
+        desc.length > 0 && !/^(coming soon|tbd|todo|n\/a)\b/i.test(desc);
+
+      const missing: string[] = [];
+      if (!hasRealDesc) missing.push('description');
+      if (!card.due) missing.push('due');
+      if (!card.idMembers?.length) missing.push('members');
+      if (!card.idLabels?.length) missing.push('labels');
+
+      return {
+        id: card.id,
+        shortId: card.idShort,
+        name: card.name,
+        description: hasRealDesc ? desc : null,
+        url: card.shortUrl ?? card.url,
+        boardId: card.idBoard,
+        listId: card.idList,
+        archived: !!card.closed,
+        due: card.due,
+        dueComplete: !!card.dueComplete,
+        labels: (card.labels ?? []).map((l: any) => l.name).filter(Boolean),
+        memberIds: card.idMembers ?? [],
+        lastActivity: card.dateLastActivity,
+        activity: {
+          comments: card.badges?.comments ?? 0,
+          attachments: card.badges?.attachments ?? 0,
+          checklist: card.badges?.checkItems
+            ? {
+                completed: card.badges.checkItemsChecked ?? 0,
+                total: card.badges.checkItems,
+              }
+            : null,
+        },
+        missing,
+      };
+    });
   }
 
   async getTask(organizationId: string, input: TrelloGetTaskInput): Promise<any> {

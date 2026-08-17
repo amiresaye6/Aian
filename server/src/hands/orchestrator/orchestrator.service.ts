@@ -1,13 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiGatewayService } from '../../ai/ai-gateway.service';
-import { SkillRegistryService } from '../core/registry.service';
+import { SkillRegistryService, SkillDefinition } from '../core/registry.service';
 import { SessionService } from './session.service';
 import { AiMessage, AiTool } from '../../ai/providers/ai-provider.interface';
 import { SkillContext, SkillResult } from '../core/types';
 import { ConnectionResolverService } from '../core/connection-resolver.service';
+import { UserResolverService } from '../core/user-resolver.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderClientFactory } from '../../integrations/provider-client.factory';
 import { ProviderConnection } from '../../integrations/contracts';
+import { markdownToSlackMrkdwn } from '../../integrations/slack/slack-formatter.util';
 import {
   ChainExecutionContext,
   ChainStepResult,
@@ -17,7 +19,7 @@ import {
 } from './chain-context';
 
 /** Max character length for a tool result before truncation in LLM context */
-const MAX_TOOL_RESULT_CHARS = 3000;
+const MAX_TOOL_RESULT_CHARS = 6000;
 
 export interface HandleDMInput {
   organizationId: string;
@@ -40,6 +42,7 @@ export class OrchestratorService {
     private readonly prisma: PrismaService,
     private readonly clientFactory: ProviderClientFactory,
     private readonly connectionResolver: ConnectionResolverService,
+    private readonly userResolver: UserResolverService,
   ) {}
 
   // ── Reply Helper ─────────────────────────────────────────────────────────
@@ -53,6 +56,8 @@ export class OrchestratorService {
     text: string,
     threadTs?: string,
   ) {
+    // Convert standard Markdown to Slack mrkdwn before sending
+    const formattedText = markdownToSlackMrkdwn(text);
     try {
       const connection = await this.prisma.providerConnection.findUnique({
         where: { id: connectionId },
@@ -64,7 +69,7 @@ export class OrchestratorService {
       if (client.sendMessage) {
         await client.sendMessage(connection as unknown as ProviderConnection, {
           targetId: channelId,
-          text,
+          text: formattedText,
           threadId: threadTs,
         });
       }
@@ -77,57 +82,122 @@ export class OrchestratorService {
 
   // ── System Prompt ────────────────────────────────────────────────────────
 
-  private buildSystemPrompt(userProfile?: {
-    fullName: string;
-    email: string;
-  }): string {
-    let prompt = `You are AIAN, a strict enterprise organizational intelligence AI.
-CRITICAL RULES:
-1. You have access to various tools (skills) like sending emails, sending messages, fetching reports, and querying organizational knowledge.
-2. If the user asks you to perform an action that matches one of your tools, you MUST use the appropriate tool to fulfill their request.
-3. If the user asks a question about the organization's data, projects, or employees, you MUST use the KnowledgeSkill.answerQuestion tool.
-4. Do NOT answer general knowledge questions, math problems, or write code. If asked, respond: "I am an enterprise AI and can only assist with organizational tasks."
-   However, NEVER refuse requests to use your tools (like sending emails, creating tasks, or searching).
-   If a user provides a short answer (like an email address, "yes", or a name) during a multi-step conversation, DO NOT refuse it. It is just context for the ongoing task.
-   If a search returns no results, tell the user "I searched but couldn't find any information" rather than refusing.
-5. Be concise and professional.
+  private async getEnabledSkills(organizationId: string): Promise<SkillDefinition[]> {
+    const definitions = this.skillRegistry.getAllDefinitions();
+    const connectedProviders = await this.connectionResolver.getConnectedProviderKeys(organizationId);
 
-MULTI-STEP CHAINING RULES:
-6. When a user's request involves multiple steps where a later step depends on the output of an earlier step, you MUST execute them sequentially: call the first tool, observe its result, then call the next tool using that result.
-7. When a user's request involves multiple INDEPENDENT actions (no dependency between them), you may call all the tools in a single response.
-8. CRITICAL: NEVER use placeholder values like {report_content}, {summary}, or {result_from_step_1} in tool inputs. If a tool's input depends on another tool's output, DO NOT call that tool yet. Instead, call ONLY the tool that produces the data you need. After you receive its result, THEN call the dependent tool with the ACTUAL data. Example: For "generate a report and email it", ONLY call GenerateReport first. Do NOT call EmailSkill in the same response with a placeholder. Wait for the report result, then call EmailSkill with the real content.
-9. If you need information from the user to complete a step (e.g., a missing email address, unclear recipient, or ambiguous identifier), ASK the user for clarification instead of guessing. Phrase your question clearly and concisely.
-10. When converting content between formats (e.g., markdown report to HTML email), do the conversion yourself in the tool arguments.`;
+    return definitions.filter(def => {
+      // If the skill requires no providers, it's always enabled
+      if (!def.requiredProviders || def.requiredProviders.length === 0) {
+        return true;
+      }
+      // Otherwise, verify ALL required providers are connected
+      return def.requiredProviders.every(req =>
+        connectedProviders.includes(req.toUpperCase())
+      );
+    });
+  }
+
+  /**
+   * Generates a dynamic capabilities summary from the skill registry.
+   * Groups skills by their prefix (e.g. "Jira", "meetingSkill") and
+   * lists each skill's description. Includes usage hints when provided.
+   */
+  private buildCapabilitiesSummary(enabledSkills: SkillDefinition[]): string {
+    if (enabledSkills.length === 0) return '';
+
+    const lines: string[] = ['AVAILABLE TOOLS:'];
+    for (const def of enabledSkills) {
+      let line = `- ${def.name}: ${def.description}`;
+      if (def.usageHint) {
+        line += ` (Hint: ${def.usageHint})`;
+      }
+      lines.push(line);
+    }
+
+    return lines.join('\n');
+  }
+
+  private buildSystemPrompt(
+    enabledSkills: SkillDefinition[],
+    userProfile?: {
+      fullName: string;
+      email: string;
+    }
+  ): string {
+    const capabilities = this.buildCapabilitiesSummary(enabledSkills);
+
+    let prompt = `You are AIAN, an enterprise workspace assistant.
+
+PERSONALITY & TONE:
+- Be concise. Slack is a chat — not a report. Keep replies short and scannable.
+- Be direct. Say "Done" not "The task has been successfully created for you."
+- Be natural. Write like a helpful teammate, not a corporate chatbot.
+- Never apologize excessively. One "sorry" max if something failed.
+- Use emoji sparingly — one per message at most, and only when it adds clarity.
+
+${capabilities}
+
+WHAT YOU CANNOT DO:
+- Answer general knowledge, math, or coding questions. If asked, say: "I can only help with workspace tasks. Try asking me about tasks, meetings, emails, or organizational questions."
+- Make up information. If a knowledge search returns nothing, say so.
+- However, NEVER refuse requests to use your tools (like sending emails, creating tasks, or searching).
+- If a user provides a short answer (like an email address, "yes", or a name) during a multi-step conversation, DO NOT refuse it. It is just context for the ongoing task.
+
+FORMATTING RULES FOR SLACK:
+- Use *bold* for emphasis (NOT **bold**)
+- Use _italic_ for secondary emphasis
+- Use \`code\` for technical values like IDs, emails, keys
+- Use • for bullet points (NOT - or *)
+- Do NOT use # headers — Slack doesn't render them
+- For links, use <url|display text> format
+- Keep messages under 3000 characters. If a response is long, summarize the key points.
+
+TOOL USAGE RULES:
+1. Pick the right tool by reading each tool's name and description. Match the user's intent to the tool that fits.
+2. Each tool defines its own required and optional parameters in its schema. Before calling any tool, verify you have values for ALL required parameters. If any are missing, ask the user — do not guess.
+3. Only ask the user for required parameters that you cannot infer from context. Do not ask for optional parameters unless the user's request clearly needs them.
+4. Sequential dependencies: If tool B needs output from tool A, call A first. Wait for the result, then call B. NEVER use placeholders like {report_content}.
+5. Independent actions: If tools don't depend on each other, you may call them all at once.
+6. Format conversion: When converting content between formats (e.g. markdown to HTML for email), do it yourself in the tool arguments.
+
+TOOL EXECUTION RULES (CRITICAL):
+- Once a tool succeeds (e.g. returns {"success":true}), DO NOT call that same tool again for the same task.
+- When a task is complete, generate a conversational text response to the user and STOP generating tool calls.`;
 
     if (userProfile) {
-      prompt += `\n\nCURRENT USER CONTEXT:
-- Name: ${userProfile.fullName}
-- Email: ${userProfile.email}
-CRITICAL: When the user says "me", "my", or "I", they are referring to this user.
-"send it to me" = send to ${userProfile.email}. "email me" = send to ${userProfile.email}.
-Do NOT ask for the user's email address. You already have it: ${userProfile.email}.`;
+      const nameStr = userProfile.fullName || 'there';
+      const emailStr = userProfile.email || '';
+
+      prompt += `\n\nYOU ARE TALKING TO:\n- Name: ${nameStr}`;
+      if (emailStr) {
+        prompt += `\n- Email: ${emailStr}`;
+      }
+      prompt += `\nWhen they say "me", "my", "I", or "mine" — they mean themselves.`;
+      if (emailStr) {
+        prompt += `\n"send it to me" = send to ${emailStr}. Do NOT ask for their email.`;
+      }
     }
 
     const now = new Date();
-    const currentDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const currentDate = now.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
     const currentTime = now.toLocaleTimeString('en-US');
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    prompt += `\n\nCURRENT SYSTEM TIME:
-- Date: ${currentDate}
-- Time: ${currentTime}
-- Timezone: ${timeZone}
-CRITICAL: When generating dates or times for tool arguments (like scheduling meetings or setting due dates), you MUST resolve relative terms (like "tomorrow", "next week", "in 2 hours") into strict absolute dates (e.g. ISO 8601 strings) using the current system time above. Never pass literal strings like "tomorrow" to tools.`;
+    prompt += `\n\nCURRENT TIME: ${currentDate}, ${currentTime} (${timeZone})\nWhen the user says "tomorrow", "next week", "in 2 hours" — convert to ISO 8601 dates using the time above. Never pass relative terms to tools.`;
 
     return prompt;
   }
 
   // ── Schema Conversion ────────────────────────────────────────────────────
 
-
-  private buildTools(): AiTool[] {
-    const definitions = this.skillRegistry.getAllDefinitions();
-    return definitions.map((def) => {
+  private buildTools(enabledSkills: SkillDefinition[]): AiTool[] {
+    return enabledSkills.map((def) => {
       return {
         name: def.name,
         description: def.description,
@@ -152,7 +222,11 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
       });
     }
 
-    const dataStr = JSON.stringify(result.data ?? { success: true });
+    const payload = {
+      status: 'SUCCESS - DO NOT CALL THIS TOOL AGAIN FOR THIS TASK',
+      data: result.data ?? { success: true },
+    };
+    const dataStr = JSON.stringify(payload);
 
     if (dataStr.length <= MAX_TOOL_RESULT_CHARS) {
       return dataStr;
@@ -273,11 +347,24 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
   private summarizeStepResult(step: ChainStepResult): string {
     if (!step.result?.data) return '';
     const data = step.result.data as any;
-    if (data.reportMarkdown) return ' — Report generated';
-    if (data.answer) return ` — "${data.answer.substring(0, 80)}..."`;
-    if (data.summary) return ` — Summary generated`;
-    if (data.meetingSkillMessage)
-      return ` — ${data.meetingSkillMessage.substring(0, 80)}`;
+
+    // Scan for common summary-like fields generically — no skill-specific checks
+    const candidateFields = [
+      'message',
+      'answer',
+      'summary',
+      'reportMarkdown',
+      'meetingSkillMessage',
+      'result',
+      'text',
+      'content',
+    ];
+    for (const field of candidateFields) {
+      if (typeof data[field] === 'string' && data[field].length > 0) {
+        const preview = data[field].substring(0, 80);
+        return ` — ${preview}${data[field].length > 80 ? '...' : ''}`;
+      }
+    }
     return '';
   }
 
@@ -295,6 +382,86 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
       steps: [],
       messages: [...initialMessages],
     };
+  }
+
+  // ── Pre-Validation ───────────────────────────────────────────────────────
+
+  /**
+   * Pre-validates tool call inputs against the skill's Zod schema BEFORE execution.
+   * Returns null if valid, or a structured object describing missing/invalid fields.
+   * This saves token round-trips by catching problems before burning an LLM cycle.
+   */
+  private preValidateToolCall(call: { id: string; name: string; input: any }): {
+    valid: boolean;
+    missingFields?: string[];
+    errors?: string;
+  } {
+    const def = this.skillRegistry.resolve(call.name);
+    if (!def) return { valid: true }; // Will fail at execution with SKILL_NOT_FOUND
+
+    const result = def.schema.safeParse(call.input);
+    if (result.success) return { valid: true };
+
+    // Extract the missing required fields from Zod errors
+    const missingFields = result.error.issues
+      .filter(
+        (issue: any) =>
+          issue.code === 'invalid_type' && issue.received === 'undefined',
+      )
+      .map((issue) => issue.path.join('.'));
+
+    const otherErrors = result.error.issues
+      .filter(
+        (issue: any) =>
+          !(issue.code === 'invalid_type' && issue.received === 'undefined'),
+      )
+      .map((issue) => `${issue.path.join('.')}: ${issue.message}`);
+
+    return {
+      valid: false,
+      missingFields: missingFields.length > 0 ? missingFields : undefined,
+      errors: otherErrors.length > 0 ? otherErrors.join('; ') : undefined,
+    };
+  }
+
+  // ── Action Descriptions ─────────────────────────────────────────────────
+
+  /**
+   * Generates a human-readable description of a skill action for confirmation prompts.
+   * Pulls the description from the skill's own registration (actionDescription),
+   * falling back to a generic message. No hardcoded skill names.
+   */
+  private describeAction(skillName: string, input: any): string {
+    const def = this.skillRegistry.resolve(skillName);
+    if (def?.actionDescription) {
+      try {
+        return def.actionDescription(input);
+      } catch {
+        // Fallback below
+      }
+    }
+
+    // Generic fallback — still no internal names exposed
+    return `I'm about to perform a permanent action that can't be undone`;
+  }
+
+  // ── User Profile Resolution ─────────────────────────────────────────────
+
+  /**
+   * Resolves the Slack user ID from a DM input to an internal user profile.
+   * Reusable across handleDM, handleChainConfirmation, and handleChainClarificationResume.
+   */
+  private async resolveUserProfile(
+    input: HandleDMInput,
+  ): Promise<{ fullName: string; email: string } | undefined> {
+    const resolved = await this.userResolver.resolveSlackUser(
+      input.organizationId,
+      input.userId,
+      input.connectionId,
+    );
+    return resolved
+      ? { fullName: resolved.fullName, email: resolved.email }
+      : undefined;
   }
 
   // ── Skill Execution ──────────────────────────────────────────────────────
@@ -431,19 +598,16 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
       return this.handleChainClarificationResume(input, session);
     }
 
-    // 3. Look up user profile for context injection ("send it to me" → email)
-    let userProfile: { fullName: string; email: string } | undefined;
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: input.userId },
-        select: { fullName: true, email: true },
-      });
-      if (user) {
-        userProfile = { fullName: user.fullName, email: user.email };
-      }
-    } catch (e) {
-      this.logger.warn(`Could not look up user profile: ${e.message}`);
-    }
+    // 3. Resolve Slack user ID to internal user profile
+    const userProfile = await this.resolveUserProfile(input);
+
+    // 3.5 Send immediate acknowledgment so the user knows we're processing
+    await this.sendReply(
+      input.connectionId,
+      input.channelId,
+      '⏳ On it...',
+      input.threadTs,
+    );
 
     // 4. Start the agentic loop
     const messages: AiMessage[] = [{ role: 'user', content: input.text }];
@@ -453,25 +617,12 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
       await this.runAgenticLoop(input, session.id, chainContext, userProfile);
     } catch (error) {
       this.logger.error(`Agentic loop failed: ${error.message}`, error.stack);
-      if (chainContext.steps.length > 0) {
-        const statusMsg = this.formatChainStatusMessage(
-          chainContext.steps,
-          '❌ *An error occurred while processing your request.* Here is what was completed:',
-        );
-        await this.sendReply(
-          input.connectionId,
-          input.channelId,
-          statusMsg,
-          input.threadTs,
-        );
-      } else {
-        await this.sendReply(
-          input.connectionId,
-          input.channelId,
-          '❌ Sorry, something went wrong while processing your request. Please try again.',
-          input.threadTs,
-        );
-      }
+      await this.sendReply(
+        input.connectionId,
+        input.channelId,
+        '❌ Something went wrong. Please try again, and if it keeps happening, let your admin know.',
+        input.threadTs,
+      );
       await this.sessionService.updateSessionState(session.id, 'idle');
     }
   }
@@ -489,8 +640,9 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
     chainContext: ChainExecutionContext,
     userProfile?: { fullName: string; email: string },
   ): Promise<void> {
-    const tools = this.buildTools();
-    const systemPrompt = this.buildSystemPrompt(userProfile);
+    const enabledSkills = await this.getEnabledSkills(input.organizationId);
+    const tools = this.buildTools(enabledSkills);
+    const systemPrompt = this.buildSystemPrompt(enabledSkills, userProfile);
     const aiOptions = {
       organizationId: input.organizationId,
       feature: 'dm_chat',
@@ -499,22 +651,31 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
     await this.sessionService.updateSessionState(sessionId, 'chaining');
 
     const startTime = new Date(chainContext.startedAt).getTime();
-    let sentWorkingMessage = false;
 
-    while (chainContext.iterations < MAX_CHAIN_ITERATIONS) {
+    while (true) {
+      // Max iterations check
+      if (chainContext.iterations >= MAX_CHAIN_ITERATIONS) {
+        this.logger.warn(
+          `Chain ${chainContext.chainId} hit max iterations limit (${MAX_CHAIN_ITERATIONS})`,
+        );
+        await this.sendReply(
+          input.connectionId,
+          input.channelId,
+          '⚠️ That was a complex request — I completed what I could. If anything is still pending, just let me know.',
+          input.threadTs,
+        );
+        break;
+      }
+
       // Timeout check
       if (Date.now() - startTime > MAX_CHAIN_DURATION_MS) {
         this.logger.warn(
           `Chain ${chainContext.chainId} hit timeout after ${chainContext.iterations} iterations`,
         );
-        const statusMsg = this.formatChainStatusMessage(
-          chainContext.steps,
-          '⏱️ *Chain timed out.* Here is what was completed:',
-        );
         await this.sendReply(
           input.connectionId,
           input.channelId,
-          statusMsg || '⏱️ Chain timed out before any steps completed.',
+          '⏱️ This took too long — I had to stop. Please try again with a simpler request, or break it into smaller steps.',
           input.threadTs,
         );
         break;
@@ -525,14 +686,10 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
         this.logger.warn(
           `Chain ${chainContext.chainId} hit tool call limit (${MAX_TOTAL_TOOLS_PER_CHAIN})`,
         );
-        const statusMsg = this.formatChainStatusMessage(
-          chainContext.steps,
-          `⚠️ *Chain reached the maximum number of tool calls (${MAX_TOTAL_TOOLS_PER_CHAIN}).* Here is what was completed:`,
-        );
         await this.sendReply(
           input.connectionId,
           input.channelId,
-          statusMsg || '⚠️ Chain reached the tool call limit.',
+          '⚠️ That was a complex request — I completed what I could. If anything is still pending, just let me know.',
           input.threadTs,
         );
         break;
@@ -590,14 +747,14 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
             await this.sendReply(
               input.connectionId,
               input.channelId,
-              "✅ Task processing completed.",
+              'Task processing completed.',
               input.threadTs,
             );
           } else {
             await this.sendReply(
               input.connectionId,
               input.channelId,
-              "❌ I encountered an error processing your request.",
+              '❌ I encountered an error processing your request.',
               input.threadTs,
             );
           }
@@ -608,16 +765,50 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
       // ── Case B: LLM emitted tool calls ──
       const toolCalls = aiResult.toolCalls;
 
-      // Send "working on it" message after the first iteration
-      // (so the user knows a multi-step chain is in progress)
-      if (chainContext.iterations > 0 && !sentWorkingMessage) {
-        await this.sendReply(
-          input.connectionId,
-          input.channelId,
-          '⏳ Working on it...',
-          input.threadTs,
-        );
-        sentWorkingMessage = true;
+      // Pre-validate all tool calls before any execution
+      const validationResults = toolCalls.map((call) => ({
+        call,
+        validation: this.preValidateToolCall(call),
+      }));
+
+      const invalidCalls = validationResults.filter((r) => !r.validation.valid);
+
+      if (invalidCalls.length > 0) {
+        // Build a clear message asking for the missing information
+        const missingInfo = invalidCalls.map((r) => {
+          const parts: string[] = [];
+          if (r.validation.missingFields?.length) {
+            parts.push(
+              `Missing required fields: ${r.validation.missingFields.join(', ')}`,
+            );
+          }
+          if (r.validation.errors) {
+            parts.push(`Validation issues: ${r.validation.errors}`);
+          }
+          return `*${r.call.name}*: ${parts.join('. ')}`;
+        });
+
+        // Feed the validation errors back to the LLM so it can ask the user
+        chainContext.messages.push({
+          role: 'assistant',
+          content: aiResult.content || '',
+          toolCalls,
+        });
+        for (const r of invalidCalls) {
+          chainContext.messages.push({
+            role: 'tool',
+            toolResultId: r.call.id,
+            content: JSON.stringify({
+              success: false,
+              error: {
+                code: 'MISSING_REQUIRED_FIELDS',
+                message: `Cannot execute: ${r.validation.missingFields?.length ? 'Missing required fields: ' + r.validation.missingFields.join(', ') + '.' : ''} ${r.validation.errors || ''} Ask the user for the missing information before retrying.`,
+              },
+            }),
+          });
+        }
+        chainContext.iterations++;
+        continue;
       }
 
       // Check if any of the tool calls are destructive
@@ -746,14 +937,15 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
           chainContext,
         );
 
-        const statusMsg = this.formatChainStatusMessage(
-          chainContext.steps,
-          '⚠️ *Chain progress so far:*',
+        // Build a human-readable description of the destructive action
+        const actionDescription = this.describeAction(
+          destructiveCall.name,
+          destructiveCall.input,
         );
         await this.sendReply(
           input.connectionId,
           input.channelId,
-          `${statusMsg}\n\n*Next step requires confirmation:*\n⚠️ *${destructiveCall.name}*\n\nReply with "yes" to proceed or "no" to cancel the remaining chain.`,
+          `⚠️ Just to confirm — ${actionDescription}?\n\nReply *yes* to proceed or *no* to cancel.`,
           input.threadTs,
         );
         return; // Pause — will resume when user confirms
@@ -894,7 +1086,9 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
           await this.sendReply(
             input.connectionId,
             input.channelId,
-            `✅ Confirmed and executed: *${def.name}* (Success: ${result.success})`,
+            result.success
+              ? '✅ Done!'
+              : '❌ Something went wrong. Please try again.',
             input.threadTs,
           );
         }
@@ -907,7 +1101,7 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
       await this.sendReply(
         input.connectionId,
         input.channelId,
-        `❌ Action cancelled.`,
+        'Got it, cancelled.',
         input.threadTs,
       );
       return;
@@ -955,14 +1149,10 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
       );
       if (pendingStep) pendingStep.status = 'skipped';
 
-      const statusMsg = this.formatChainStatusMessage(
-        chainContext.steps,
-        '❌ *Chain cancelled.*',
-      );
       await this.sendReply(
         input.connectionId,
         input.channelId,
-        statusMsg,
+        'Got it, cancelled.',
         input.threadTs,
       );
       await this.sessionService.updateSessionState(session.id, 'idle');
@@ -1006,16 +1196,7 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
     chainContext.startedAt = new Date().toISOString(); // Reset timeout clock after user pause
 
     // Look up user profile for prompt context
-    let userProfile: { fullName: string; email: string } | undefined;
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: input.userId },
-        select: { fullName: true, email: true },
-      });
-      if (user) userProfile = { fullName: user.fullName, email: user.email };
-    } catch (e) {
-      this.logger.warn(`Could not look up user profile: ${e.message}`);
-    }
+    const userProfile = await this.resolveUserProfile(input);
 
     // Resume the agentic loop
     try {
@@ -1065,16 +1246,7 @@ CRITICAL: When generating dates or times for tool arguments (like scheduling mee
     chainContext.startedAt = new Date().toISOString(); // Reset timeout clock after user pause
 
     // Look up user profile
-    let userProfile: { fullName: string; email: string } | undefined;
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: input.userId },
-        select: { fullName: true, email: true },
-      });
-      if (user) userProfile = { fullName: user.fullName, email: user.email };
-    } catch (e) {
-      this.logger.warn(`Could not look up user profile: ${e.message}`);
-    }
+    const userProfile = await this.resolveUserProfile(input);
 
     // Resume the agentic loop with the updated conversation
     try {

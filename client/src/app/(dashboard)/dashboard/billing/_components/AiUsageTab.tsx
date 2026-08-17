@@ -43,7 +43,8 @@ export default function AiUsageTab() {
   const grandTotal = data?.data.grandTotal || {
     totalCalls: 0,
     totalTokens: 0,
-    totalCostUsd: 0,
+    inputTokens: 0,
+    outputTokens: 0,
   };
 
   return (

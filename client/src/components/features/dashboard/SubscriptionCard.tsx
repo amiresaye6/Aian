@@ -91,18 +91,13 @@ export function SubscriptionCard({ subscription }: { subscription: DashboardSubs
           </div>
           
           <div className="text-right">
-             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">AI Usage Cost</div>
+             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Total API Calls</div>
              {usageLoading ? (
                <Skeleton className="h-7 w-16 ml-auto" />
              ) : (
-               <>
-                 <div className="text-lg font-display font-bold tracking-tight text-foreground flex items-center justify-end gap-1">
-                   ${totalCost.toFixed(4)}
-                 </div>
-                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                   {totalCalls.toLocaleString()} API Calls
-                 </div>
-               </>
+               <div className="text-lg font-display font-bold tracking-tight text-foreground flex items-center justify-end gap-1">
+                 {totalCalls.toLocaleString()}
+               </div>
              )}
           </div>
         </div>

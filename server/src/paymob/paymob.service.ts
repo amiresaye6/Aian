@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
+import { ExchangeRateService } from '../currency/exchange-rate.service';
 import {
   PAYMOB_ENV_KEYS,
   PAYMOB_ENDPOINTS,
@@ -34,7 +35,7 @@ export class PaymobService {
   private readonly hmacSecret: string;
   private readonly returnUrl: string;
 
-  constructor() {
+  constructor(private readonly exchangeRateService: ExchangeRateService) {
     const baseUrl =
       process.env[PAYMOB_ENV_KEYS.BASE_URL] || PAYMOB_DEFAULT_BASE_URL;
 
@@ -71,8 +72,8 @@ export class PaymobService {
       `Initiating Paymob Intention for merchant order: ${merchantOrderId}`,
     );
 
-    const EXCHANGE_RATE = 50;
-    const amountEgpCents = amountCents * EXCHANGE_RATE;
+    const EXCHANGE_RATE = await this.exchangeRateService.getUsdToEgpRate();
+    const amountEgpCents = Math.round(amountCents * EXCHANGE_RATE);
     const paymobCurrency = 'EGP';
 
     const bData = buildBillingData(billingData);
@@ -105,7 +106,7 @@ export class PaymobService {
       const paymentUrl = this.getPaymentUrl(clientSecret);
 
       this.logger.log(
-        `Payment initiated — Intention: ${intentionId}, MerchantOrder: ${merchantOrderId}`,
+        `Payment initiated — Intention: ${intentionId}, MerchantOrder: ${merchantOrderId}, Rate: ${EXCHANGE_RATE}`,
       );
 
       return {

@@ -74,6 +74,8 @@ export class TrelloSkill implements OnModuleInit {
       schema: TrelloDeleteTaskInputSchema,
       destructive: true,
       requiredProviders: ['trello'],
+      actionDescription: (input) =>
+        `I'll delete the Trello card "${input.taskIdentifier || 'unknown'}"`,
       handler: (ctx: SkillContext, input: any) => this.deleteTask(ctx, input),
     });
 
@@ -101,14 +103,33 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.createTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.createTask',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'createTask', 'trello', parsed.data, async () => {
-      return this.trelloClientService.createTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'createTask',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.createTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async updateTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -116,14 +137,33 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.updateTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.updateTask',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'updateTask', 'trello', parsed.data, async () => {
-      return this.trelloClientService.updateTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'updateTask',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.updateTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async assignTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -131,14 +171,33 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.assignTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.assignTask',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'assignTask', 'trello', parsed.data, async () => {
-      return this.trelloClientService.assignTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'assignTask',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.assignTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async moveTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -146,14 +205,33 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.moveTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.moveTask',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'moveTask', 'trello', parsed.data, async () => {
-      return this.trelloClientService.moveTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'moveTask',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.moveTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async commentTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -161,14 +239,33 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.commentTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.commentTask',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'commentTask', 'trello', parsed.data, async () => {
-      return this.trelloClientService.commentTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'commentTask',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.commentTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async deleteTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -176,14 +273,33 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.deleteTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.deleteTask',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'archiveTask', 'trello', parsed.data, async () => {
-      return this.trelloClientService.archiveTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'archiveTask',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.archiveTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async listTasks(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -191,14 +307,33 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.listTasks', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.listTasks',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'listTasks', 'trello', parsed.data, async () => {
-      return this.trelloClientService.listTasks(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'listTasks',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.listTasks(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async getTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -206,13 +341,32 @@ export class TrelloSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Trello.getTask', provider: 'trello', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Trello.getTask',
+          provider: 'trello',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'TrelloSkill', 'getTask', 'trello', parsed.data, async () => {
-      return this.trelloClientService.getTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'TrelloSkill',
+      'getTask',
+      'trello',
+      parsed.data,
+      async () => {
+        return this.trelloClientService.getTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 }

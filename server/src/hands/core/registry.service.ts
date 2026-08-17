@@ -10,6 +10,10 @@ export interface SkillDefinition {
   requiredProviders: string[];
   /** Provider keys that are used if available but won't block execution if missing. */
   optionalProviders?: string[];
+  /** Optional: generates a human-readable description for destructive action confirmation prompts. */
+  actionDescription?: (input: any) => string;
+  /** Optional: a short hint to help the LLM know when to pick this tool (e.g. "Use when the user asks about the organization"). */
+  usageHint?: string;
   handler: (ctx: any, input: any) => Promise<any>;
 }
 

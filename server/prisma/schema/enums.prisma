@@ -140,7 +140,31 @@ enum QuotaStatus {
   within_limits
   warning
   grace_period
+  overage_active
   hard_blocked
 
   @@map("quota_status")
+}
+
+enum LedgerEventType {
+  plan_upgrade
+  plan_downgrade_scheduled
+  plan_downgrade_applied
+  subscription_renewal
+  overage_invoice
+  payment_success
+  payment_failed
+  proration_charge
+  grace_period_started
+  grace_period_expired
+
+  @@map("ledger_event_type")
+}
+
+enum PaymentType {
+  subscription
+  upgrade_proration
+  overage
+
+  @@map("payment_type")
 }

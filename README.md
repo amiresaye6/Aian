@@ -1,30 +1,41 @@
-# Aian
-Aian is an AI-powered organizational memory platform that transforms everyday team activity into a searchable, intelligent knowledge system
+Orchestrator testingn:
 
-
-- to do:
-- [✅]new employee account must be verified, how and wehre? << Donia
-- add new role pag, the dark mode need to be fixed << Azzazy
-- [✅]the eye settigns supmit button is not working.
-- [✅] aian dashboard has no real data in it at all, just one or two parts only.
-- ai portal needs messages history by user account and messages limit> for example 20 per day << Mawla
-- add filter by type to the extracted artifactes table.
-- meetings page >> we need to make sure it is workgin and functional "not just a temp place holder." << Azzazy
-- [✅]we need to maek the reports page.
-- link the sync all now button in the integrations page with teh backend, callign all connected providers sync now endpoint. << Donia
-- fix the loading issue in the sync now button on the pipeline page, make it as short pooling status requist, to see the status of the patches, artifacts in them,  and so on. will need front, and backend udpates.
-
-- [✅] add a confirmation modal on the logout button, to be sure not clicking it by mistack
-- [✅] make a profile page, showing user detials, current system usage, accoutn level of access, limits, stuff like that. << Donia and azzazy
-- [✅] redesign the mimbers page to best sute the rest of the system theme. and layout. << Donia
-- [✅] remove the organization button form the sidebar " can not finde a use for it for now"
-
-- [✅] show correct dat in teh billign page, current subscriptoin and otehr stuff, fix the featurs filter "current values does not match the db values, like chat and chat_dm" + add a refresh butto.
-
-- [✅] if user is logged in, and reached the landing page, show a button in the header to go to dashboard.
-
-- [✅] payment step in the onboarding need second look.
-
-- [✅] open question> if we made a new org, will it has its own graph db, or it will append to the same current graph? 
-
-- [✅] update the sysstem promto fo the ai orchestrator.
+### 1. 👌 MessagingSkill.sendMessage: Send a chat message to a specific user or channel in the provider (e.g. Slack).
+> send a message to "bug-fixing" channel with all you know about "Aian project"
+### 2. 👌 EmailSkill.sendBrandedEmail: Send an email wrapped in the company branding template.
+> Send me an email at amyralsyd367@gmail.com with all of my pending meetings and all of my "to do" tasks in the "Aian" board
+### 3. 👌 KnowledgeSkill.answerQuestion: Answer a question using the organizational knowledge graph.
+> Who was responsible for integrating with the GitHub provider in the Aian project? And what skills did he add to this provider?
+### 4. KnowledgeSkill.summarize: Summarize a topic using the organizational knowledge graph, with an optional scope constraint.
+> Summarize to me the process of implementing the knowledge pipeline
+### 5. 👌 meetingSkill.createMeeting: Schedule or create a Zoom meeting and add registrants by email.
+> Schedule a meeting next Monday at 10:00 AM to deploy the Aian project to production. Invite both me and my teammate. Here are our emails: amiralsayed.work@gmail.com, amyralsyd367@gmail.com,
+### 6. 👌 meetingSkill.updateMeeting: Update/modify an existing Zoom meeting.
+> Yes, please update the "Deploy Aian project to production" meeting to be 120 minutes instead of 60 and send a reminder to the "new-features" channel with the update.
+### 7. 👌 meetingSkill.listMeetings: List Zoom meetings.
+> List all the upcoming meetings for me, please.
+### 8. 👌 meetingSkill.cancelMeetings: Cancel/remove/delete a Zoom meeting.
+> Cancel the Planning Sync meeting for me, please.
+### 9. 👌 meetingSkill.inviteToMeetings: Invite people to a Zoom meeting or add registrants.
+> Please invite amiralsayed.iti@gmail.com to the Deploy Aian project to production meeting
+### 10. 👌 meetingSkill.getMeetingDetails: Get meeting details.
+> Please list the details of the "Deploy Aian project to production" meeting.
+### 11. Trello.createTask: Create a new Trello card.
+> Please create a task for me on the "Aian" Board at "To Do" list to add the latest updates to the production environment, assign it to me, and make it a high priority. The due date is tomorrow.
+### 12. Trello.updateTask: Update an existing Trello card.
+> Update the "final test for all the skills" task description, and add all you know about the "Aian project" to its description.
+### 13. Trello.assignTask: Assign a Trello card to a user.
+> Assign the "final test for all the skills" task to me, please.
+### 14. Trello.moveTask: Move a Trello card to a different list.
+> Move all of my assigned tasks in the "to do" list in the "Aian" Board to the "In Progress" list, please.
+### 15. Trello.commentTask: Add a comment to a Trello card.
+> Add a new comment to the "final test for all the skills" ticket in the "Aian" board, with the summarization of the knowledge processor pipeline.
+### 16. Trello.deleteTask: Delete a Trello card.
+> Delete the "final test for all the skills" ticket from the "Aian" board, please.
+### 17. Trello.listTasks: List Trello cards with optional filtering.
+> Please list all of my tickets in the "Aian" board, in the "In Progress" list.
+### 18. Trello.getTask: Get details of a specific Trello card.
+> Show me all the "Change all aian images form all providers and integrations" ticket details.
+### 19. ReportingSkill.generateReport: Generate structured markdown reports (Daily, Weekly, Performance, or Planning) by aggregating Jira or Trello >
+tasks, Zoom meetings, and cross-platform Knowledge Graph context.
+>

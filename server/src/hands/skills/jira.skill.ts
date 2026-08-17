@@ -74,6 +74,8 @@ export class JiraSkill implements OnModuleInit {
       schema: JiraDeleteTaskInputSchema,
       destructive: true,
       requiredProviders: ['jira'],
+      actionDescription: (input) =>
+        `I'll delete the Jira task "${input.taskIdentifier || 'unknown'}"`,
       handler: (ctx: SkillContext, input: any) => this.deleteTask(ctx, input),
     });
 
@@ -101,14 +103,33 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.createTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.createTask',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'createTask', 'jira', parsed.data, async () => {
-      return this.jiraClientService.createTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'createTask',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.createTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async updateTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -116,14 +137,33 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.updateTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.updateTask',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'updateTask', 'jira', parsed.data, async () => {
-      return this.jiraClientService.updateTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'updateTask',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.updateTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async assignTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -131,14 +171,33 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.assignTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.assignTask',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'assignTask', 'jira', parsed.data, async () => {
-      return this.jiraClientService.assignTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'assignTask',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.assignTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async moveTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -146,14 +205,30 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.moveTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.moveTask',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'moveTask', 'jira', parsed.data, async () => {
-      return this.jiraClientService.moveTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'moveTask',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.moveTask(ctx.organizationId, parsed.data);
+      },
+    );
   }
 
   async commentTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -161,14 +236,33 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.commentTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.commentTask',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'commentTask', 'jira', parsed.data, async () => {
-      return this.jiraClientService.commentTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'commentTask',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.commentTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async deleteTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -176,14 +270,33 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.deleteTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.deleteTask',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'deleteTask', 'jira', parsed.data, async () => {
-      return this.jiraClientService.deleteTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'deleteTask',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.deleteTask(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async listTasks(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -191,14 +304,33 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.listTasks', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.listTasks',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'listTasks', 'jira', parsed.data, async () => {
-      return this.jiraClientService.listTasks(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'listTasks',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.listTasks(
+          ctx.organizationId,
+          parsed.data,
+        );
+      },
+    );
   }
 
   async getTask(ctx: SkillContext, input: any): Promise<SkillResult<any>> {
@@ -206,13 +338,29 @@ export class JiraSkill implements OnModuleInit {
     if (!parsed.success) {
       return {
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: parsed.error.message, retryable: false },
-        meta: { skill: 'Jira.getTask', provider: 'jira', durationMs: 0, idempotencyKey: ctx.idempotencyKey },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: parsed.error.message,
+          retryable: false,
+        },
+        meta: {
+          skill: 'Jira.getTask',
+          provider: 'jira',
+          durationMs: 0,
+          idempotencyKey: ctx.idempotencyKey,
+        },
       };
     }
 
-    return this.resilienceService.execute(ctx, 'JiraSkill', 'getTask', 'jira', parsed.data, async () => {
-      return this.jiraClientService.getTask(ctx.organizationId, parsed.data);
-    });
+    return this.resilienceService.execute(
+      ctx,
+      'JiraSkill',
+      'getTask',
+      'jira',
+      parsed.data,
+      async () => {
+        return this.jiraClientService.getTask(ctx.organizationId, parsed.data);
+      },
+    );
   }
 }

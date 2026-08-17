@@ -33,6 +33,8 @@ export class KnowledgeSkill implements OnModuleInit {
       schema: AnswerQuestionInputSchema,
       destructive: false,
       requiredProviders: [],
+      usageHint:
+        'Use when the user asks a question about the organization, its people, projects, or internal processes.',
       handler: (ctx: SkillContext, input: any) =>
         this.answerQuestion(ctx, input),
     });
@@ -44,6 +46,8 @@ export class KnowledgeSkill implements OnModuleInit {
       schema: SummarizeInputSchema,
       destructive: false,
       requiredProviders: [],
+      usageHint:
+        'Use when the user asks for a summary or overview of an organizational topic.',
       handler: (ctx: SkillContext, input: any) => this.summarize(ctx, input),
     });
   }

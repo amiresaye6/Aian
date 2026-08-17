@@ -2,22 +2,26 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Param,
   Body,
   UseGuards,
-  Request,
   Logger,
   HttpCode,
   HttpStatus,
   Query,
+  Res,
 } from '@nestjs/common';
 import { BillingService } from './billing.service';
 import { QuotaService } from './quota.service';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { CheckoutDto } from './dto/checkout.dto';
+import { DowngradePlanDto } from './dto/downgrade-plan.dto';
+import { UpdateHardCapDto } from './dto/update-hard-cap.dto';
 import { AuthGaurd } from '../auth/auth.gaurd';
 import type { PaymobCallbackPayload } from '../paymob/paymob.types';
 import { RequiredPermissions } from '../decorators/required-permissions.decorator';
+import { Put } from '@nestjs/common';
 
 @Controller('billing')
 export class BillingController {
@@ -57,6 +61,14 @@ export class BillingController {
     return { received: true };
   }
 
+  @Get('webhook')
+  async handleRedirect(@Query() query: any, @Res() res: any) {
+    this.logger.log('Received billing redirect from Paymob');
+    const merchantOrderId = query.merchant_order_id;
+    const url = await this.billingService.resolveRedirectUrl(merchantOrderId, query.success);
+    return res.redirect(url);
+  }
+
   @Get('verify/:providerPaymentId')
   // @UseGuards(AuthGaurd)
   @RequiredPermissions('billing.manage')
@@ -72,6 +84,8 @@ export class BillingController {
     return this.billingService.getActiveSubscription(organizationId);
   }
 
+  // ─── Plan Changes ─────────────────────────────────────────────────────────
+
   @Post('subscription/upgrade')
   @UseGuards(AuthGaurd)
   @RequiredPermissions('billing.manage')
@@ -81,6 +95,44 @@ export class BillingController {
   ) {
     return this.billingService.upgradePlan(organizationId, planSlug);
   }
+
+  @Post('subscription/downgrade')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async schedulePlanDowngrade(
+    @Query('organizationId') organizationId: string,
+    @Body() dto: DowngradePlanDto,
+  ) {
+    return this.billingService.schedulePlanDowngrade(
+      organizationId,
+      dto.planSlug,
+    );
+  }
+
+  @Delete('subscription/downgrade')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  @HttpCode(HttpStatus.OK)
+  async cancelScheduledDowngrade(
+    @Query('organizationId') organizationId: string,
+  ) {
+    return this.billingService.cancelScheduledDowngrade(organizationId);
+  }
+
+  @Put('subscription/hard-cap')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async updateHardCap(
+    @Query('organizationId') organizationId: string,
+    @Body() dto: UpdateHardCapDto,
+  ) {
+    return this.billingService.updateHardCap(
+      organizationId,
+      dto.overageHardCapCents ?? null,
+    );
+  }
+
+  // ─── Quota & Usage ────────────────────────────────────────────────────────
 
   @Get('quota-dashboard')
   @UseGuards(AuthGaurd)

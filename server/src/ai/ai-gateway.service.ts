@@ -26,7 +26,15 @@ export class AiGatewayService {
     );
     if (!quota.allowed) {
       throw new ForbiddenException(
-        `Organization has exceeded its AI token quota.`,
+        `Organization has exceeded its AI token quota. ` +
+          `Usage: ${quota.used}/${quota.limit} tokens (${quota.percentage.toFixed(1)}%). ` +
+          `Status: ${quota.status}.`,
+      );
+    }
+    if (quota.status === 'overage_active') {
+      this.logger.warn(
+        `Organization ${options.organizationId} is in token overage: ` +
+          `${quota.used}/${quota.limit} tokens (${quota.percentage.toFixed(1)}%).`,
       );
     }
   }

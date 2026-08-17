@@ -33,6 +33,7 @@ model Organization {
   usagePeriodSnapshots UsagePeriodSnapshot[]
   conversations        Conversation[]
   syncRuns             SyncRun[]
+  ledgerEvents         LedgerEvent[]
 
   @@map("organizations")
 }

@@ -64,10 +64,10 @@ export interface ChainExecutionContext {
 // ── Chain Limits ─────────────────────────────────────────────────────────────
 
 /** Maximum number of agentic loop iterations (LLM call rounds) */
-export const MAX_CHAIN_ITERATIONS = 5;
+export const MAX_CHAIN_ITERATIONS = 10;
 
 /** Maximum total tool calls across the entire chain */
-export const MAX_TOTAL_TOOLS_PER_CHAIN = 8;
+export const MAX_TOTAL_TOOLS_PER_CHAIN = 12;
 
 /** Hard timeout for the entire chain execution (ms) */
 export const MAX_CHAIN_DURATION_MS = 60_000;

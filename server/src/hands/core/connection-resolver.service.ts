@@ -102,6 +102,16 @@ export class ConnectionResolverService {
     return { connections, missing };
   }
 
+  /**
+   * Returns a list of provider keys (uppercase) that are currently connected for the organization.
+   */
+  async getConnectedProviderKeys(organizationId: string): Promise<string[]> {
+    const orgConnections = await this.fetchOrgConnections(organizationId);
+    return orgConnections
+      .filter((c) => c.status === 'connected')
+      .map((c) => c.providerKey);
+  }
+
   private async fetchOrgConnections(organizationId: string) {
     const raw = await this.connectionRepo.findByOrganizationId(organizationId);
     return raw.map((conn) => ({

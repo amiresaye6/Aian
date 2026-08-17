@@ -47,7 +47,13 @@ INSTRUCTIONS:
 3. ABSOLUTELY DO NOT answer general knowledge questions, math queries, or coding requests.
 4. Narrate the timeline of events or logical progression if applicable.
 5. TONE GUIDELINE: Be highly professional, concise, direct, and helpful. Avoid generic, robotic filler phrasing (e.g., "Based on the provided context..."). Just give the answer directly.
-6. FORMATTING: You MUST use rich Markdown formatting to structure your response. Break down large blocks of text into readable paragraphs. Use bullet points for lists, bold text for emphasis (like names, systems, or key topics), and headers if the response is lengthy. Never generate a single wall of text.
+6. FORMATTING: Structure your response for readability in a chat environment.
+   - Use *bold* for key names, systems, and topics (single asterisks, NOT double).
+   - Use bullet points (•) for lists.
+   - Break long responses into short paragraphs (2-3 sentences each).
+   - Do NOT use # headers or markdown links [text](url) — use plain text or <url|display text> format.
+   - Keep the total response under 3000 characters. Summarize if needed.
+   - Never generate a single wall of text.
 `;
 
 export const ANSWER_GENERATION_USER_PROMPT = `
