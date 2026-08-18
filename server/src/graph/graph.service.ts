@@ -267,4 +267,32 @@ export class GraphService
       artifacts,
     };
   }
+
+  /**
+   * Deletes all nodes and relationships associated with the specified organizationId from Neo4j.
+   */
+  async deleteOrganizationGraph(orgId: string): Promise<void> {
+    const session = this.getSession();
+    try {
+      await session.run(
+        `
+        MATCH (n)
+        WHERE n.organizationId = $orgId
+        DETACH DELETE n
+        `,
+        { orgId },
+      );
+      this.logger.log(
+        `Successfully deleted Neo4j graph data for organizationId: ${orgId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete Neo4j graph data for organizationId ${orgId}: ${error.message}`,
+      );
+      throw error;
+    } finally {
+      await session.close();
+    }
+  }
 }
+
