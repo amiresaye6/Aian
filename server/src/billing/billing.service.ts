@@ -636,7 +636,7 @@ export class BillingService {
       sort
     );
 
-    return { success: true, ...result };
+    return { success: true, data: result };
   }
 
   async getTransactionsSummary(

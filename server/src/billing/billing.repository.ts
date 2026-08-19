@@ -332,15 +332,33 @@ export class BillingRepository {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
+        select: {
+          id: true,
+          organizationId: true,
+          subscriptionId: true,
+          paymentProvider: true,
+          providerPaymentId: true,
+          amountCents: true,
+          currency: true,
+          billingCycle: true,
+          status: true,
+          paidAt: true,
+          failureReason: true,
+          invoiceId: true,
+          type: true,
+          createdAt: true,
+        }
       }),
     ]);
 
     return {
       data,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      }
     };
   }
 

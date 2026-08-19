@@ -1,17 +1,17 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { billingApi } from "@/api/billing";
-import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/store/auth/auth.store";
 
 export function useTransactionsSummary(filters?: { fromDate?: string; toDate?: string }) {
-  const { organization } = useAuth();
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
 
   return useQuery({
-    queryKey: ["transactions-summary", organization?.id, filters],
+    queryKey: ["transactions-summary", organizationId, filters],
     queryFn: () => {
-      if (!organization?.id) throw new Error("Organization ID is required");
-      return billingApi.getTransactionsSummary(organization.id, filters);
+      if (!organizationId) throw new Error("Organization ID is required");
+      return billingApi.getTransactionsSummary(organizationId, filters);
     },
-    enabled: !!organization?.id,
+    enabled: !!organizationId,
   });
 }
 
@@ -20,15 +20,15 @@ export function useTransactionsLogs(
   pagination?: { page?: number; limit?: number },
   sorting?: { sortBy?: string; sortOrder?: "asc" | "desc" }
 ) {
-  const { organization } = useAuth();
+  const organizationId = useAuthStore((s) => s.user?.organizationId);
 
   return useQuery({
-    queryKey: ["transactions-logs", organization?.id, filters, pagination, sorting],
+    queryKey: ["transactions-logs", organizationId, filters, pagination, sorting],
     queryFn: () => {
-      if (!organization?.id) throw new Error("Organization ID is required");
-      return billingApi.getTransactionsLogs(organization.id, filters, pagination, sorting);
+      if (!organizationId) throw new Error("Organization ID is required");
+      return billingApi.getTransactionsLogs(organizationId, filters, pagination, sorting);
     },
-    enabled: !!organization?.id,
+    enabled: !!organizationId,
     placeholderData: keepPreviousData,
   });
 }
