@@ -217,7 +217,7 @@ function TopBar() {
           <Bell className="h-4 w-4" />
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-gold-gradient" />
         </button>
-        <div className="ml-1 flex items-center gap-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/[0.03] py-1 pl-1 pr-3">
+        
           <Link
             href="/dashboard/profile"
             className="ml-1 flex items-center gap-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/[0.03] py-1 pl-1 pr-3 transition-colors hover:bg-black/10 dark:hover:bg-white/[0.06] cursor-pointer"
@@ -236,7 +236,6 @@ function TopBar() {
               <div className="text-[10.5px] text-muted-foreground">{user?.role ?? ""}</div>
             </div>
           </Link>
-        </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <button
