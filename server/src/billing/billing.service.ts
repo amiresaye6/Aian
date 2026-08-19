@@ -620,4 +620,65 @@ export class BillingService {
 
     return { success: true, data: updatedSub };
   }
+
+  // ─── Transactions ──────────────────────────────────────────────────────────
+
+  async getTransactionsLogs(
+    organizationId: string,
+    filters: { fromDate?: string; toDate?: string; status?: string; type?: string },
+    pagination: { page?: number; limit?: number },
+    sort: { sortBy?: string; sortOrder?: 'asc' | 'desc' }
+  ) {
+    const result = await this.repository.getTransactionsLogs(
+      organizationId,
+      filters,
+      pagination,
+      sort
+    );
+
+    return { success: true, ...result };
+  }
+
+  async getTransactionsSummary(
+    organizationId: string,
+    filters: { fromDate?: string; toDate?: string }
+  ) {
+    const aggregations = await this.repository.getTransactionsSummary(
+      organizationId,
+      filters
+    );
+
+    let totalPayments = 0;
+    let totalSuccessfulAmount = 0;
+    let totalFailedCount = 0;
+    let totalPendingCount = 0;
+    let totalSuccessfulCount = 0;
+
+    for (const agg of aggregations) {
+      const count = agg._count.id;
+      const amount = agg._sum.amountCents || 0;
+      
+      totalPayments += count;
+
+      if (agg.status === 'paid') {
+        totalSuccessfulAmount += amount;
+        totalSuccessfulCount += count;
+      } else if (agg.status === 'failed') {
+        totalFailedCount += count;
+      } else if (agg.status === 'pending') {
+        totalPendingCount += count;
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        totalPayments,
+        totalSuccessfulAmount,
+        totalSuccessfulCount,
+        totalFailedCount,
+        totalPendingCount,
+      }
+    };
+  }
 }
