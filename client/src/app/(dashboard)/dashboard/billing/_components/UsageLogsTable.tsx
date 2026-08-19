@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Activity } from "lucide-react";
+import { ChevronLeft, ChevronRight, Activity, RefreshCcw } from "lucide-react";
 import { format } from "date-fns";
 import { AiUsageLog } from "@/types/billing/billing";
 
@@ -27,14 +27,16 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const limit = 10;
 
-  const { data, isLoading, isError } = useAiUsageLogs(
+  const { data, isLoading, isError, isFetching, refetch } = useAiUsageLogs(
     { feature: featureFilter, modelUsed: modelFilter, fromDate: fromDate || undefined, toDate: toDate || undefined },
     { page, limit },
     { sortBy, sortOrder: "desc" }
   );
-
   const logs = data?.data.data || [];
   const meta = data?.data.meta || { total: 0, page: 1, totalPages: 1, limit: 10 };
+  const handleRefresh = () => {
+    refetch();
+  };
 
   return (
     <Card className="glass-strong border border-white/5 overflow-hidden flex flex-col">
@@ -51,8 +53,20 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <Select 
-            value={featureFilter || "all"} 
+          <Button
+            onClick={() => refetch()}
+            variant="outline"
+            size="sm"
+            disabled={isFetching}
+            className="border-white/10 bg-white/5 hover:bg-white/10"
+          >
+            <RefreshCcw
+              className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
+            />
+            {isFetching ? "Refreshing..." : "Refresh"}
+          </Button>
+          <Select
+            value={featureFilter || "all"}
             onValueChange={(val) => {
               setFeatureFilter(val === "all" ? undefined : val);
               setPage(1);
@@ -69,8 +83,8 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
             </SelectContent>
           </Select>
 
-          <Select 
-            value={modelFilter || "all"} 
+          <Select
+            value={modelFilter || "all"}
             onValueChange={(val) => {
               setModelFilter(val === "all" ? undefined : val);
               setPage(1);
@@ -89,8 +103,8 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
             </SelectContent>
           </Select>
 
-          <Select 
-            value={sortBy} 
+          <Select
+            value={sortBy}
             onValueChange={(val) => {
               setSortBy(val);
               setPage(1);
@@ -135,8 +149,8 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
               </tr>
             ) : logs.length > 0 ? (
               logs.map((log: AiUsageLog) => (
-                <tr 
-                  key={log.id} 
+                <tr
+                  key={log.id}
                   className="hover:bg-white/[0.02] hover:-translate-y-[1px] transition-all"
                 >
                   <td className="px-6 py-4 text-xs text-muted-foreground font-mono">
@@ -170,9 +184,9 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
           Page {meta.page} of {Math.max(1, meta.totalPages)}
         </span>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             disabled={page === 1 || isLoading}
             onClick={() => setPage(p => Math.max(1, p - 1))}
             className="h-8 border-white/10 bg-transparent text-foreground hover:bg-white/5"
@@ -180,9 +194,9 @@ export default function UsageLogsTable({ fromDate, toDate }: { fromDate?: string
             <ChevronLeft className="w-4 h-4 mr-1" />
             Previous
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             disabled={page >= meta.totalPages || isLoading}
             onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
             className="h-8 border-white/10 bg-transparent text-foreground hover:bg-white/5"
