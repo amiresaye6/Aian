@@ -64,7 +64,7 @@ const NAV = [
 
 const SECONDARY = [
   { to: "/dashboard", label: "Settings", icon: Settings },
-  { to: "/dashboard", label: "Help", icon: HelpCircle },
+  { to: "/dashboard/help", label: "Help", icon: HelpCircle },
 ];
 
 function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
