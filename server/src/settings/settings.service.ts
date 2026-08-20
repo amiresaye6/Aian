@@ -18,6 +18,25 @@ export class SettingsService {
     private readonly graphService: GraphService,
   ) {}
 
+  async getOrgById(organizationId: string) {
+    if (!organizationId) {
+      throw new BadRequestException('Organization ID is required.');
+    }
+
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found.');
+    }
+
+    return {
+      success: true,
+      data: organization,
+    };
+  }
+
   async patchOrganization(organizationId: string, dto: UpdateOrganizationDto) {
     if (!organizationId) {
       throw new BadRequestException('Organization ID is required.');

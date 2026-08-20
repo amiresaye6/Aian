@@ -9,10 +9,6 @@ import { useSettings } from "@/hooks/use-settings";
 import { useAuthStore } from "@/store/auth/auth.store";
 
 interface OrganizationFormProps {
-  // Only the name is known up front (from the auth store). There's no GET
-  // /settings/organization endpoint yet, so slug/description/industry/
-  // country/timezone can't be prefilled — they start blank and are only
-  // included in the PATCH body if the user actually fills them in.
   initialName: string;
 }
 

@@ -2,6 +2,7 @@ import {
   Controller,
   Patch,
   Delete,
+  Get,
   Body,
   UseGuards,
   NotFoundException,
@@ -42,5 +43,12 @@ export class SettingsController {
   async deleteOrganization(@CurrentUser() user: any) {
     const orgId = this.getOrgId(user);
     return await this.settingsService.deleteOrganization(orgId);
+  }
+
+  @Get('organization')
+  async getOrganization(@CurrentUser() user: any) {
+    const orgId = this.getOrgId(user);
+
+    return await this.settingsService.getOrgById(orgId);
   }
 }
