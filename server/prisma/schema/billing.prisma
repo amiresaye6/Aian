@@ -99,7 +99,7 @@ model Subscription {
 model Payment {
   id                String        @id @default(uuid())
   organizationId    String        @map("organization_id")
-  subscriptionId    String        @map("subscription_id")
+  subscriptionId    String?       @map("subscription_id")
   paymentProvider   String        @map("payment_provider") @db.VarChar(50)
   providerPaymentId String        @unique @map("provider_payment_id") @db.VarChar(255)
   amountCents       Int           @map("amount_cents")
@@ -116,8 +116,8 @@ model Payment {
   updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  organization Organization @relation(fields: [organizationId], references: [id])
-  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
   @@map("payments")
 }

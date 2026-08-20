@@ -9,12 +9,12 @@ model Organization {
   timezone        String             @db.VarChar(100)
   logoUrl         String?            @map("logo_url") @db.Text
   status          OrganizationStatus @default(pending_connections)
-  createdByUserId String             @map("created_by_user_id")
+  createdByUserId String?            @map("created_by_user_id")
   createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  createdByUser        User                            @relation("OrgCreator", fields: [createdByUserId], references: [id])
+  createdByUser        User?                           @relation("OrgCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   users                User[]                          @relation("OrgUsers")
   roles                Role[]
   subscriptions        Subscription?

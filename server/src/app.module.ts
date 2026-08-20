@@ -33,6 +33,7 @@ import { RetrievalModule } from './retrieval/retrieval.module';
 import { HandsModule } from './hands/hands.module';
 import { AdminModule } from './admin/admin.module';
 import { ConversationsModule } from './conversations/conversations.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { ConversationsModule } from './conversations/conversations.module';
     HandsModule,
     AdminModule,
     ConversationsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

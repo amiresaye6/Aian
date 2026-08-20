@@ -81,7 +81,7 @@ export class BillingRepository {
 
   async createPayment(data: {
     organizationId: string;
-    subscriptionId: string;
+    subscriptionId?: string | null;
     paymentProvider: string;
     providerPaymentId: string;
     amountCents: number;

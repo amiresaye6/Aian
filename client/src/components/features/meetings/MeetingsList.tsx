@@ -2,7 +2,7 @@ import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { MeetingRowActions } from "./MeetingAction";
-
+import { useAuthStore } from "@/store/auth/auth.store";
 function getProviderLabel(providerKey: string) {
   return providerKey.charAt(0).toUpperCase() + providerKey.slice(1);
 }
@@ -38,7 +38,8 @@ export function MeetingsList({
   onChanged?: () => void;
 }) {
   const meetingsList = data?.resources || [];
-
+  const { user } = useAuthStore();
+  console.log(user)
   return (
     <div className="glass rounded-2xl p-5 bg-white dark:bg-transparent shadow-sm dark:shadow-none border border-black/5 dark:border-white/10">
       <div className="flex items-center justify-between mb-4">
