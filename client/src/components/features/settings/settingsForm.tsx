@@ -1,23 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Save, Info, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Organization, UpdateOrganizationBody } from "@/types/settings";
+import { UpdateOrganizationBody } from "@/types/settings";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from "@/hooks/use-settings";
+import { useAuthStore } from "@/store/auth/auth.store";
 
-interface SettingsFormProps {
-  organization: Organization;
+interface OrganizationFormProps {
+  // Only the name is known up front (from the auth store). There's no GET
+  // /settings/organization endpoint yet, so slug/description/industry/
+  // country/timezone can't be prefilled — they start blank and are only
+  // included in the PATCH body if the user actually fills them in.
+  initialName: string;
 }
 
-export function SettingsForm({ organization }: SettingsFormProps) {
-  const [name, setName] = useState(organization.name);
-  const [slug, setSlug] = useState(organization.slug);
-  const [description, setDescription] = useState(organization.description || "");
-  const [industry, setIndustry] = useState(organization.industry || "");
-  const [country, setCountry] = useState(organization.country || "");
-  const [timezone, setTimezone] = useState(organization.timezone || "");
+export function SettingsForm({ initialName }: OrganizationFormProps) {
+  const [name, setName] = useState(initialName);
+  const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [country, setCountry] = useState("");
+  const [timezone, setTimezone] = useState("");
+
+  const setUser = useAuthStore((state) => state.setUser);
+  const currentUser = useAuthStore((state) => state.user);
 
   const {
     updateOrganization,
@@ -26,33 +34,32 @@ export function SettingsForm({ organization }: SettingsFormProps) {
     updateOrganizationSuccess,
   } = useSettings();
 
-  useEffect(() => {
-    setName(organization.name);
-    setSlug(organization.slug);
-    setDescription(organization.description || "");
-    setIndustry(organization.industry || "");
-    setCountry(organization.country || "");
-    setTimezone(organization.timezone || "");
-  }, [organization]);
-
   const serverErrorMessage =
     (updateOrganizationError as any)?.response?.data?.message ||
     (updateOrganizationError as any)?.message;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !slug) return;
+    if (!name) return;
 
-    const body: UpdateOrganizationBody = {
-      name,
-      slug,
-      description,
-      industry,
-      country,
-      timezone,
-    };
+    // Only send fields the user actually set — patchOrganization only
+    // touches fields that are !== undefined.
+    const body: UpdateOrganizationBody = { name };
+    if (slug.trim()) body.slug = slug.trim();
+    if (description.trim()) body.description = description.trim();
+    if (industry.trim()) body.industry = industry.trim();
+    if (country.trim()) body.country = country.trim();
+    if (timezone.trim()) body.timezone = timezone.trim();
 
-    updateOrganization(body);
+    updateOrganization(body, {
+      onSuccess: () => {
+        // Keep the auth store's cached org name in sync since it's the
+        // only source we have for display elsewhere in the app.
+        if (currentUser) {
+          setUser({ ...(currentUser as any), organization: name });
+        }
+      },
+    });
   };
 
   return (
@@ -95,10 +102,9 @@ export function SettingsForm({ organization }: SettingsFormProps) {
           </label>
           <Input
             type="text"
-            required
             value={slug}
             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-            placeholder="e.g., acme-corp"
+            placeholder="e.g., acme-corp (leave blank to keep current)"
             className="h-11 rounded-xl border-white/15 bg-white/[0.03] placeholder:text-muted-foreground/40 font-mono focus:border-white/30 focus:bg-white/[0.05] focus-visible:ring-[color:var(--gold-soft)]/30 transition-all"
           />
         </div>
@@ -157,7 +163,7 @@ export function SettingsForm({ organization }: SettingsFormProps) {
 
       <div className="flex items-center gap-2 rounded-xl bg-white/[0.02] border border-white/5 p-3 text-xs text-muted-foreground">
         <Info className="h-4 w-4 shrink-0 text-[color:var(--gold-soft)]" />
-        <span>Changing the slug updates every link that references this organization.</span>
+        <span>Fields left blank keep their current saved value. Changing the slug updates every link that references this organization.</span>
       </div>
 
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
