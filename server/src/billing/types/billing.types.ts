@@ -69,7 +69,7 @@ export interface CheckoutResult {
 export interface PaymentVerificationResult {
   status: PaymentStatus;
   paymentId: string;
-  subscriptionId: string;
+  subscriptionId: string | null;
   planName: string;
   billingCycle: BillingCycle;
   amountCents: number;

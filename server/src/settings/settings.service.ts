@@ -244,11 +244,33 @@ export class SettingsService {
         });
       }
 
-      // 10. Unlink user invitations
-      await tx.user.updateMany({
+      // 10. Get all users belonging to this organization
+      const orgUsers = await tx.user.findMany({
         where: { organizationId },
-        data: { invitedByUserId: null },
+        select: { id: true },
       });
+      const userIdsToDelete = orgUsers.map((u) => u.id);
+
+      // Unlink relationships for these users to prevent FK constraint violations
+      if (userIdsToDelete.length > 0) {
+        // Unlink invitedByUserId pointing to any user being deleted
+        await tx.user.updateMany({
+          where: { invitedByUserId: { in: userIdsToDelete } },
+          data: { invitedByUserId: null },
+        });
+
+        // Unlink createdByUserId on any organization pointing to any user being deleted
+        await tx.organization.updateMany({
+          where: { createdByUserId: { in: userIdsToDelete } },
+          data: { createdByUserId: null },
+        });
+
+        // Clear roleId and organizationId from users being deleted
+        await tx.user.updateMany({
+          where: { id: { in: userIdsToDelete } },
+          data: { roleId: null, organizationId: null },
+        });
+      }
 
       // 11. Delete ongoing subscription & usage data, retaining historical paid financial records
       await tx.usagePeriodSnapshot.deleteMany({
@@ -275,40 +297,39 @@ export class SettingsService {
       if (hasPaidFinancialRecords) {
         // Retain shell Organization record to preserve FK integrity for historical financial records (payments & ledger)
         const fallbackUser =
-          (await tx.user.findFirst({ where: { isSuperAdmin: true } })) ||
           (await tx.user.findFirst({
             where: {
-              OR: [
-                { organizationId: { not: organizationId } },
-                { organizationId: null },
-              ],
+              id: { notIn: userIdsToDelete },
+              isSuperAdmin: true,
+            },
+          })) ||
+          (await tx.user.findFirst({
+            where: {
+              id: { notIn: userIdsToDelete },
             },
           }));
 
-        if (fallbackUser) {
-          await tx.organization.update({
-            where: { id: organizationId },
-            data: {
-              createdByUserId: fallbackUser.id,
-              name: '[Deleted Organization]',
-              status: 'suspended',
-              logoUrl: null,
-              description: null,
-            },
-          });
-        }
-
-        await tx.user.deleteMany({
-          where: { organizationId },
+        await tx.organization.update({
+          where: { id: organizationId },
+          data: {
+            createdByUserId: fallbackUser ? fallbackUser.id : null,
+            name: '[Deleted Organization]',
+            status: 'suspended',
+            logoUrl: null,
+            description: null,
+          },
         });
       } else {
-        // No paid financial records: delete Organization first to remove creator FK constraint, then delete users
+        // No paid financial records: delete shell Organization
         await tx.organization.delete({
           where: { id: organizationId },
         });
+      }
 
+      // Delete users belonging to this organization
+      if (userIdsToDelete.length > 0) {
         await tx.user.deleteMany({
-          where: { organizationId },
+          where: { id: { in: userIdsToDelete } },
         });
       }
     });
