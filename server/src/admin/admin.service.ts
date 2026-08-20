@@ -103,4 +103,115 @@ export class AdminService {
       data: { status },
     });
   }
+
+  // ─── Transactions (Global) ─────────────────────────────────────────────────
+
+  async getAllTransactionsLogs(
+    filters: { fromDate?: string; toDate?: string; status?: string; type?: string },
+    pagination: { page?: number; limit?: number },
+    sort: { sortBy?: string; sortOrder?: 'asc' | 'desc' }
+  ) {
+    const { fromDate, toDate, status, type } = filters;
+    const { page = 1, limit = 10 } = pagination;
+    const { sortBy = 'createdAt', sortOrder = 'desc' } = sort;
+
+    const where: any = {};
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) where.createdAt.lte = new Date(toDate);
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (type) {
+      where.type = type;
+    }
+
+    const [total, data] = await Promise.all([
+      this.prisma.payment.count({ where }),
+      this.prisma.payment.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: {
+          id: true,
+          organizationId: true,
+          subscriptionId: true,
+          paymentProvider: true,
+          providerPaymentId: true,
+          amountCents: true,
+          currency: true,
+          billingCycle: true,
+          status: true,
+          paidAt: true,
+          failureReason: true,
+          invoiceId: true,
+          type: true,
+          createdAt: true,
+          organization: {
+            select: {
+              name: true
+            }
+          }
+        }
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      }
+    };
+  }
+
+  async getAllTransactionsSummary(
+    filters: { fromDate?: string; toDate?: string }
+  ) {
+    const { fromDate, toDate } = filters;
+    const where: any = {};
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) where.createdAt.lte = new Date(toDate);
+    }
+
+    const aggregations = await this.prisma.payment.groupBy({
+      by: ['status'],
+      where,
+      _count: {
+        id: true,
+      },
+      _sum: {
+        amountCents: true,
+      }
+    });
+
+    const summary = {
+      successfulPayments: 0,
+      totalVolumeCents: 0,
+      failedPayments: 0,
+      pendingPayments: 0,
+    };
+
+    aggregations.forEach(agg => {
+      if (agg.status === 'paid') {
+        summary.successfulPayments += agg._count.id;
+        summary.totalVolumeCents += agg._sum.amountCents || 0;
+      } else if (agg.status === 'failed') {
+        summary.failedPayments += agg._count.id;
+      } else if (agg.status === 'pending') {
+        summary.pendingPayments += agg._count.id;
+      }
+    });
+
+    return summary;
+  }
 }

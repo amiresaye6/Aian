@@ -44,6 +44,8 @@ export default function LoginPage() {
         response.data.user.organizationId === "null"
       ) {
         router.push("/workspaces");
+      } else if (response.data.user.isSuperAdmin) {
+        router.push("/admin");
       } else {
         router.push("/dashboard");
       }

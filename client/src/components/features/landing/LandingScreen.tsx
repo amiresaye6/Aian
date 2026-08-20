@@ -10,9 +10,11 @@ import {
   WhyAian,
   Architecture,
   FeatureGrid,
+  SecurityTrust,
   Testimonials,
   Pricing,
   FinalCTA,
+  IntegrationsMarquee,
 } from "./sections";
 import { MarketingLayout } from "@/layouts/MarketingLayout";
 
@@ -20,6 +22,7 @@ export function LandingScreen() {
   return (
     <MarketingLayout>
       <Hero />
+      <IntegrationsMarquee />
       <Sources />
       <Pipeline />
       <Agents />
@@ -29,6 +32,7 @@ export function LandingScreen() {
       <SearchEverything />
       <WhyAian />
       <Architecture />
+      <SecurityTrust />
       <FeatureGrid />
       <Testimonials />
       <Pricing />

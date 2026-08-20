@@ -9,6 +9,8 @@ import {
   AiUsageLog,
   PaginatedResponse,
   FullQuotaSummary,
+  TransactionLog,
+  TransactionSummary,
 } from "@/types/billing/billing";
 
 export const billingApi = {
@@ -140,6 +142,46 @@ export const billingApi = {
     if (sorting?.sortOrder) params.append("sortOrder", sorting.sortOrder);
 
     const response = await api.get(`/billing/usage/logs?${params.toString()}`);
+    return response.data;
+  },
+
+  getTransactionsSummary: async (
+    organizationId: string,
+    filters?: { fromDate?: string; toDate?: string }
+  ): Promise<{ success: boolean; data: TransactionSummary }> => {
+    const params = new URLSearchParams({ organizationId });
+    if (filters?.fromDate) params.append("fromDate", filters.fromDate);
+    if (filters?.toDate) params.append("toDate", filters.toDate);
+    
+    const response = await api.get(`/billing/transactions/summary?${params.toString()}`);
+    return response.data;
+  },
+
+  getTransactionsLogs: async (
+    organizationId: string,
+    filters?: {
+      status?: string;
+      type?: string;
+      fromDate?: string;
+      toDate?: string;
+    },
+    pagination?: { page?: number; limit?: number },
+    sorting?: { sortBy?: string; sortOrder?: "asc" | "desc" }
+  ): Promise<{ success: boolean; data: PaginatedResponse<TransactionLog> }> => {
+    const params = new URLSearchParams({ organizationId });
+    
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.fromDate) params.append("fromDate", filters.fromDate);
+    if (filters?.toDate) params.append("toDate", filters.toDate);
+    
+    if (pagination?.page) params.append("page", pagination.page.toString());
+    if (pagination?.limit) params.append("limit", pagination.limit.toString());
+    
+    if (sorting?.sortBy) params.append("sortBy", sorting.sortBy);
+    if (sorting?.sortOrder) params.append("sortOrder", sorting.sortOrder);
+
+    const response = await api.get(`/billing/transactions/logs?${params.toString()}`);
     return response.data;
   },
 };
