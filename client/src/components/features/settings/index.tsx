@@ -2,6 +2,7 @@
 
 import { AppLayout } from "@/layouts/AppLayout";
 import { useAuthStore } from "@/store/auth/auth.store";
+import { useSettings } from "@/hooks/use-settings";
 import { SettingsForm } from "./settingsForm";
 import { DangerZone } from "./DangerZone";
 import { Settings as SettingsIcon, Building2 } from "lucide-react";
@@ -47,19 +48,14 @@ function InfoCard({ icon, label, value, accent }: InfoCardProps) {
 }
 
 export default function SettingsPage() {
-  // The auth store only carries organization (name), organizationId, and
-  // organizationLogo — there's no GET /settings/organization endpoint yet,
-  // so slug/description/industry/country/timezone aren't available to
-  // prefill. OrganizationForm starts those fields blank and only sends
-  // whatever the user actually fills in (patchOrganization supports partial
-  // updates).
   const user = useAuthStore((state) => state.user);
   const orgId = useAuthStore((state) => state.orgId);
+  const { organization, isLoadingOrganization } = useSettings();
 
-  const organizationName = (user as any)?.organization || "";
-  const organizationLogo = (user as any)?.organizationLogo || null;
+  const organizationName = organization?.name || (user as any)?.organization || "";
+  const organizationLogo = organization?.logoUrl || (user as any)?.organizationLogo || null;
 
-  const isReady = !!orgId;
+  const isReady = !!orgId && !isLoadingOrganization;
 
   return (
     <AppLayout>
@@ -77,32 +73,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {isReady && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <InfoCard
-              icon={<Building2 className="h-5 w-5" />}
-              label="Organization Name"
-              value={organizationName}
-              accent
-            />
-            <InfoCard
-              icon={
-                organizationLogo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={organizationLogo}
-                    alt=""
-                    className="h-full w-full rounded-xl object-cover"
-                  />
-                ) : (
-                  <Building2 className="h-5 w-5" />
-                )
-              }
-              label="Logo"
-              value={organizationLogo ? "Uploaded" : "Not set"}
-            />
-          </div>
-        )}
+        
 
         <div className="glass-strong relative overflow-hidden rounded-3xl p-7">
           <div className="flex items-center justify-between mb-5">
@@ -118,7 +89,7 @@ export default function SettingsPage() {
               <div className="h-24 w-full animate-pulse rounded-xl bg-white/[0.02]" />
             </div>
           ) : (
-            <SettingsForm initialName={organizationName} />
+            <SettingsForm organization={organization} />
           )}
         </div>
 

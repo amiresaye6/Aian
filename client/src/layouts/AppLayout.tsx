@@ -63,7 +63,7 @@ const NAV = [
 ];
 
 const SECONDARY = [
-  { to: "/dashboard", label: "Settings", icon: Settings },
+  { to: "/dashboard/settings", label: "Settings", icon: Settings },
   { to: "/dashboard/help", label: "Help", icon: HelpCircle },
 ];
 

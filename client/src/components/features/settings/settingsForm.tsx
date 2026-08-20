@@ -1,27 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, Info, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { UpdateOrganizationBody } from "@/types/settings";
+import { Organization, UpdateOrganizationBody } from "@/types/settings";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from "@/hooks/use-settings";
 import { useAuthStore } from "@/store/auth/auth.store";
 
 interface OrganizationFormProps {
-  initialName: string;
+  organization?: Organization;
 }
 
-export function SettingsForm({ initialName }: OrganizationFormProps) {
-  const [name, setName] = useState(initialName);
-  const [slug, setSlug] = useState("");
-  const [description, setDescription] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [country, setCountry] = useState("");
-  const [timezone, setTimezone] = useState("");
+export function SettingsForm({ organization }: OrganizationFormProps) {
+  const [name, setName] = useState(organization?.name || "");
+  const [slug, setSlug] = useState(organization?.slug || "");
+  const [description, setDescription] = useState(organization?.description || "");
+  const [industry, setIndustry] = useState(organization?.industry || "");
+  const [country, setCountry] = useState(organization?.country || "");
+  const [timezone, setTimezone] = useState(organization?.timezone || "");
 
   const setUser = useAuthStore((state) => state.setUser);
   const currentUser = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    if (organization) {
+      setName(organization.name || "");
+      setSlug(organization.slug || "");
+      setDescription(organization.description || "");
+      setIndustry(organization.industry || "");
+      setCountry(organization.country || "");
+      setTimezone(organization.timezone || "");
+    }
+  }, [organization]);
 
   const {
     updateOrganization,
@@ -38,8 +49,6 @@ export function SettingsForm({ initialName }: OrganizationFormProps) {
     e.preventDefault();
     if (!name) return;
 
-    // Only send fields the user actually set — patchOrganization only
-    // touches fields that are !== undefined.
     const body: UpdateOrganizationBody = { name };
     if (slug.trim()) body.slug = slug.trim();
     if (description.trim()) body.description = description.trim();
@@ -49,8 +58,6 @@ export function SettingsForm({ initialName }: OrganizationFormProps) {
 
     updateOrganization(body, {
       onSuccess: () => {
-        // Keep the auth store's cached org name in sync since it's the
-        // only source we have for display elsewhere in the app.
         if (currentUser) {
           setUser({ ...(currentUser as any), organization: name });
         }
@@ -100,7 +107,7 @@ export function SettingsForm({ initialName }: OrganizationFormProps) {
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-            placeholder="e.g., acme-corp (leave blank to keep current)"
+            placeholder="e.g., acme-corp"
             className="h-11 rounded-xl border-white/15 bg-white/[0.03] placeholder:text-muted-foreground/40 font-mono focus:border-white/30 focus:bg-white/[0.05] focus-visible:ring-[color:var(--gold-soft)]/30 transition-all"
           />
         </div>

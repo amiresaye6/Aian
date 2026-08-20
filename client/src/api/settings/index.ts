@@ -8,6 +8,11 @@ import {
 } from "@/types/settings";
 
 export const settingsApi = {
+  getOrganization: async (): Promise<ApiResponse<Organization>> => {
+    const response = await api.get<ApiResponse<Organization>>(`/settings/organization`);
+    return response.data;
+  },
+
   updateOrganization: async (body: UpdateOrganizationBody): Promise<ApiResponse<Organization>> => {
     const response = await api.patch<ApiResponse<Organization>>(`/settings/organization`, body);
     return response.data;
