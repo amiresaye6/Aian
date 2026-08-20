@@ -179,4 +179,45 @@ export class BillingController {
       toDate,
     });
   }
+
+  // ─── Transactions ─────────────────────────────────────────────────────────
+
+  @Get('transactions/logs')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async getTransactionsLogs(
+    @Query('organizationId') organizationId: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+    @Query('status') status?: string,
+    @Query('type') type?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ) {
+    return this.billingService.getTransactionsLogs(
+      organizationId,
+      { fromDate, toDate, status, type },
+      {
+        page: page ? parseInt(page, 10) : undefined,
+        limit: limit ? parseInt(limit, 10) : undefined,
+      },
+      { sortBy, sortOrder },
+    );
+  }
+
+  @Get('transactions/summary')
+  @UseGuards(AuthGaurd)
+  @RequiredPermissions('billing.manage')
+  async getTransactionsSummary(
+    @Query('organizationId') organizationId: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    return this.billingService.getTransactionsSummary(organizationId, {
+      fromDate,
+      toDate,
+    });
+  }
 }

@@ -298,4 +298,94 @@ export class BillingRepository {
       data: { overageHardCapCents },
     });
   }
+
+  // ─── Transactions / Payments ───────────────────────────────────────────────
+
+  async getTransactionsLogs(
+    organizationId: string,
+    filters: { fromDate?: string; toDate?: string; status?: string; type?: string },
+    pagination: { page?: number; limit?: number },
+    sort: { sortBy?: string; sortOrder?: 'asc' | 'desc' }
+  ) {
+    const { fromDate, toDate, status, type } = filters;
+    const { page = 1, limit = 10 } = pagination;
+    const { sortBy = 'createdAt', sortOrder = 'desc' } = sort;
+
+    const where: any = { organizationId };
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) where.createdAt.lte = new Date(toDate);
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (type) {
+      where.type = type;
+    }
+
+    const [total, data] = await Promise.all([
+      this.prisma.payment.count({ where }),
+      this.prisma.payment.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: {
+          id: true,
+          organizationId: true,
+          subscriptionId: true,
+          paymentProvider: true,
+          providerPaymentId: true,
+          amountCents: true,
+          currency: true,
+          billingCycle: true,
+          status: true,
+          paidAt: true,
+          failureReason: true,
+          invoiceId: true,
+          type: true,
+          createdAt: true,
+        }
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      }
+    };
+  }
+
+  async getTransactionsSummary(
+    organizationId: string,
+    filters: { fromDate?: string; toDate?: string }
+  ) {
+    const { fromDate, toDate } = filters;
+    const where: any = { organizationId };
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) where.createdAt.lte = new Date(toDate);
+    }
+
+    const aggregations = await this.prisma.payment.groupBy({
+      by: ['status'],
+      where,
+      _count: {
+        id: true,
+      },
+      _sum: {
+        amountCents: true,
+      }
+    });
+
+    return aggregations;
+  }
 }

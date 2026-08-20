@@ -120,6 +120,31 @@ export interface PaginatedMeta {
   totalPages: number;
 }
 
+export interface TransactionLog {
+  id: string;
+  organizationId: string;
+  subscriptionId: string;
+  paymentProvider: string;
+  providerPaymentId: string;
+  amountCents: number;
+  currency: string;
+  billingCycle: BillingCycle;
+  status: PaymentStatus;
+  paidAt: string | null;
+  failureReason: string | null;
+  invoiceId: string | null;
+  type: string;
+  createdAt: string;
+}
+
+export interface TransactionSummary {
+  totalPayments: number;
+  totalSuccessfulAmount: number;
+  totalSuccessfulCount: number;
+  totalFailedCount: number;
+  totalPendingCount: number;
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   meta: PaginatedMeta;

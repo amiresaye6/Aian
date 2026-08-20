@@ -296,7 +296,8 @@ export class TrelloClientService implements ProviderClient {
   // --- REST Operations ---
 
   async getBoards(connection: ProviderConnection): Promise<any[]> {
-    return this.executeRequest<any[]>(connection, 'GET', '/members/me/boards');
+    const res = await this.executeRequest<any[]>(connection, 'GET', '/members/me/boards');
+    return res;
   }
 
   async getBoard(connection: ProviderConnection, boardId: string): Promise<any> {

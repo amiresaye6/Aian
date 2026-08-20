@@ -1,10 +1,11 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Activity } from "lucide-react";
+import { CreditCard, Activity, FileText } from "lucide-react";
 import { AppLayout } from "@/layouts/AppLayout";
 import SubscriptionTab from "./_components/SubscriptionTab";
 import AiUsageTab from "./_components/AiUsageTab";
+import TransactionsTab from "./_components/TransactionsTab";
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, Suspense } from "react";
@@ -49,7 +50,7 @@ export default function BillingPage() {
         </div>
 
         <Tabs defaultValue="subscription" className="space-y-6">
-          <TabsList className="bg-white/5 border border-white/10 p-1">
+          <TabsList className="bg-white/5 border border-white/10 p-1 flex-wrap h-auto">
             <TabsTrigger value="subscription" className="flex items-center gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-foreground rounded-sm transition-all">
               <CreditCard className="h-4 w-4 text-gold-soft" />
               Subscription Details
@@ -58,12 +59,19 @@ export default function BillingPage() {
               <Activity className="h-4 w-4 text-gold-soft" />
               AI Usage
             </TabsTrigger>
+            <TabsTrigger value="transactions" className="flex items-center gap-2 data-[state=active]:bg-white/10 data-[state=active]:text-foreground rounded-sm transition-all">
+              <FileText className="h-4 w-4 text-gold-soft" />
+              Transactions
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="subscription" className="space-y-4 outline-none">
             <SubscriptionTab />
           </TabsContent>
           <TabsContent value="usage" className="space-y-4 outline-none">
             <AiUsageTab />
+          </TabsContent>
+          <TabsContent value="transactions" className="space-y-4 outline-none">
+            <TransactionsTab />
           </TabsContent>
         </Tabs>
       </div>
