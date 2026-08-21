@@ -29,8 +29,9 @@ export function Footer() {
               <ul className="mt-4 space-y-2 text-sm">
                 {col.i.map((x) => (
                   <li key={x}>
+
                     <a
-                      href="#"
+                      href={x.toLowerCase()}
                       className="text-foreground/80 transition-colors hover:text-foreground"
                     >
                       {x}
@@ -44,13 +45,13 @@ export function Footer() {
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/5 pt-6 text-xs text-muted-foreground">
           <div>© {new Date().getFullYear()} AIAN. All rights reserved.</div>
           <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-foreground">
+            <a href="privacy" className="hover:text-foreground">
               Privacy
             </a>
-            <a href="#" className="hover:text-foreground">
+            <a href="terms" className="hover:text-foreground">
               Terms
             </a>
-            <a href="#" className="hover:text-foreground">
+            <a href="security" className="hover:text-foreground">
               Security
             </a>
           </div>
